@@ -101,14 +101,16 @@ const InvoicePage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="min-h-screen bg-gray-50 relative">
         <TopBar 
           title="New Invoice"
           onBack={() => navigate('/home')}
           showMenu
         />
 
-        <div className="px-6 space-y-6">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
+          <div className="px-6 space-y-6">
           {/* Invoice Header */}
           <Card>
             <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
@@ -304,6 +306,7 @@ const InvoicePage: React.FC = () => {
               </Button>
             </div>
           </Card>
+          </div>
         </div>
 
         {/* Patient Selection Modal */}
@@ -354,6 +357,7 @@ const InvoicePage: React.FC = () => {
           </div>
         )}
 
+        {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </MobileContainer>

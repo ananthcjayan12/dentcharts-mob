@@ -50,14 +50,16 @@ const PatientsPage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="min-h-screen bg-gray-50">
         <TopBar 
           title="Patients"
           onBack={() => navigate('/home')}
           showMenu
         />
 
-        <div className="px-6 space-y-6">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
+          <div className="px-6 space-y-6">
           {/* Search and Filter */}
           <Card>
             <div className="space-y-4">
@@ -223,8 +225,10 @@ const PatientsPage: React.FC = () => {
               </div>
             </div>
           </Card>
+          </div>
         </div>
 
+        {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </MobileContainer>

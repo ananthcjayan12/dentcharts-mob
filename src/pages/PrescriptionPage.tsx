@@ -122,14 +122,16 @@ const PrescriptionPage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-white pb-20 relative">
+      <div className="min-h-screen bg-white relative">
         <TopBar 
           title={`PID - ${patientId || '201892521'}`}
           onBack={() => navigate('/home')}
           showMenu
         />
 
-        <div className="px-6 space-y-6">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
+          <div className="px-6 space-y-6">
           {/* Patient Header */}
           <div className="bg-gradient-to-r from-primary-500 to-green-400 rounded-xl p-4 text-white">
             <div className="flex items-center space-x-4">
@@ -368,6 +370,7 @@ const PrescriptionPage: React.FC = () => {
               ))}
             </div>
           </div>
+          </div>
         </div>
 
         {/* Upload Modal */}
@@ -491,6 +494,7 @@ const PrescriptionPage: React.FC = () => {
           </div>
         )}
 
+        {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </MobileContainer>

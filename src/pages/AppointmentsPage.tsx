@@ -44,14 +44,16 @@ const AppointmentsPage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="min-h-screen bg-gray-50">
         <TopBar 
           title="Appointments"
           onBack={() => navigate('/home')}
           showMenu
         />
 
-        <div className="px-6 space-y-6">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
+          <div className="px-6 space-y-6">
           {/* Date Selector */}
           <div>
             <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
@@ -176,8 +178,10 @@ const AppointmentsPage: React.FC = () => {
               </svg>
             </Button>
           </div>
+          </div>
         </div>
 
+        {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </MobileContainer>

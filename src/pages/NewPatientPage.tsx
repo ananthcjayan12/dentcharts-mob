@@ -129,14 +129,16 @@ const NewPatientPage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="min-h-screen bg-gray-50 relative">
         <TopBar 
           title="Add New Patient"
           onBack={() => navigate('/patients')}
           showMenu
         />
 
-        <div className="px-6 space-y-6">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
+          <div className="px-6 space-y-6">
           {/* Basic Information */}
           <Card>
             <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
@@ -356,8 +358,10 @@ const NewPatientPage: React.FC = () => {
               Add Patient
             </Button>
           </div>
+          </div>
         </div>
 
+        {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </MobileContainer>
