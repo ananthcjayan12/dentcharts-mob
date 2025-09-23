@@ -18,6 +18,45 @@ const mockPatient = {
   avatar: '/api/placeholder/50/50'
 };
 
+const mockPayments = [
+  {
+    id: 'PAY001',
+    invoiceNumber: 'INV-001',
+    date: '25-01-2025',
+    treatment: 'Root Canal Treatment',
+    totalAmount: 15000,
+    paidAmount: 10000,
+    pendingAmount: 5000,
+    status: 'Partially Paid',
+    paymentMethod: 'Cash',
+    nextDueDate: '15-02-2025'
+  },
+  {
+    id: 'PAY002',
+    invoiceNumber: 'INV-002',
+    date: '05-12-2024',
+    treatment: 'Dental Cleaning & Consultation',
+    totalAmount: 3500,
+    paidAmount: 3500,
+    pendingAmount: 0,
+    status: 'Paid',
+    paymentMethod: 'UPI',
+    nextDueDate: null
+  },
+  {
+    id: 'PAY003',
+    invoiceNumber: 'INV-003',
+    date: '19-12-2024',
+    treatment: 'Tooth Extraction',
+    totalAmount: 2500,
+    paidAmount: 0,
+    pendingAmount: 2500,
+    status: 'Pending',
+    paymentMethod: null,
+    nextDueDate: '28-12-2024'
+  }
+];
+
 const mockPrescriptions = [
   {
     id: '1',
@@ -72,6 +111,7 @@ const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const { patientId } = useParams();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
+  const [currentSection, setCurrentSection] = useState<'medical' | 'payments'>('medical');
   const [prescriptions, setPrescriptions] = useState(mockPrescriptions);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
@@ -181,16 +221,55 @@ const PrescriptionPage: React.FC = () => {
                 New Appointment
               </Button>
             </div>
+
+            {/* Payment Summary in Header */}
+            <div className="mt-3 pt-3 border-t border-white/30">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="text-center">
+                  <div className="font-bold">₹{mockPayments.reduce((sum, payment) => sum + payment.paidAmount, 0).toLocaleString()}</div>
+                  <div className="text-white/80">Total Paid</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-yellow-200">₹{mockPayments.reduce((sum, payment) => sum + payment.pendingAmount, 0).toLocaleString()}</div>
+                  <div className="text-white/80">Pending</div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Existing Chambers */}
-          <div>
-            <h3 className="text-base font-bold text-gray-700 font-lato mb-4">
-              Existing Chambers
-            </h3>
+          {/* Section Tabs */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setCurrentSection('medical')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-bold font-lato transition-colors ${
+                currentSection === 'medical'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Medical History
+            </button>
+            <button
+              onClick={() => setCurrentSection('payments')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-bold font-lato transition-colors ${
+                currentSection === 'payments'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Payment Details
+            </button>
+          </div>
 
-            <div className="space-y-4">
-              {prescriptions.map((prescription) => (
+          {/* Medical History Section */}
+          {currentSection === 'medical' && (
+            <div>
+              <h3 className="text-base font-bold text-gray-700 font-lato mb-4">
+                Medical History
+              </h3>
+
+              <div className="space-y-4">
+                {prescriptions.map((prescription) => (
                 <Card key={prescription.id} className="relative">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-bold text-gray-600 font-lato">
@@ -369,7 +448,157 @@ const PrescriptionPage: React.FC = () => {
                 </Card>
               ))}
             </div>
-          </div>
+            </div>
+          )}
+
+          {/* Payment Details Section */}
+          {currentSection === 'payments' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold text-gray-700 font-lato">
+                  Payment Summary
+                </h3>
+              </div>
+
+              {/* Payment Summary Cards */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <Card className="text-center">
+                  <div className="text-2xl font-bold text-green-600 font-lato">
+                    ₹{mockPayments.reduce((sum, payment) => sum + payment.paidAmount, 0).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
+                </Card>
+                <Card className="text-center">
+                  <div className="text-2xl font-bold text-red-600 font-lato">
+                    ₹{mockPayments.reduce((sum, payment) => sum + payment.pendingAmount, 0).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
+                </Card>
+              </div>
+
+              {/* Payment History */}
+              <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
+                Payment History
+              </h4>
+
+              <div className="space-y-4">
+                {mockPayments.map((payment) => (
+                  <Card key={payment.id}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <h5 className="text-sm font-bold text-gray-700 font-lato">
+                          {payment.invoiceNumber}
+                        </h5>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          payment.status === 'Paid' 
+                            ? 'bg-green-100 text-green-800'
+                            : payment.status === 'Partially Paid'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {payment.status}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 font-lato">
+                        {payment.date}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-sm text-gray-600 font-montserrat">
+                        <strong>Treatment:</strong> {payment.treatment}
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="text-center p-2 bg-gray-50 rounded">
+                          <div className="font-bold text-gray-700">₹{payment.totalAmount.toLocaleString()}</div>
+                          <div className="text-gray-500">Total</div>
+                        </div>
+                        <div className="text-center p-2 bg-green-50 rounded">
+                          <div className="font-bold text-green-600">₹{payment.paidAmount.toLocaleString()}</div>
+                          <div className="text-gray-500">Paid</div>
+                        </div>
+                        <div className="text-center p-2 bg-red-50 rounded">
+                          <div className="font-bold text-red-600">₹{payment.pendingAmount.toLocaleString()}</div>
+                          <div className="text-gray-500">Pending</div>
+                        </div>
+                      </div>
+
+                      {payment.paymentMethod && (
+                        <div className="text-xs text-gray-600 font-montserrat">
+                          <strong>Payment Method:</strong> {payment.paymentMethod}
+                        </div>
+                      )}
+
+                      {payment.nextDueDate && (
+                        <div className="text-xs text-red-600 font-montserrat">
+                          <strong>Next Due:</strong> {payment.nextDueDate}
+                        </div>
+                      )}
+
+                      {payment.pendingAmount > 0 && (
+                        <div className="flex space-x-2 mt-3">
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            className="flex-1"
+                            onClick={() => {
+                              alert(`Recording payment for ${payment.invoiceNumber}`);
+                            }}
+                          >
+                            Record Payment
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                              alert(`Sending reminder for ${payment.invoiceNumber}`);
+                            }}
+                          >
+                            Send Reminder
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Quick Payment Actions */}
+              <Card className="mt-6">
+                <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
+                  Quick Actions
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => navigate('/invoice')}
+                    className="flex flex-col items-center py-3"
+                  >
+                    <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <span className="text-xs">New Invoice</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      alert('Generating payment report...');
+                    }}
+                    className="flex flex-col items-center py-3"
+                  >
+                    <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-xs">Payment Report</span>
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
           </div>
         </div>
 
