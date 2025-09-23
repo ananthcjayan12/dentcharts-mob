@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Lato', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-500 text-white font-semibold py-2 px-4 rounded-full hover:bg-primary-600 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary-500 text-white font-semibold py-2 px-4 rounded-full hover:bg-orange-600 transition-colors;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-elements p-4;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+  
+  .mobile-container {
+    @apply max-w-md mx-auto bg-white min-h-screen shadow-card relative;
+  }
+}
