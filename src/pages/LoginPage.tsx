@@ -44,31 +44,39 @@ const LoginPage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gradient-to-b from-primary-300 to-primary-600 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-0 left-0 w-full h-full">
-          <svg className="absolute top-20 -left-16 w-128 h-80" viewBox="0 0 500 300" fill="none">
-            <path d="M0 150C50 50 150 50 250 150C350 250 450 250 500 150V300H0V150Z" fill="rgba(255,255,255,0.1)" />
-          </svg>
+      <div className="min-h-screen bg-gradient-to-br from-primary-400 via-primary-500 to-green-400 relative overflow-hidden">
+        {/* Animated background decoration */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
+          <div className="absolute top-1/4 -left-20 w-60 h-60 bg-white/5 rounded-full"></div>
+          <div className="absolute bottom-1/4 right-10 w-32 h-32 bg-white/10 rounded-full"></div>
         </div>
 
-        <div className="relative z-10 px-6 pt-12">
+        <div className="relative z-10 px-6 pt-16 pb-8 flex flex-col min-h-screen">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-sm font-bold text-black mb-2 font-montserrat">
-              Welcome
+          <div className="text-center mb-12">
+            <div className="w-20 h-20 mx-auto mb-6 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-bold text-white mb-2 font-lato">
+              Welcome Back
             </h1>
-            <h2 className="text-4xl font-bold text-black font-montserrat">
+            <h2 className="text-3xl font-bold text-white font-montserrat">
               Doctor
             </h2>
           </div>
 
           {/* Login Form */}
-          <div className="bg-white rounded-t-3xl px-6 pt-8 pb-12 mt-8">
-            <div className="text-center mb-6">
-              <p className="text-sm text-gray-600 font-montserrat leading-relaxed">
-                Please login with your login ID or Phone Number. If you don't have any login id, please{' '}
-                <span className="text-primary-500 font-bold">Register Now!</span>
+          <div className="flex-1 bg-white/95 backdrop-blur-md rounded-t-3xl px-6 pt-8 pb-8 shadow-2xl">
+            <div className="text-center mb-8">
+              <h3 className="text-xl font-bold text-gray-800 mb-2 font-montserrat">Sign In</h3>
+              <p className="text-sm text-gray-600 font-lato leading-relaxed">
+                Please login with your credentials. Don't have an account?{' '}
+                <Link to="/register" className="text-primary-500 font-bold hover:text-primary-600">
+                  Register Now!
+                </Link>
               </p>
             </div>
 

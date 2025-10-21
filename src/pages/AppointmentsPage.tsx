@@ -4,7 +4,6 @@ import MobileContainer from '../components/layout/MobileContainer';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
-import Button from '../components/common/Button';
 import { mockAppointments } from '../data/mockData';
 import { Appointment } from '../types';
 
@@ -52,7 +51,7 @@ const AppointmentsPage: React.FC = () => {
         />
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
+        <div className="overflow-y-auto pb-20 pt-4" style={{ height: 'calc(100vh - 60px)' }}>
           <div className="px-6 space-y-6">
           {/* Date Selector */}
           <div>
@@ -81,16 +80,16 @@ const AppointmentsPage: React.FC = () => {
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => handleAppointmentClick(appointment.patientId)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-sm font-bold text-gray-800 font-lato">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-3">
+                        <h4 className="text-sm font-bold text-gray-800 font-lato truncate">
                           {appointment.patientName}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat mt-1">
                           {appointment.time} • {appointment.type}
                         </p>
                         <div className="flex items-center mt-2">
-                          <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                          <span className={`inline-block w-2 h-2 rounded-full mr-2 flex-shrink-0 ${
                             appointment.status === 'confirmed' ? 'bg-green-500' :
                             appointment.status === 'pending' ? 'bg-yellow-500' :
                             'bg-red-500'
@@ -139,15 +138,15 @@ const AppointmentsPage: React.FC = () => {
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => handleAppointmentClick(appointment.patientId)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-sm font-bold text-gray-800 font-lato">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-3">
+                        <h4 className="text-sm font-bold text-gray-800 font-lato truncate">
                           {appointment.patientName}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat mt-1">
                           {new Date(appointment.date).toLocaleDateString()} • {appointment.time}
                         </p>
-                        <p className="text-xs text-gray-500 font-montserrat">
+                        <p className="text-xs text-gray-500 font-montserrat truncate">
                           {appointment.type}
                         </p>
                       </div>
@@ -167,16 +166,16 @@ const AppointmentsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Quick Actions */}
+          {/* Floating Action Button */}
           <div className="fixed bottom-24 right-6 z-10">
-            <Button
+            <button
               onClick={() => navigate('/appointments/new')}
-              className="w-14 h-14 rounded-full shadow-lg"
+              className="w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200 flex items-center justify-center"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-            </Button>
+            </button>
           </div>
           </div>
         </div>

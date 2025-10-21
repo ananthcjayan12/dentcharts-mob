@@ -47,17 +47,21 @@ const HomePage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white relative">
+        {/* Status Bar Styling */}
+        <div className="h-1 bg-gradient-to-r from-primary-500 to-green-400"></div>
+        
         <TopBar 
-          title="Dashboard"
+          title="DentCare Dashboard"
+          variant="gradient"
           showMenu
         />
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
-          <div className="px-6 space-y-6">
+        <div className="overflow-y-auto pb-20 pt-4" style={{ height: 'calc(100vh - 72px)' }}>
+          <div className="px-4 space-y-4">
           {/* Welcome Header */}
-          <Card className="bg-gradient-to-r from-primary-500 to-green-400 text-white">
+          <Card variant="elevated" className="bg-gradient-to-r from-primary-500 to-green-400 text-white border-0 shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <h1 className="text-lg font-bold font-lato mb-1">

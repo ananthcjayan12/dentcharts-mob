@@ -3,33 +3,86 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
   body {
     font-family: 'Lato', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    background-color: #f8fafc;
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Montserrat', sans-serif;
   }
+  
+  /* Mobile optimizations */
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 2px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 1px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
 }
 
 @layer components {
+  .mobile-container {
+    @apply relative min-h-screen bg-white;
+    /* Mobile viewport handling */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  .safe-area-padding {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
   .btn-primary {
-    @apply bg-primary-500 text-white font-semibold py-2 px-4 rounded-full hover:bg-primary-600 transition-colors;
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg;
   }
   
   .btn-secondary {
-    @apply bg-secondary-500 text-white font-semibold py-2 px-4 rounded-full hover:bg-orange-600 transition-colors;
+    @apply bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg;
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-elements p-4;
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
   }
   
   .input-field {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
   }
   
-  .mobile-container {
-    @apply max-w-md mx-auto bg-white min-h-screen shadow-card relative;
+  /* Mobile-specific animations */
+  .scale-98 {
+    transform: scale(0.98);
+  }
+  
+  .touch-feedback {
+    @apply active:scale-95 transition-transform duration-150;
+  }
+  
+  /* Floating action button */
+  .fab {
+    @apply fixed bottom-20 right-4 w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 active:scale-90 transition-all duration-200;
   }
 }
