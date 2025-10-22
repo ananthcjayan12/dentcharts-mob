@@ -1,3 +1,4 @@
+// Updated types to match backend API responses
 export interface User {
   id: string;
   name: string;
@@ -5,6 +6,9 @@ export interface User {
   phone: string;
   role: 'doctor' | 'patient';
   avatar?: string;
+  practitioner_id?: string;
+  full_name?: string;
+  mobile?: string;
 }
 
 export interface Patient {
@@ -16,7 +20,7 @@ export interface Patient {
   phone: string;
   email?: string;
   address: string;
-  medicalHistory: {
+  medicalHistory?: {
     diabetic: boolean;
     bloodPressure: 'Normal' | 'High' | 'Low' | 'Moderate High';
     cardiacHistory: boolean;
@@ -26,6 +30,13 @@ export interface Patient {
     occupation: string;
   };
   avatar?: string;
+  // API fields
+  patient_id?: string;
+  patient_name?: string;
+  sex?: string;
+  mobile?: string;
+  dob?: string;
+  occupation?: string;
 }
 
 export interface Appointment {
@@ -37,6 +48,12 @@ export interface Appointment {
   type: string;
   status: 'scheduled' | 'confirmed' | 'pending' | 'completed' | 'cancelled';
   notes?: string;
+  // API fields
+  appointment_id?: string;
+  patient_id?: string;
+  patient_name?: string;
+  appointment_datetime?: string;
+  duration?: number;
 }
 
 export interface Prescription {
@@ -46,6 +63,16 @@ export interface Prescription {
   medications: string[];
   investigations: string[];
   notes?: string;
+  // API fields
+  record_id?: string;
+  patient_id?: string;
+  patient_name?: string;
+  posting_date?: string;
+  chief_complaint?: string;
+  symptoms?: string;
+  diagnosis?: string;
+  treatment_plan?: string;
+  status?: string;
 }
 
 export interface AuthContextType {
@@ -54,4 +81,24 @@ export interface AuthContextType {
   register: (userData: Partial<User> & { password: string }) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+}
+
+// Invoice/Payment types for the existing app
+export interface Invoice {
+  id: string;
+  patientId: string;
+  patientName: string;
+  date: string;
+  dueDate: string;
+  amount: number;
+  status: 'paid' | 'unpaid' | 'overdue' | 'partially-paid';
+  items: InvoiceItem[];
+}
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
 }

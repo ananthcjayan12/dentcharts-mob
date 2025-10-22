@@ -12,28 +12,37 @@ import PatientsPage from './pages/PatientsPage';
 import NewPatientPage from './pages/NewPatientPage';
 import InvoicePage from './pages/InvoicePage';
 import { AuthProvider } from './contexts/AuthContext';
+import { QueryProvider } from './api/queryClient';
+import ToastProvider from './components/providers/ToastProvider';
+import { ErrorBoundary } from './utils/errorHandling';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/prescriptions/:patientId" element={<PrescriptionPage />} />
-            <Route path="/appointments" element={<AppointmentsPage />} />
-            <Route path="/appointments/new" element={<NewAppointmentPage />} />
-            <Route path="/patients" element={<PatientsPage />} />
-            <Route path="/patients/new" element={<NewPatientPage />} />
-            <Route path="/invoice" element={<InvoicePage />} />
-          </Routes>
-        </div>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <QueryProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <Router>
+              <div className="App">
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/home" element={<HomePage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/prescriptions/:patientId" element={<PrescriptionPage />} />
+                  <Route path="/appointments" element={<AppointmentsPage />} />
+                  <Route path="/appointments/new" element={<NewAppointmentPage />} />
+                  <Route path="/patients" element={<PatientsPage />} />
+                  <Route path="/patients/new" element={<NewPatientPage />} />
+                  <Route path="/invoice" element={<InvoicePage />} />
+                </Routes>
+              </div>
+            </Router>
+          </AuthProvider>
+        </ToastProvider>
+      </QueryProvider>
+    </ErrorBoundary>
   );
 }
 

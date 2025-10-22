@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, AuthContextType } from '../types';
+import { useAuthActions } from '../hooks/useAuth';
+import { getStoredUserData } from '../utils/storage';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -17,80 +19,91 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  const {
+    login: apiLogin,
+    register: apiRegister,
+    logout: apiLogout,
+    isLoading: apiLoading,
+  } = useAuthActions();
+
+  // Initialize user from stored data on app start
+  useEffect(() => {
+    const initializeAuth = () => {
+      try {
+        const storedUser = getStoredUserData();
+        if (storedUser) {
+          setUser(storedUser);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await apiLogin({ usr: email, pwd: password });
       
-      // Mock user data
-      const mockUser: User = {
-        id: '1',
-        name: 'Dr Pooja Satheesh',
-        email: email,
-        phone: '+919400475408',
+      // Convert API response to User format
+      const userData: User = {
+        id: response.user.practitioner_id || response.user.email,
+        name: response.user.full_name,
+        email: response.user.email,
+        phone: response.user.mobile,
         role: 'doctor',
-        avatar: '/api/placeholder/100/100'
+        practitioner_id: response.user.practitioner_id,
       };
       
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      setUser(userData);
     } catch (error) {
-      throw new Error('Login failed');
-    } finally {
-      setIsLoading(false);
+      console.error('Login error in context:', error);
+      throw error;
     }
   };
 
   const register = async (userData: Partial<User> & { password: string }) => {
-    setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: userData.name || '',
+      await apiRegister({
+        full_name: userData.name || '',
         email: userData.email || '',
         phone: userData.phone || '',
-        role: 'doctor',
-        avatar: '/api/placeholder/100/100'
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+        password: userData.password,
+        clinic_name: userData.name || 'My Clinic',
+      });
     } catch (error) {
-      throw new Error('Registration failed');
-    } finally {
-      setIsLoading(false);
+      console.error('Register error in context:', error);
+      throw error;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await apiLogout();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error in context:', error);
+      // Still clear local state even if API call fails
+      setUser(null);
+      throw error;
+    }
   };
 
-  // Check for existing user on mount
-  React.useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
-
-  const value: AuthContextType = {
+  const contextValue: AuthContextType = {
     user,
     login,
     register,
     logout,
-    isLoading
+    isLoading: !isInitialized || apiLoading,
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
