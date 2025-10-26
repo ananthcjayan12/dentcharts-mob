@@ -4,7 +4,7 @@ import MobileContainer from '../components/layout/MobileContainer';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
-import { mockAppointments } from '../data/mockData';
+import { useAppointmentsByDate, useUpcomingAppointments } from '../hooks/useAppointments';
 import { Appointment } from '../types';
 
 const AppointmentsPage: React.FC = () => {
@@ -33,13 +33,19 @@ const AppointmentsPage: React.FC = () => {
     navigate(`/prescriptions/${patientId}`);
   };
 
-  const todaysAppointments = mockAppointments.filter((apt: Appointment) => 
-    apt.date === selectedDate
-  );
+  // Real API data instead of mock data
+  const { 
+    data: selectedDateAppointments, 
+    isLoading: appointmentsLoading 
+  } = useAppointmentsByDate(selectedDate);
+  
+  const { 
+    data: upcomingAppointments, 
+    isLoading: upcomingLoading 
+  } = useUpcomingAppointments();
 
-  const upcomingAppointments = mockAppointments.filter((apt: Appointment) => 
-    new Date(apt.date) > new Date(selectedDate)
-  ).slice(0, 3);
+  const isLoading = appointmentsLoading || upcomingLoading;
+  const todaysAppointments = selectedDateAppointments || [];
 
   return (
     <MobileContainer>
@@ -72,26 +78,45 @@ const AppointmentsPage: React.FC = () => {
               Appointments for {new Date(selectedDate).toLocaleDateString()}
             </h3>
 
-            {todaysAppointments.length > 0 ? (
+            {isLoading ? (
+              // Loading skeleton when fetching data
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Card key={index}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-3">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse mb-2 w-24"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
+                      </div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : todaysAppointments.length > 0 ? (
               <div className="space-y-3">
                 {todaysAppointments.map((appointment) => (
                   <Card 
-                    key={appointment.id} 
+                    key={appointment.appointment_id} 
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handleAppointmentClick(appointment.patientId)}
+                    onClick={() => handleAppointmentClick(appointment.patient_id)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 pr-3">
                         <h4 className="text-sm font-bold text-gray-800 font-lato truncate">
-                          {appointment.patientName}
+                          {appointment.patient_name}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat mt-1">
-                          {appointment.time} • {appointment.type}
+                          {new Date(appointment.appointment_datetime).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })} • Consultation
                         </p>
                         <div className="flex items-center mt-2">
                           <span className={`inline-block w-2 h-2 rounded-full mr-2 flex-shrink-0 ${
-                            appointment.status === 'confirmed' ? 'bg-green-500' :
-                            appointment.status === 'pending' ? 'bg-yellow-500' :
+                            appointment.status === 'Confirmed' ? 'bg-green-500' :
+                            appointment.status === 'Scheduled' ? 'bg-yellow-500' :
                             'bg-red-500'
                           }`}></span>
                           <span className="text-xs text-gray-500 font-montserrat capitalize">
@@ -101,7 +126,7 @@ const AppointmentsPage: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-gray-500 font-montserrat">
-                          PID: {appointment.patientId}
+                          PID: {appointment.patient_id}
                         </p>
                       </div>
                     </div>
@@ -125,7 +150,7 @@ const AppointmentsPage: React.FC = () => {
           </div>
 
           {/* Upcoming Appointments */}
-          {upcomingAppointments.length > 0 && (
+          {!isLoading && upcomingAppointments && upcomingAppointments.length > 0 && (
             <div>
               <h3 className="text-base font-bold text-gray-700 font-lato mb-4">
                 Upcoming Appointments
@@ -134,26 +159,29 @@ const AppointmentsPage: React.FC = () => {
               <div className="space-y-3">
                 {upcomingAppointments.map((appointment) => (
                   <Card 
-                    key={appointment.id}
+                    key={appointment.appointment_id}
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handleAppointmentClick(appointment.patientId)}
+                    onClick={() => handleAppointmentClick(appointment.patient_id)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 pr-3">
                         <h4 className="text-sm font-bold text-gray-800 font-lato truncate">
-                          {appointment.patientName}
+                          {appointment.patient_name}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat mt-1">
-                          {new Date(appointment.date).toLocaleDateString()} • {appointment.time}
+                          {new Date(appointment.appointment_datetime).toLocaleDateString()} • {new Date(appointment.appointment_datetime).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
                         </p>
                         <p className="text-xs text-gray-500 font-montserrat truncate">
-                          {appointment.type}
+                          Consultation
                         </p>
                       </div>
                       <div className="text-right">
                         <span className={`inline-block px-2 py-1 rounded-full text-xs font-montserrat ${
-                          appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          appointment.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
+                          appointment.status === 'Scheduled' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
                         }`}>
                           {appointment.status}

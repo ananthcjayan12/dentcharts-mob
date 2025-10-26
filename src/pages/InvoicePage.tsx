@@ -6,23 +6,18 @@ import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
-import { mockPatients } from '../data/mockData';
-import { Patient } from '../types';
-
-interface InvoiceItem {
-  id: string;
-  description: string;
-  quantity: number;
-  price: number;
-}
+import { usePatients } from '../hooks/usePatients';
+import { useCreateInvoice } from '../hooks/usePayments';
+import { PatientResponse, InvoiceItem as APIInvoiceItem } from '../api/types';
+import toast from 'react-hot-toast';
 
 const InvoicePage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<PatientResponse | null>(null);
   const [showPatientList, setShowPatientList] = useState(false);
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([
-    { id: '1', description: '', quantity: 1, price: 0 }
+  const [invoiceItems, setInvoiceItems] = useState<(APIInvoiceItem & { id: string })[]>([
+    { id: '1', item_code: '', description: '', qty: 1, rate: 0 }
   ]);
   const [invoiceData, setInvoiceData] = useState({
     invoiceNumber: `INV-${Date.now()}`,
@@ -30,6 +25,10 @@ const InvoicePage: React.FC = () => {
     dueDate: '',
     notes: ''
   });
+
+  // API hooks
+  const { data: patients, isLoading: patientsLoading } = usePatients();
+  const { mutate: createInvoice, isPending: isCreating } = useCreateInvoice();
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -52,7 +51,7 @@ const InvoicePage: React.FC = () => {
   const addInvoiceItem = () => {
     setInvoiceItems(prev => [
       ...prev,
-      { id: Date.now().toString(), description: '', quantity: 1, price: 0 }
+      { id: Date.now().toString(), item_code: '', description: '', qty: 1, rate: 0 }
     ]);
   };
 
@@ -62,14 +61,14 @@ const InvoicePage: React.FC = () => {
     }
   };
 
-  const updateInvoiceItem = (id: string, field: keyof InvoiceItem, value: any) => {
+  const updateInvoiceItem = (id: string, field: keyof (APIInvoiceItem & { id: string }), value: any) => {
     setInvoiceItems(prev => prev.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
   };
 
   const calculateSubtotal = () => {
-    return invoiceItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    return invoiceItems.reduce((sum, item) => sum + (item.qty * item.rate), 0);
   };
 
   const calculateTax = () => {
@@ -81,22 +80,34 @@ const InvoicePage: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    if (!selectedPatient || invoiceItems.some(item => !item.description || item.price <= 0)) {
-      alert('Please fill in all required fields');
+    if (!selectedPatient) {
+      toast.error('Please select a patient');
       return;
     }
 
-    console.log('Creating invoice:', {
-      ...invoiceData,
-      patient: selectedPatient,
-      items: invoiceItems,
-      subtotal: calculateSubtotal(),
-      tax: calculateTax(),
-      total: calculateTotal()
-    });
+    if (invoiceItems.some(item => !item.item_code || !item.description || item.rate <= 0)) {
+      toast.error('Please fill in all required fields (Item Code, Description, and Rate)');
+      return;
+    }
 
-    alert('Invoice created successfully!');
-    navigate('/home');
+    if (!invoiceData.dueDate) {
+      toast.error('Please set a due date');
+      return;
+    }
+
+    const invoiceRequest = {
+      patient_id: selectedPatient.patient_id,
+      items: invoiceItems.map(({ id, ...item }) => item), // Remove local id field
+      posting_date: invoiceData.date,
+      due_date: invoiceData.dueDate,
+      remarks: invoiceData.notes || undefined
+    };
+
+    createInvoice(invoiceRequest, {
+      onSuccess: () => {
+        navigate('/home');
+      }
+    });
   };
 
   return (
@@ -155,18 +166,18 @@ const InvoicePage: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
                     <span className="text-white font-bold text-sm">
-                      {selectedPatient.name.charAt(0)}
+                      {selectedPatient.patient_name.charAt(0)}
                     </span>
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-800 font-lato">
-                      {selectedPatient.name}
+                      {selectedPatient.patient_name}
                     </p>
                     <p className="text-xs text-gray-600 font-montserrat">
-                      {selectedPatient.phone}
+                      {selectedPatient.mobile}
                     </p>
                     <p className="text-xs text-gray-500 font-montserrat">
-                      {selectedPatient.address}
+                      ID: {selectedPatient.patient_id}
                     </p>
                   </div>
                 </div>
@@ -218,6 +229,13 @@ const InvoicePage: React.FC = () => {
                   <div className="space-y-3">
                     <input
                       type="text"
+                      placeholder="Item Code"
+                      value={item.item_code}
+                      onChange={(e) => updateInvoiceItem(item.id, 'item_code', e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded text-sm"
+                    />
+                    <input
+                      type="text"
                       placeholder="Description"
                       value={item.description}
                       onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)}
@@ -229,24 +247,24 @@ const InvoicePage: React.FC = () => {
                         type="number"
                         placeholder="Quantity"
                         min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateInvoiceItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
+                        value={item.qty}
+                        onChange={(e) => updateInvoiceItem(item.id, 'qty', parseInt(e.target.value) || 1)}
                         className="w-full p-2 border border-gray-300 rounded text-sm"
                       />
                       <input
                         type="number"
-                        placeholder="Price"
+                        placeholder="Rate"
                         min="0"
                         step="0.01"
-                        value={item.price}
-                        onChange={(e) => updateInvoiceItem(item.id, 'price', parseFloat(e.target.value) || 0)}
+                        value={item.rate}
+                        onChange={(e) => updateInvoiceItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
                         className="w-full p-2 border border-gray-300 rounded text-sm"
                       />
                     </div>
                     
                     <div className="text-right">
                       <span className="text-sm font-bold text-gray-700">
-                        Total: ₹{(item.quantity * item.price).toFixed(2)}
+                        Total: ₹{(item.qty * item.rate).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -295,14 +313,16 @@ const InvoicePage: React.FC = () => {
                 variant="outline"
                 onClick={() => navigate('/home')}
                 className="flex-1"
+                disabled={isCreating}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmit}
                 className="flex-1"
+                disabled={isCreating}
               >
-                Create Invoice
+                {isCreating ? 'Creating...' : 'Create Invoice'}
               </Button>
             </div>
           </Card>
@@ -328,30 +348,48 @@ const InvoicePage: React.FC = () => {
               </div>
 
               <div className="overflow-y-auto max-h-64 space-y-2">
-                {mockPatients.map((patient) => (
-                  <div
-                    key={patient.id}
-                    onClick={() => {
-                      setSelectedPatient(patient);
-                      setShowPatientList(false);
-                    }}
-                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">
-                        {patient.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-800 font-lato">
-                        {patient.name}
-                      </p>
-                      <p className="text-xs text-gray-600 font-montserrat">
-                        ID: {patient.id} • {patient.phone}
-                      </p>
-                    </div>
+                {patientsLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center space-x-3 p-3 rounded-lg animate-pulse">
+                        <div className="w-10 h-10 rounded-full bg-gray-200"></div>
+                        <div className="flex-1 space-y-1">
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : !patients || patients.data.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    No patients available
+                  </div>
+                ) : (
+                  patients.data.map((patient) => (
+                    <div
+                      key={patient.patient_id}
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setShowPatientList(false);
+                      }}
+                      className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">
+                          {patient.patient_name.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-800 font-lato">
+                          {patient.patient_name}
+                        </p>
+                        <p className="text-xs text-gray-600 font-montserrat">
+                          ID: {patient.patient_id} • {patient.mobile}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

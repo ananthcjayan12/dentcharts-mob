@@ -14,12 +14,10 @@ import InvoicePage from './pages/InvoicePage';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryProvider } from './api/queryClient';
 import ToastProvider from './components/providers/ToastProvider';
-import { ErrorBoundary } from './utils/errorHandling';
 
 function App() {
   return (
-    <ErrorBoundary>
-      <QueryProvider>
+    <QueryProvider>
         <ToastProvider>
           <AuthProvider>
             <Router>
@@ -42,7 +40,6 @@ function App() {
           </AuthProvider>
         </ToastProvider>
       </QueryProvider>
-    </ErrorBoundary>
   );
 }
 

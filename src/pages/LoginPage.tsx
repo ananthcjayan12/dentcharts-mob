@@ -88,7 +88,7 @@ const LoginPage: React.FC = () => {
               <InputField
                 label="Login ID or Phone Number"
                 name="email"
-                type="email"
+                type="text"
                 placeholder="id-xxxxxx / 8801xxxxxx"
                 value={formData.email}
                 onChange={handleInputChange}

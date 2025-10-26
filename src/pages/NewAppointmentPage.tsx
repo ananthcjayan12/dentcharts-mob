@@ -6,32 +6,40 @@ import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
-import { mockPatients } from '../data/mockData';
+import { usePatients } from '../hooks/usePatients';
+import { useCreateAppointment, useAvailableSlots } from '../hooks/useAppointments';
 import { Patient } from '../types';
+import toast from 'react-hot-toast';
 
 const NewAppointmentPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('new-appointment');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null); // Using PatientResponse type
   const [showPatientList, setShowPatientList] = useState(false);
   const [formData, setFormData] = useState({
-    date: '',
-    time: '',
-    type: '',
+    appointment_date: '',
+    appointment_time: '',
+    duration: 30,
     notes: ''
   });
+
+  // API hooks
+  const { data: patientsData, isLoading: patientsLoading } = usePatients();
+  const { mutate: createAppointment, isPending: isCreating } = useCreateAppointment();
+  
+  const patients = patientsData?.data || [];
 
   // Check if patient ID is provided in URL params (from prescription page)
   useEffect(() => {
     const patientId = searchParams.get('patientId');
-    if (patientId) {
-      const patient = mockPatients.find(p => p.id === patientId);
+    if (patientId && patients.length > 0) {
+      const patient = patients.find(p => p.patient_id === patientId);
       if (patient) {
         setSelectedPatient(patient);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, patients]);
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -50,7 +58,7 @@ const NewAppointmentPage: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -58,35 +66,30 @@ const NewAppointmentPage: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    if (!selectedPatient || !formData.date || !formData.time || !formData.type) {
-      alert('Please fill in all required fields');
+    if (!selectedPatient || !formData.appointment_date || !formData.appointment_time) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
-    // In a real app, this would save to backend
-    console.log('Creating appointment:', {
-      patientId: selectedPatient.id,
-      patientName: selectedPatient.name,
-      ...formData,
-      status: 'pending'
+    const appointmentData = {
+      patient_id: selectedPatient.patient_id,
+      appointment_date: formData.appointment_date,
+      appointment_time: formData.appointment_time,
+      duration: formData.duration,
+      notes: formData.notes || undefined,
+    };
+
+    createAppointment(appointmentData, {
+      onSuccess: () => {
+        toast.success('Appointment created successfully!');
+        navigate('/appointments');
+      },
+      onError: (error) => {
+        console.error('Error creating appointment:', error);
+        toast.error('Failed to create appointment. Please try again.');
+      }
     });
-
-    alert('Appointment created successfully!');
-    navigate('/appointments');
   };
-
-  const appointmentTypes = [
-    'Regular checkup',
-    'Follow-up',
-    'Dental cleaning',
-    'Consultation',
-    'Treatment',
-    'Emergency',
-    'Root canal',
-    'Extraction',
-    'Filling',
-    'Orthodontic'
-  ];
 
   return (
     <MobileContainer>
@@ -114,15 +117,15 @@ const NewAppointmentPage: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
                     <span className="text-white font-bold text-sm">
-                      {selectedPatient.name.charAt(0)}
+                      {selectedPatient.patient_name.charAt(0)}
                     </span>
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-800 font-lato">
-                      {selectedPatient.name}
+                      {selectedPatient.patient_name}
                     </p>
                     <p className="text-xs text-gray-600 font-montserrat">
-                      ID: {selectedPatient.id} • Age: {selectedPatient.age}
+                      ID: {selectedPatient.patient_id} • {selectedPatient.sex} • {selectedPatient.mobile}
                     </p>
                   </div>
                 </div>
@@ -150,37 +153,37 @@ const NewAppointmentPage: React.FC = () => {
 
               <div className="space-y-4">
                 <InputField
-                  label="Date"
+                  label="Date *"
                   type="date"
-                  value={formData.date}
-                  onChange={(e) => handleInputChange('date', e.target.value)}
+                  value={formData.appointment_date}
+                  onChange={(e) => handleInputChange('appointment_date', e.target.value)}
                   required
                 />
 
                 <InputField
-                  label="Time"
+                  label="Time *"
                   type="time"
-                  value={formData.time}
-                  onChange={(e) => handleInputChange('time', e.target.value)}
+                  value={formData.appointment_time}
+                  onChange={(e) => handleInputChange('appointment_time', e.target.value)}
                   required
                 />
 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                    Appointment Type *
+                    Duration (minutes) *
                   </label>
                   <select
-                    value={formData.type}
-                    onChange={(e) => handleInputChange('type', e.target.value)}
+                    value={formData.duration}
+                    onChange={(e) => handleInputChange('duration', parseInt(e.target.value))}
                     className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
                     required
                   >
-                    <option value="">Select type...</option>
-                    {appointmentTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
+                    <option value={15}>15 minutes</option>
+                    <option value={30}>30 minutes</option>
+                    <option value={45}>45 minutes</option>
+                    <option value={60}>1 hour</option>
+                    <option value={90}>1.5 hours</option>
+                    <option value={120}>2 hours</option>
                   </select>
                 </div>
 
@@ -203,14 +206,16 @@ const NewAppointmentPage: React.FC = () => {
                   variant="outline"
                   onClick={() => navigate('/appointments')}
                   className="flex-1"
+                  disabled={isCreating}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   className="flex-1"
+                  disabled={isCreating}
                 >
-                  Create Appointment
+                  {isCreating ? 'Creating...' : 'Create Appointment'}
                 </Button>
               </div>
             </Card>
@@ -237,30 +242,47 @@ const NewAppointmentPage: React.FC = () => {
               </div>
 
               <div className="overflow-y-auto max-h-64 space-y-2">
-                {mockPatients.map((patient) => (
-                  <div
-                    key={patient.id}
-                    onClick={() => {
-                      setSelectedPatient(patient);
-                      setShowPatientList(false);
-                    }}
-                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">
-                        {patient.name.charAt(0)}
-                      </span>
+                {patientsLoading ? (
+                  // Loading skeleton
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="flex items-center space-x-3 p-3 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-24"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse w-32"></div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-800 font-lato">
-                        {patient.name}
-                      </p>
-                      <p className="text-xs text-gray-600 font-montserrat">
-                        ID: {patient.id} • Age: {patient.age} • {patient.phone}
-                      </p>
+                  ))
+                ) : patients.length > 0 ? (
+                  patients.map((patient) => (
+                    <div
+                      key={patient.patient_id}
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setShowPatientList(false);
+                      }}
+                      className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">
+                          {patient.patient_name.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-800 font-lato">
+                          {patient.patient_name}
+                        </p>
+                        <p className="text-xs text-gray-600 font-montserrat">
+                          ID: {patient.patient_id} • {patient.sex} • {patient.mobile}
+                        </p>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>No patients found</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>

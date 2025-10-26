@@ -6,20 +6,23 @@ import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
+import { useCreatePatient } from '../hooks/usePatients';
 import { Patient } from '../types';
+import toast from 'react-hot-toast';
 
 const NewPatientPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [formData, setFormData] = useState({
-    name: '',
-    age: '',
-    gender: 'Male' as 'Male' | 'Female' | 'Other',
-    dateOfBirth: '',
-    phone: '',
+    first_name: '',
+    last_name: '',
+    sex: 'Male' as 'Male' | 'Female' | 'Other',
+    dob: '',
+    mobile: '',
     email: '',
     address: '',
     occupation: '',
+    // Additional fields for UI (not sent to API)
     diabetic: false,
     bloodPressure: 'Normal' as 'Normal' | 'High' | 'Low' | 'Moderate High',
     cardiacHistory: false,
@@ -29,6 +32,9 @@ const NewPatientPage: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // API mutation hook
+  const { mutate: createPatient, isPending: isCreating } = useCreatePatient();
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -66,18 +72,22 @@ const NewPatientPage: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+    if (!formData.first_name.trim()) {
+      newErrors.first_name = 'First name is required';
     }
 
-    if (!formData.age || parseInt(formData.age) <= 0) {
-      newErrors.age = 'Valid age is required';
+    if (!formData.last_name.trim()) {
+      newErrors.last_name = 'Last name is required';
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\+?[\d\s-()]{10,}$/.test(formData.phone)) {
-      newErrors.phone = 'Invalid phone number format';
+    if (!formData.dob) {
+      newErrors.dob = 'Date of birth is required';
+    }
+
+    if (!formData.mobile.trim()) {
+      newErrors.mobile = 'Mobile number is required';
+    } else if (!/^\+?[\d\s-()]{10,}$/.test(formData.mobile)) {
+      newErrors.mobile = 'Invalid mobile number format';
     }
 
     if (!formData.address.trim()) {
@@ -97,34 +107,28 @@ const NewPatientPage: React.FC = () => {
       return;
     }
 
-    // Generate new patient ID
-    const newPatientId = `P${String(Date.now()).slice(-4)}`;
-
-    const newPatient: Patient = {
-      id: newPatientId,
-      name: formData.name,
-      age: parseInt(formData.age),
-      gender: formData.gender,
-      dateOfBirth: formData.dateOfBirth,
-      phone: formData.phone,
-      email: formData.email,
-      address: formData.address,
-      medicalHistory: {
-        diabetic: formData.diabetic,
-        bloodPressure: formData.bloodPressure,
-        cardiacHistory: formData.cardiacHistory,
-        allergies: formData.allergies,
-        familyHeartDisease: formData.familyHeartDisease,
-        covidVaccinated: formData.covidVaccinated,
-        occupation: formData.occupation
-      }
+    // Prepare API request data
+    const patientData = {
+      first_name: formData.first_name.trim(),
+      last_name: formData.last_name.trim(),
+      sex: formData.sex,
+      mobile: formData.mobile.trim(),
+      email: formData.email.trim() || undefined,
+      dob: formData.dob,
+      address: formData.address.trim() || undefined,
+      occupation: formData.occupation.trim() || undefined,
     };
 
-    // In a real app, this would save to backend
-    console.log('Creating new patient:', newPatient);
-    
-    alert(`Patient "${formData.name}" created successfully with ID: ${newPatientId}`);
-    navigate('/patients');
+    createPatient(patientData, {
+      onSuccess: (response) => {
+        toast.success(`Patient "${formData.first_name} ${formData.last_name}" created successfully!`);
+        navigate('/patients');
+      },
+      onError: (error) => {
+        console.error('Error creating patient:', error);
+        toast.error('Failed to create patient. Please try again.');
+      }
+    });
   };
 
   return (
@@ -146,34 +150,45 @@ const NewPatientPage: React.FC = () => {
             </h3>
 
             <div className="space-y-4">
-              <InputField
-                label="Full Name *"
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter patient's full name"
-                error={errors.name}
-                required
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <InputField
+                  label="First Name *"
+                  type="text"
+                  value={formData.first_name}
+                  onChange={(e) => handleInputChange('first_name', e.target.value)}
+                  placeholder="Enter first name"
+                  error={errors.first_name}
+                  required
+                />
+
+                <InputField
+                  label="Last Name *"
+                  type="text"
+                  value={formData.last_name}
+                  onChange={(e) => handleInputChange('last_name', e.target.value)}
+                  placeholder="Enter last name"
+                  error={errors.last_name}
+                  required
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <InputField
-                  label="Age *"
-                  type="number"
-                  value={formData.age}
-                  onChange={(e) => handleInputChange('age', e.target.value)}
-                  placeholder="Age"
-                  error={errors.age}
+                  label="Date of Birth *"
+                  type="date"
+                  value={formData.dob}
+                  onChange={(e) => handleInputChange('dob', e.target.value)}
+                  error={errors.dob}
                   required
                 />
 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                    Gender *
+                    Sex *
                   </label>
                   <select
-                    value={formData.gender}
-                    onChange={(e) => handleInputChange('gender', e.target.value)}
+                    value={formData.sex}
+                    onChange={(e) => handleInputChange('sex', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
                   >
                     <option value="Male">Male</option>
@@ -184,19 +199,12 @@ const NewPatientPage: React.FC = () => {
               </div>
 
               <InputField
-                label="Date of Birth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-              />
-
-              <InputField
-                label="Phone Number *"
+                label="Mobile Number *"
                 type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
+                value={formData.mobile}
+                onChange={(e) => handleInputChange('mobile', e.target.value)}
                 placeholder="+91XXXXXXXXXX"
-                error={errors.phone}
+                error={errors.mobile}
                 required
               />
 
@@ -348,14 +356,16 @@ const NewPatientPage: React.FC = () => {
               variant="outline"
               onClick={() => navigate('/patients')}
               className="flex-1"
+              disabled={isCreating}
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
               className="flex-1"
+              disabled={isCreating}
             >
-              Add Patient
+              {isCreating ? 'Creating...' : 'Add Patient'}
             </Button>
           </div>
           </div>

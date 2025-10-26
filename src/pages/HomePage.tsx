@@ -6,7 +6,8 @@ import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { mockAppointments, mockPatients } from '../data/mockData';
+import { useAppointmentsDashboard } from '../hooks/useAppointments';
+import { usePatientStats } from '../hooks/usePatients';
 import { Appointment } from '../types';
 
 const HomePage: React.FC = () => {
@@ -14,12 +15,54 @@ const HomePage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
 
-  // Get today's date and statistics
-  const today = new Date().toISOString().split('T')[0];
-  const todaysAppointments = mockAppointments.filter((apt: Appointment) => apt.date === today);
-  const upcomingAppointments = mockAppointments
-    .filter((apt: Appointment) => apt.date > today)
-    .slice(0, 3);
+  // Real API data instead of mock data
+  const {
+    todaysAppointments,
+    upcomingAppointments,
+    todayCount,
+    upcomingCount,
+    pendingCount,
+    confirmedCount,
+    isLoading: appointmentsLoading,
+    refetchTodays,
+  } = useAppointmentsDashboard();
+
+  const { 
+    data: patientStats,
+    isLoading: patientsLoading 
+  } = usePatientStats();
+
+  const isLoading = appointmentsLoading || patientsLoading;
+
+  // Utility functions for displaying appointment data
+  const formatAppointmentTime = (datetime: string) => {
+    try {
+      return new Date(datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return 'Invalid time';
+    }
+  };
+
+  const formatAppointmentDate = (datetime: string) => {
+    try {
+      return new Date(datetime).toLocaleDateString();
+    } catch {
+      return 'Invalid date';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'scheduled':
+        return 'bg-blue-100 text-blue-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-yellow-100 text-yellow-800';
+    }
+  };
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -116,32 +159,48 @@ const HomePage: React.FC = () => {
           </Card>
 
           {/* Statistics Overview */}
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="text-center">
-              <div className="text-2xl font-bold text-primary-600 font-lato">
-                {todaysAppointments.length}
-              </div>
-              <p className="text-xs text-gray-600 font-montserrat">
-                Today's Appointments
-              </p>
-            </Card>
-            <Card className="text-center">
-              <div className="text-2xl font-bold text-green-600 font-lato">
-                {mockPatients.length}
-              </div>
-              <p className="text-xs text-gray-600 font-montserrat">
-                Total Patients
-              </p>
-            </Card>
-            <Card className="text-center">
-              <div className="text-2xl font-bold text-blue-600 font-lato">
-                {upcomingAppointments.length}
-              </div>
-              <p className="text-xs text-gray-600 font-montserrat">
-                Upcoming
-              </p>
-            </Card>
-          </div>
+                      {/* Statistics Cards */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="text-center">
+                <div className="text-2xl font-bold text-primary-600 font-lato">
+                  {isLoading ? '...' : todayCount}
+                </div>
+                <p className="text-sm text-gray-600 font-montserrat">Today's Appointments</p>
+                <div className="text-xs text-gray-500 font-montserrat mt-1">
+                  {confirmedCount} confirmed • {pendingCount} pending
+                </div>
+              </Card>
+
+              <Card className="text-center">
+                <div className="text-2xl font-bold text-green-600 font-lato">
+                  {isLoading ? '...' : (patientStats?.totalPatients || 0)}
+                </div>
+                <p className="text-sm text-gray-600 font-montserrat">Total Patients</p>
+                <div className="text-xs text-gray-500 font-montserrat mt-1">
+                  Registered
+                </div>
+              </Card>
+
+              <Card className="text-center">
+                <div className="text-2xl font-bold text-blue-600 font-lato">
+                  {isLoading ? '...' : upcomingCount}
+                </div>
+                <p className="text-sm text-gray-600 font-montserrat">Upcoming</p>
+                <div className="text-xs text-gray-500 font-montserrat mt-1">
+                  Next 7 days
+                </div>
+              </Card>
+
+              <Card className="text-center">
+                <div className="text-2xl font-bold text-purple-600 font-lato">
+                  {isLoading ? '...' : (patientStats?.totalPatients || 0)}
+                </div>
+                <p className="text-sm text-gray-600 font-montserrat">This Month</p>
+                <div className="text-xs text-gray-500 font-montserrat mt-1">
+                  New patients
+                </div>
+              </Card>
+            </div>
 
           {/* Quick Actions */}
           <div>
@@ -236,46 +295,76 @@ const HomePage: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                {todaysAppointments.map((appointment) => (
-                  <Card 
-                    key={appointment.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => navigate(`/prescriptions/${appointment.patientId}`)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">
-                            {appointment.patientName.charAt(0)}
+                {isLoading ? (
+                  // Loading skeleton for today's appointments
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <Card key={index} className="cursor-pointer">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-24"></div>
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
+                          </div>
+                        </div>
+                        <div className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </Card>
+                  ))
+                ) : todaysAppointments && todaysAppointments.length > 0 ? (
+                  todaysAppointments.map((appointment) => (
+                    <Card 
+                      key={appointment.appointment_id}
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => navigate(`/prescriptions/${appointment.patient_id}`)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">
+                              {appointment.patient_name.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-gray-800 font-lato">
+                              {appointment.patient_name}
+                            </h4>
+                            <p className="text-xs text-gray-600 font-montserrat">
+                              {new Date(appointment.appointment_datetime).toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })} • Consultation
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-montserrat ${
+                            appointment.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
+                            appointment.status === 'Scheduled' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {appointment.status}
                           </span>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-800 font-lato">
-                            {appointment.patientName}
-                          </h4>
-                          <p className="text-xs text-gray-600 font-montserrat">
-                            {appointment.time} • {appointment.type}
-                          </p>
-                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-montserrat ${
-                          appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {appointment.status}
-                        </span>
+                    </Card>
+                  ))
+                ) : (
+                  <Card className="text-center py-8">
+                    <div className="text-gray-400 mb-2">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-gray-100 flex items-center justify-center">
+                        📅
                       </div>
                     </div>
+                    <p className="text-gray-500 font-montserrat">No appointments scheduled for today</p>
                   </Card>
-                ))}
+                )}
               </div>
             </div>
           )}
 
           {/* Upcoming Appointments */}
-          {upcomingAppointments.length > 0 && (
+          {(!isLoading && upcomingAppointments.length > 0) && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-gray-700 font-lato">
@@ -293,20 +382,23 @@ const HomePage: React.FC = () => {
               <div className="space-y-3">
                 {upcomingAppointments.map((appointment) => (
                   <Card 
-                    key={appointment.id}
+                    key={appointment.appointment_id}
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => navigate(`/prescriptions/${appointment.patientId}`)}
+                    onClick={() => navigate(`/prescriptions/${appointment.patient_id}`)}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-sm font-bold text-gray-800 font-lato">
-                          {appointment.patientName}
+                          {appointment.patient_name}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat">
-                          {new Date(appointment.date).toLocaleDateString()} • {appointment.time}
+                          {new Date(appointment.appointment_datetime).toLocaleDateString()} • {new Date(appointment.appointment_datetime).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
                         </p>
                         <p className="text-xs text-gray-500 font-montserrat">
-                          {appointment.type}
+                          Consultation
                         </p>
                       </div>
                       <div className="text-right">
@@ -322,7 +414,7 @@ const HomePage: React.FC = () => {
           )}
 
           {/* Empty State */}
-          {todaysAppointments.length === 0 && upcomingAppointments.length === 0 && (
+          {!isLoading && todaysAppointments.length === 0 && upcomingAppointments.length === 0 && (
             <Card>
               <div className="text-center py-8">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">

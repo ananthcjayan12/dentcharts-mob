@@ -6,116 +6,34 @@ import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
-
-// Mock data
-const mockPatient = {
-  id: 'P0001',
-  name: 'Sample Patient Name',
-  age: 52,
-  phone: '01881446559',
-  address: 'NA',
-  treatmentDate: '25/09/2018',
-  avatar: '/api/placeholder/50/50'
-};
-
-const mockPayments = [
-  {
-    id: 'PAY001',
-    invoiceNumber: 'INV-001',
-    date: '25-01-2025',
-    treatment: 'Root Canal Treatment',
-    totalAmount: 15000,
-    paidAmount: 10000,
-    pendingAmount: 5000,
-    status: 'Partially Paid',
-    paymentMethod: 'Cash',
-    nextDueDate: '15-02-2025'
-  },
-  {
-    id: 'PAY002',
-    invoiceNumber: 'INV-002',
-    date: '05-12-2024',
-    treatment: 'Dental Cleaning & Consultation',
-    totalAmount: 3500,
-    paidAmount: 3500,
-    pendingAmount: 0,
-    status: 'Paid',
-    paymentMethod: 'UPI',
-    nextDueDate: null
-  },
-  {
-    id: 'PAY003',
-    invoiceNumber: 'INV-003',
-    date: '19-12-2024',
-    treatment: 'Tooth Extraction',
-    totalAmount: 2500,
-    paidAmount: 0,
-    pendingAmount: 2500,
-    status: 'Pending',
-    paymentMethod: null,
-    nextDueDate: '28-12-2024'
-  }
-];
-
-const mockPrescriptions = [
-  {
-    id: '1',
-    date: '25-01-2025',
-    expanded: false,
-    editable: false,
-    investigations: [
-      '1. Complete Blood Count (CBC)',
-      '2. Blood Sugar Level (Fasting)',
-      '3. Dental X-Ray'
-    ],
-    medications: [
-      'Paracetamol 500mg - 2 times daily for 3 days',
-      'Amoxicillin 250mg - 3 times daily for 5 days'
-    ],
-    notes: 'Patient shows good response to treatment. Continue medication as prescribed.'
-  },
-  {
-    id: '2',
-    date: '05-12-2024',
-    expanded: true,
-    editable: false,
-    investigations: [
-      '1. Activated Partial thromboplastin time (APTT)',
-      '2. Dehydroepiandrosterone sulphate (blood)',
-      '3. CA 125 (Serum)'
-    ],
-    medications: [
-      'Metronidazole 400mg - 3 times daily for 7 days',
-      'Chlorhexidine mouthwash - twice daily'
-    ],
-    notes: 'Monitor for allergic reactions. Follow-up in 1 week.'
-  },
-  {
-    id: '3',
-    date: '19-12-2024',
-    expanded: false,
-    editable: false,
-    investigations: [
-      '1. Panoramic X-Ray',
-      '2. Blood Pressure Check'
-    ],
-    medications: [
-      'Ibuprofen 400mg - as needed for pain',
-      'Antiseptic mouthwash - after meals'
-    ],
-    notes: 'Regular checkup completed. Next visit in 6 months.'
-  }
-];
+import { usePatient } from '../hooks/usePatients';
+import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
+import { usePatientInvoices, usePaymentSummary } from '../hooks/usePayments';
+import toast from 'react-hot-toast';
 
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
-  const { patientId } = useParams();
+  const { patientId } = useParams<{ patientId: string }>();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [currentSection, setCurrentSection] = useState<'medical' | 'payments'>('medical');
-  const [prescriptions, setPrescriptions] = useState(mockPrescriptions);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploadNotes, setUploadNotes] = useState('');
+
+  // API hooks
+  const { data: patient, isLoading: patientLoading } = usePatient(patientId || '', !!patientId);
+  const { data: prescriptions, isLoading: prescriptionsLoading } = usePatientPrescriptions(patientId || '');
+  const { data: invoices, isLoading: invoicesLoading } = usePatientInvoices(patientId || '');
+  const { data: paymentSummary, isLoading: paymentSummaryLoading } = usePaymentSummary(patientId || '');
+  
+  const { mutate: createPrescription, isPending: isCreating } = useCreatePrescription();
+  const { mutate: updatePrescription, isPending: isUpdating } = useUpdatePrescription();
+
+  const isLoading = patientLoading || prescriptionsLoading || invoicesLoading || paymentSummaryLoading;
+
+  // Local state for UI interactions
+  const [expandedPrescriptions, setExpandedPrescriptions] = useState<Set<string>>(new Set());
+  const [editablePrescriptions, setEditablePrescriptions] = useState<Set<string>>(new Set());
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -137,22 +55,28 @@ const PrescriptionPage: React.FC = () => {
     }
   };
 
-  const togglePrescription = (id: string) => {
-    setPrescriptions(prev => 
-      prev.map(p => p.id === id ? { ...p, expanded: !p.expanded } : p)
-    );
+  const togglePrescription = (recordId: string) => {
+    setExpandedPrescriptions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(recordId)) {
+        newSet.delete(recordId);
+      } else {
+        newSet.add(recordId);
+      }
+      return newSet;
+    });
   };
 
-  const toggleEdit = (id: string) => {
-    setPrescriptions(prev => 
-      prev.map(p => p.id === id ? { ...p, editable: !p.editable } : p)
-    );
-  };
-
-  const updatePrescriptionField = (id: string, field: string, value: string | string[]) => {
-    setPrescriptions(prev => 
-      prev.map(p => p.id === id ? { ...p, [field]: value } : p)
-    );
+  const toggleEdit = (recordId: string) => {
+    setEditablePrescriptions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(recordId)) {
+        newSet.delete(recordId);
+      } else {
+        newSet.add(recordId);
+      }
+      return newSet;
+    });
   };
 
   const handleNewAppointment = () => {
@@ -174,34 +98,52 @@ const PrescriptionPage: React.FC = () => {
           <div className="px-6 space-y-6">
           {/* Patient Header */}
           <div className="bg-gradient-to-r from-primary-500 to-green-400 rounded-xl p-4 text-white">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-full overflow-hidden">
-                <img 
-                  src={mockPatient.avatar} 
-                  alt={mockPatient.name}
-                  className="w-full h-full object-cover"
-                />
+            {patientLoading ? (
+              <div className="animate-pulse">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-white/20"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-white/20 rounded w-3/4"></div>
+                    <div className="h-3 bg-white/20 rounded w-1/2"></div>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="h-3 bg-white/20 rounded w-full"></div>
+                  <div className="h-3 bg-white/20 rounded w-2/3"></div>
+                </div>
               </div>
-              <div className="flex-1">
-                <h2 className="text-sm font-bold font-lato mb-1">
-                  History for<br />
-                  {mockPatient.name}
-                </h2>
-                <div className="text-xs font-lato space-y-1">
-                  <div className="flex justify-between">
-                    <span>Patient id: {mockPatient.id}</span>
-                    <span>Phone: {mockPatient.phone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Age: {mockPatient.age}</span>
-                    <span>Treatment Date: {mockPatient.treatmentDate}</span>
-                  </div>
-                  <div>
-                    <span>Address: {mockPatient.address}</span>
+            ) : patient ? (
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">
+                    {patient.patient_name?.split(' ')[0]?.[0]}{patient.patient_name?.split(' ')[1]?.[0]}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-sm font-bold font-lato mb-1">
+                    History for<br />
+                    {patient.patient_name}
+                  </h2>
+                  <div className="text-xs font-lato space-y-1">
+                    <div className="flex justify-between">
+                      <span>Patient id: {patient.patient_id}</span>
+                      <span>Phone: {patient.mobile}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Age: {patient.age || 'N/A'}</span>
+                      <span>DOB: {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span>Gender: {patient.sex || 'N/A'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-white/80">Patient not found</p>
+              </div>
+            )}
             
             <hr className="my-4 border-white/30" />
             
@@ -226,11 +168,11 @@ const PrescriptionPage: React.FC = () => {
             <div className="mt-3 pt-3 border-t border-white/30">
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="text-center">
-                  <div className="font-bold">₹{mockPayments.reduce((sum, payment) => sum + payment.paidAmount, 0).toLocaleString()}</div>
+                  <div className="font-bold">₹{paymentSummary?.paid_amount?.toLocaleString() || '0'}</div>
                   <div className="text-white/80">Total Paid</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-bold text-yellow-200">₹{mockPayments.reduce((sum, payment) => sum + payment.pendingAmount, 0).toLocaleString()}</div>
+                  <div className="font-bold text-yellow-200">₹{paymentSummary?.outstanding_amount?.toLocaleString() || '0'}</div>
                   <div className="text-white/80">Pending</div>
                 </div>
               </div>
@@ -268,16 +210,34 @@ const PrescriptionPage: React.FC = () => {
                 Medical History
               </h3>
 
+              {prescriptionsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : !prescriptions || prescriptions.length === 0 ? (
+                <Card className="text-center py-8">
+                  <p className="text-gray-500">No medical history available</p>
+                </Card>
+              ) : (
+
               <div className="space-y-4">
-                {prescriptions.map((prescription) => (
-                <Card key={prescription.id} className="relative">
+                {prescriptions?.map((prescription) => (
+                <Card key={prescription.record_id} className="relative">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-bold text-gray-600 font-lato">
-                      {prescription.date}
+                      {new Date(prescription.posting_date).toLocaleDateString()}
                     </h4>
                     <div className="flex items-center space-x-2">
                       <button 
-                        onClick={() => toggleEdit(prescription.id)}
+                        onClick={() => toggleEdit(prescription.record_id)}
                         className="text-blue-500 hover:text-blue-700 p-1"
                         title="Edit prescription"
                       >
@@ -286,11 +246,11 @@ const PrescriptionPage: React.FC = () => {
                         </svg>
                       </button>
                       <button 
-                        onClick={() => togglePrescription(prescription.id)}
+                        onClick={() => togglePrescription(prescription.record_id)}
                         className="text-gray-400 transform transition-transform duration-200"
                       >
                         <svg 
-                          className={`w-4 h-4 ${prescription.expanded ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 ${expandedPrescriptions.has(prescription.record_id) ? 'rotate-180' : ''}`}
                           fill="none" 
                           stroke="currentColor" 
                           viewBox="0 0 24 24"
@@ -301,46 +261,35 @@ const PrescriptionPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {prescription.expanded && (
+                  {expandedPrescriptions.has(prescription.record_id) && (
                     <div className="space-y-4">
                       {/* Investigations Section */}
                       <div className="pt-4 border-t border-gray-100">
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
                           INVESTIGATIONS
                         </h5>
-                        {prescription.editable ? (
+                        {editablePrescriptions.has(prescription.record_id) ? (
                           <div className="space-y-2">
                             {prescription.investigations?.map((investigation, index) => (
-                              <input
-                                key={index}
-                                type="text"
-                                value={investigation}
-                                onChange={(e) => {
-                                  const updated = [...(prescription.investigations || [])];
-                                  updated[index] = e.target.value;
-                                  updatePrescriptionField(prescription.id, 'investigations', updated);
-                                }}
-                                className="w-full p-2 border border-gray-300 rounded text-sm font-montserrat"
-                              />
+                              <div key={index} className="p-2 border border-gray-300 rounded text-sm">
+                                <div className="font-semibold">{investigation.lab_test_name}</div>
+                                <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
+                                {investigation.lab_test_comment && (
+                                  <div className="text-xs text-gray-500">{investigation.lab_test_comment}</div>
+                                )}
+                              </div>
                             ))}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const updated = [...(prescription.investigations || []), ''];
-                                updatePrescriptionField(prescription.id, 'investigations', updated);
-                              }}
-                              className="text-xs"
-                            >
-                              Add Investigation
-                            </Button>
                           </div>
                         ) : (
                           <div className="space-y-2">
                             {prescription.investigations?.map((investigation, index) => (
-                              <p key={index} className="text-sm text-black font-montserrat">
-                                {investigation}
-                              </p>
+                              <div key={index} className="text-sm text-black font-montserrat">
+                                <div className="font-semibold">{investigation.lab_test_name}</div>
+                                <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
+                                {investigation.lab_test_comment && (
+                                  <div className="text-xs text-gray-500">{investigation.lab_test_comment}</div>
+                                )}
+                              </div>
                             ))}
                           </div>
                         )}
@@ -351,39 +300,34 @@ const PrescriptionPage: React.FC = () => {
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
                           MEDICATIONS
                         </h5>
-                        {prescription.editable ? (
+                        {editablePrescriptions.has(prescription.record_id) ? (
                           <div className="space-y-2">
                             {prescription.medications?.map((medication, index) => (
-                              <input
-                                key={index}
-                                type="text"
-                                value={medication}
-                                onChange={(e) => {
-                                  const updated = [...(prescription.medications || [])];
-                                  updated[index] = e.target.value;
-                                  updatePrescriptionField(prescription.id, 'medications', updated);
-                                }}
-                                className="w-full p-2 border border-gray-300 rounded text-sm font-montserrat"
-                              />
+                              <div key={index} className="p-2 border border-gray-300 rounded text-sm">
+                                <div className="font-semibold">{medication.drug_name}</div>
+                                <div className="text-xs text-gray-600">
+                                  {medication.dosage} - {medication.interval} for {medication.period}
+                                </div>
+                                <div className="text-xs text-gray-500">Form: {medication.dosage_form}</div>
+                                {medication.comment && (
+                                  <div className="text-xs text-gray-500">{medication.comment}</div>
+                                )}
+                              </div>
                             ))}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const updated = [...(prescription.medications || []), ''];
-                                updatePrescriptionField(prescription.id, 'medications', updated);
-                              }}
-                              className="text-xs"
-                            >
-                              Add Medication
-                            </Button>
                           </div>
                         ) : (
                           <div className="space-y-2">
                             {prescription.medications?.map((medication, index) => (
-                              <p key={index} className="text-sm text-green-700 font-montserrat">
-                                {medication}
-                              </p>
+                              <div key={index} className="text-sm text-green-700 font-montserrat">
+                                <div className="font-semibold">{medication.drug_name}</div>
+                                <div className="text-xs text-gray-600">
+                                  {medication.dosage} - {medication.interval} for {medication.period}
+                                </div>
+                                <div className="text-xs text-gray-500">Form: {medication.dosage_form}</div>
+                                {medication.comment && (
+                                  <div className="text-xs text-gray-500">{medication.comment}</div>
+                                )}
+                              </div>
                             ))}
                           </div>
                         )}
@@ -392,21 +336,26 @@ const PrescriptionPage: React.FC = () => {
                       {/* Notes Section */}
                       <div className="pt-4 border-t border-gray-100">
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
-                          NOTES
+                          CLINICAL DETAILS
                         </h5>
-                        {prescription.editable ? (
-                          <textarea
-                            value={prescription.notes || ''}
-                            onChange={(e) => updatePrescriptionField(prescription.id, 'notes', e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded text-sm font-montserrat"
-                            rows={3}
-                            placeholder="Add notes..."
-                          />
-                        ) : (
-                          <p className="text-sm text-gray-700 font-montserrat">
-                            {prescription.notes || 'No notes available'}
-                          </p>
-                        )}
+                        <div className="space-y-3 text-sm font-montserrat">
+                          <div>
+                            <span className="font-semibold text-gray-700">Chief Complaint:</span>
+                            <p className="text-gray-900 mt-1">{prescription.chief_complaint}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-700">Symptoms:</span>
+                            <p className="text-gray-900 mt-1">{prescription.symptoms}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-700">Diagnosis:</span>
+                            <p className="text-gray-900 mt-1">{prescription.diagnosis}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-700">Treatment Plan:</span>
+                            <p className="text-gray-900 mt-1">{prescription.treatment_plan}</p>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Document Preview */}
@@ -419,25 +368,24 @@ const PrescriptionPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Action Buttons for Edit Mode */}
-                      {prescription.editable && (
+                                            {/* Action Buttons for Edit Mode */}
+                      {editablePrescriptions.has(prescription.record_id) && (
                         <div className="flex space-x-2 pt-4 border-t border-gray-100">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => toggleEdit(prescription.id)}
-                            className="flex-1"
+                            onClick={() => toggleEdit(prescription.record_id)}
+                            className="text-xs"
                           >
                             Cancel
                           </Button>
                           <Button
                             size="sm"
                             onClick={() => {
-                              toggleEdit(prescription.id);
-                              // Here you would save the changes to backend
-                              console.log('Saving prescription changes:', prescription);
+                              // Save changes - implement actual API call here
+                              toggleEdit(prescription.record_id);
                             }}
-                            className="flex-1"
+                            className="text-xs"
                           >
                             Save Changes
                           </Button>
@@ -447,7 +395,8 @@ const PrescriptionPage: React.FC = () => {
                   )}
                 </Card>
               ))}
-            </div>
+              </div>
+            )}
             </div>
           )}
 
@@ -461,89 +410,129 @@ const PrescriptionPage: React.FC = () => {
               </div>
 
               {/* Payment Summary Cards */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <Card className="text-center">
-                  <div className="text-2xl font-bold text-green-600 font-lato">
-                    ₹{mockPayments.reduce((sum, payment) => sum + payment.paidAmount, 0).toLocaleString()}
-                  </div>
-                  <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
-                </Card>
-                <Card className="text-center">
-                  <div className="text-2xl font-bold text-red-600 font-lato">
-                    ₹{mockPayments.reduce((sum, payment) => sum + payment.pendingAmount, 0).toLocaleString()}
-                  </div>
-                  <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
-                </Card>
-              </div>
+              {paymentSummaryLoading ? (
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <Card className="text-center animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                  </Card>
+                  <Card className="text-center animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                  </Card>
+                </div>
+              ) : paymentSummary ? (
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <Card className="text-center">
+                    <div className="text-2xl font-bold text-green-600 font-lato">
+                      ₹{paymentSummary.paid_amount.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
+                  </Card>
+                  <Card className="text-center">
+                    <div className="text-2xl font-bold text-red-600 font-lato">
+                      ₹{paymentSummary.outstanding_amount.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
+                  </Card>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <Card className="text-center">
+                    <div className="text-2xl font-bold text-gray-400 font-lato">₹0</div>
+                    <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
+                  </Card>
+                  <Card className="text-center">
+                    <div className="text-2xl font-bold text-gray-400 font-lato">₹0</div>
+                    <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
+                  </Card>
+                </div>
+              )}
 
               {/* Payment History */}
               <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
                 Payment History
               </h4>
 
-              <div className="space-y-4">
-                {mockPayments.map((payment) => (
-                  <Card key={payment.id}>
+              {invoicesLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-6 bg-gray-200 rounded w-20"></div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="h-12 bg-gray-200 rounded"></div>
+                          <div className="h-12 bg-gray-200 rounded"></div>
+                          <div className="h-12 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : !invoices || invoices.length === 0 ? (
+                <Card className="text-center py-8">
+                  <p className="text-gray-500">No payment history available</p>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {invoices.map((invoice) => (
+                  <Card key={invoice.invoice_id}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <h5 className="text-sm font-bold text-gray-700 font-lato">
-                          {payment.invoiceNumber}
+                          {invoice.invoice_id}
                         </h5>
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          payment.status === 'Paid' 
+                          invoice.status === 'Paid' 
                             ? 'bg-green-100 text-green-800'
-                            : payment.status === 'Partially Paid'
+                            : invoice.status === 'Partially Paid'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {payment.status}
+                          {invoice.status}
                         </span>
                       </div>
                       <span className="text-xs text-gray-500 font-lato">
-                        {payment.date}
+                        {new Date(invoice.posting_date).toLocaleDateString()}
                       </span>
                     </div>
 
                     <div className="space-y-2">
                       <div className="text-sm text-gray-600 font-montserrat">
-                        <strong>Treatment:</strong> {payment.treatment}
+                        <strong>Patient:</strong> {invoice.patient_name}
                       </div>
                       
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="text-center p-2 bg-gray-50 rounded">
-                          <div className="font-bold text-gray-700">₹{payment.totalAmount.toLocaleString()}</div>
+                          <div className="font-bold text-gray-700">₹{invoice.grand_total.toLocaleString()}</div>
                           <div className="text-gray-500">Total</div>
                         </div>
                         <div className="text-center p-2 bg-green-50 rounded">
-                          <div className="font-bold text-green-600">₹{payment.paidAmount.toLocaleString()}</div>
+                          <div className="font-bold text-green-600">₹{(invoice.grand_total - invoice.outstanding_amount).toLocaleString()}</div>
                           <div className="text-gray-500">Paid</div>
                         </div>
                         <div className="text-center p-2 bg-red-50 rounded">
-                          <div className="font-bold text-red-600">₹{payment.pendingAmount.toLocaleString()}</div>
+                          <div className="font-bold text-red-600">₹{invoice.outstanding_amount.toLocaleString()}</div>
                           <div className="text-gray-500">Pending</div>
                         </div>
                       </div>
 
-                      {payment.paymentMethod && (
-                        <div className="text-xs text-gray-600 font-montserrat">
-                          <strong>Payment Method:</strong> {payment.paymentMethod}
-                        </div>
-                      )}
+                      <div className="text-xs text-gray-600 font-montserrat">
+                        <strong>Due Date:</strong> {new Date(invoice.due_date).toLocaleDateString()}
+                      </div>
 
-                      {payment.nextDueDate && (
-                        <div className="text-xs text-red-600 font-montserrat">
-                          <strong>Next Due:</strong> {payment.nextDueDate}
-                        </div>
-                      )}
-
-                      {payment.pendingAmount > 0 && (
+                      {invoice.outstanding_amount > 0 && (
                         <div className="flex space-x-2 mt-3">
                           <Button
                             size="sm"
                             variant="primary"
                             className="flex-1"
                             onClick={() => {
-                              alert(`Recording payment for ${payment.invoiceNumber}`);
+                              alert(`Recording payment for ${invoice.invoice_id}`);
                             }}
                           >
                             Record Payment
@@ -553,7 +542,7 @@ const PrescriptionPage: React.FC = () => {
                             variant="outline"
                             className="flex-1"
                             onClick={() => {
-                              alert(`Sending reminder for ${payment.invoiceNumber}`);
+                              alert(`Sending reminder for ${invoice.invoice_id}`);
                             }}
                           >
                             Send Reminder
@@ -563,7 +552,8 @@ const PrescriptionPage: React.FC = () => {
                     </div>
                   </Card>
                 ))}
-              </div>
+                </div>
+              )}
 
               {/* Quick Payment Actions */}
               <Card className="mt-6">

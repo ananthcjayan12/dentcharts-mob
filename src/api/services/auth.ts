@@ -14,22 +14,35 @@ export class AuthService {
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
-      const response = await apiClient.post<LoginResponse>(
+      const response = await apiClient.post<any>(
         API_ENDPOINTS.AUTH.LOGIN,
         credentials
       );
 
-      if (response.data && response.message === 'Logged In') {
-        // Store session data - Frappe typically uses session cookies
-        // but we might also get user data to store
-        if (response.data.user) {
-          setStoredUserData(response.data.user);
-        }
+      // Handle Frappe's nested response structure
+      // Response structure: { message: { message: "Logged In", user: {...}, ... }, ... }
+      if (response.message && typeof response.message === 'object') {
+        const loginData: any = response.message;
         
-        return response.data;
+        if (loginData.message === 'Logged In' && loginData.user) {
+          // Store session data
+          const userData = {
+            email: loginData.user.email || loginData.user.id,
+            full_name: loginData.full_name || loginData.user.name,
+            mobile: loginData.user.phone,
+            practitioner_id: loginData.user.id,
+          };
+          
+          setStoredUserData(userData);
+          
+          return {
+            message: 'Logged In',
+            user: userData,
+          };
+        }
       }
 
-      throw new Error(response.message || 'Login failed');
+      throw new Error('Login failed');
     } catch (error) {
       console.error('Login error:', error);
       throw error;

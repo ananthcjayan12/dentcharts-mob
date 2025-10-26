@@ -6,7 +6,7 @@ import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
-import { mockPatients } from '../data/mockData';
+import { usePatientsWithSearch, usePatientStats } from '../hooks/usePatients';
 import { Patient } from '../types';
 
 const PatientsPage: React.FC = () => {
@@ -33,16 +33,24 @@ const PatientsPage: React.FC = () => {
     }
   };
 
-  const filteredPatients = mockPatients.filter((patient: Patient) => {
-    const matchesSearch = patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         patient.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         patient.phone.includes(searchQuery);
-    
-    const matchesFilter = selectedFilter === 'all' || 
-                         patient.gender.toLowerCase() === selectedFilter;
-    
-    return matchesSearch && matchesFilter;
-  });
+  // Real API data instead of mock data
+  const filters = selectedFilter !== 'all' ? { sex: selectedFilter } : {};
+  const { 
+    data: patientsData, 
+    isLoading: patientsLoading 
+  } = usePatientsWithSearch(
+    searchQuery || undefined, 
+    { limit_page_length: 50, limit_start: 0 }, 
+    filters
+  );
+
+  const { 
+    data: patientStats, 
+    isLoading: statsLoading 
+  } = usePatientStats();
+
+  const isLoading = patientsLoading || statsLoading;
+  const filteredPatients = patientsData?.data || [];
 
   const handlePatientClick = (patientId: string) => {
     navigate(`/prescriptions/${patientId}`);
@@ -119,48 +127,60 @@ const PatientsPage: React.FC = () => {
               </Button>
             </div>
 
-            {filteredPatients.length > 0 ? (
+            {isLoading ? (
+              // Loading skeleton
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Card key={index}>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse mb-1 w-48"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse w-24"></div>
+                      </div>
+                      <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : filteredPatients.length > 0 ? (
               <div className="space-y-3">
                 {filteredPatients.map((patient) => (
                   <Card 
-                    key={patient.id}
+                    key={patient.patient_id}
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handlePatientClick(patient.id)}
+                    onClick={() => handlePatientClick(patient.patient_id)}
                   >
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
                         <span className="text-white font-bold">
-                          {patient.name.split(' ').map(n => n[0]).join('')}
+                          {patient.patient_name.split(' ').map((n: string) => n[0]).join('')}
                         </span>
                       </div>
                       
                       <div className="flex-1">
                         <h4 className="text-sm font-bold text-gray-800 font-lato">
-                          {patient.name}
+                          {patient.patient_name}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat mt-1">
-                          ID: {patient.id} • Age: {patient.age} • {patient.gender}
+                          ID: {patient.patient_id} • Age: {patient.age || 'N/A'} • {patient.sex}
                         </p>
                         <p className="text-xs text-gray-500 font-montserrat">
-                          {patient.phone}
+                          {patient.mobile}
                         </p>
                       </div>
                       
                       <div className="text-right">
                         <div className="flex flex-col space-y-1">
-                          {patient.medicalHistory.diabetic && (
-                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
-                              Diabetic
+                          {patient.email && (
+                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                              Email
                             </span>
                           )}
-                          {patient.medicalHistory.bloodPressure !== 'Normal' && (
-                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
-                              BP: {patient.medicalHistory.bloodPressure}
-                            </span>
-                          )}
-                          {patient.medicalHistory.allergies && (
-                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-800">
-                              Allergies
+                          {patient.occupation && (
+                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                              {patient.occupation}
                             </span>
                           )}
                         </div>
@@ -193,7 +213,7 @@ const PatientsPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-blue-600 font-lato">
-                  {mockPatients.length}
+                  {isLoading ? '...' : (patientStats?.totalPatients || 0)}
                 </p>
                 <p className="text-xs text-gray-600 font-montserrat">
                   Total Patients
@@ -201,26 +221,26 @@ const PatientsPage: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-green-600 font-lato">
-                  {mockPatients.filter(p => p.medicalHistory.covidVaccinated).length}
+                  {isLoading ? '...' : filteredPatients.filter(p => p.sex === 'Male').length}
                 </p>
                 <p className="text-xs text-gray-600 font-montserrat">
-                  Vaccinated
+                  Male
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-red-600 font-lato">
-                  {mockPatients.filter(p => p.medicalHistory.diabetic).length}
+                  {isLoading ? '...' : filteredPatients.filter(p => p.sex === 'Female').length}
                 </p>
                 <p className="text-xs text-gray-600 font-montserrat">
-                  Diabetic
+                  Female
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-orange-600 font-lato">
-                  {mockPatients.filter(p => p.medicalHistory.allergies).length}
+                  {isLoading ? '...' : filteredPatients.length}
                 </p>
                 <p className="text-xs text-gray-600 font-montserrat">
-                  With Allergies
+                  Filtered Results
                 </p>
               </div>
             </div>
