@@ -18,8 +18,13 @@ export interface ApiError {
 
 // Base API configuration
 const API_CONFIG = {
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000',
+  // In development, use proxy (empty baseURL means same origin)
+  // In production, use the full API URL
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000')
+    : '',
   timeout: 30000, // 30 seconds
+  withCredentials: true, // Send cookies with every request for Frappe session management
   headers: {
     'Content-Type': 'application/json',
   },
@@ -41,9 +46,6 @@ class ApiClient {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
-
-        // For Frappe, we might need to handle session cookies
-        config.withCredentials = true;
 
         // Log request in development
         if (process.env.NODE_ENV === 'development') {
