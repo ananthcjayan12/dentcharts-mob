@@ -18,11 +18,8 @@ export interface ApiError {
 
 // Base API configuration
 const API_CONFIG = {
-  // In development, use proxy (empty baseURL means same origin)
-  // In production, use the full API URL
-  baseURL: process.env.NODE_ENV === 'production' 
-    ? (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000')
-    : '',
+  // IMPORTANT: Use dev2.localhost so cookies work across frontend and backend
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800',
   timeout: 30000, // 30 seconds
   withCredentials: true, // Send cookies with every request for Frappe session management
   headers: {
@@ -39,9 +36,12 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor - Add auth token
+    // Request interceptor - Add auth token and ensure credentials
     this.client.interceptors.request.use(
       (config) => {
+        // CRITICAL: Ensure withCredentials is set for every request
+        config.withCredentials = true;
+        
         const token = getStoredToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
@@ -50,6 +50,7 @@ class ApiClient {
         // Log request in development
         if (process.env.NODE_ENV === 'development') {
           console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+          console.log(`🍪 Sending cookies:`, document.cookie);
         }
 
         return config;

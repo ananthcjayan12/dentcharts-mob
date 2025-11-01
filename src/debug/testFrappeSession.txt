@@ -1,0 +1,80 @@
+/**
+ * Debug script to test Frappe API authentication and session management
+ * Run this in browser console after login to test if session cookies are being sent
+ */
+
+// Test 1: Check if cookies are being sent
+console.log('=== COOKIE DEBUG ===');
+console.log('All cookies:', document.cookie);
+
+// Test 2: Make a test request to profile endpoint
+async function testProfileRequest() {
+  console.log('\n=== TESTING PROFILE REQUEST ===');
+  
+  try {
+    const response = await fetch('http://dev2.localhost:8800/api/method/mob_clinic.mob_clinic.api.auth.get_practitioner_profile', {
+      method: 'GET',
+      credentials: 'include', // Important!
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    const data = await response.json();
+    console.log('Response data:', data);
+    
+    return data;
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Test 3: Login and check cookies
+async function testLogin() {
+  console.log('\n=== TESTING LOGIN ===');
+  
+  try {
+    const response = await fetch('http://dev2.localhost:8800/api/method/mob_clinic.mob_clinic.api.auth.mobile_login', {
+      method: 'POST',
+      credentials: 'include', // Important!
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        usr: 'Administrator', // Replace with actual username
+        pwd: 'Olapeepi@2468', // Replace with actual password
+      }),
+    });
+    
+    console.log('Login response status:', response.status);
+    console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Cookies after login:', document.cookie);
+    
+    const data = await response.json();
+    console.log('Login response data:', data);
+    
+    // Now test profile request
+    console.log('\n=== TESTING PROFILE AFTER LOGIN ===');
+    await testProfileRequest();
+    
+    return data;
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Export functions for testing
+window.debugFrappe = {
+  testLogin,
+  testProfileRequest,
+  checkCookies: () => console.log('Cookies:', document.cookie),
+};
+
+console.log('Debug functions loaded!');
+console.log('Usage:');
+console.log('  debugFrappe.checkCookies() - Check current cookies');
+console.log('  debugFrappe.testProfileRequest() - Test profile API');
+console.log('  debugFrappe.testLogin() - Test login flow');
