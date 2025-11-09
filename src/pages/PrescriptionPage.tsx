@@ -9,16 +9,29 @@ import InputField from '../components/common/InputField';
 import { usePatient } from '../hooks/usePatients';
 import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
 import { usePatientInvoices, usePaymentSummary } from '../hooks/usePayments';
+import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
 
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
-  const { patientId } = useParams<{ patientId: string }>();
+  const { patientId: rawPatientId } = useParams<{ patientId: string }>();
+  
+  // Decode the patientId from URL (e.g., "Ananth.C%20Jayan" -> "Ananth.C Jayan")
+  const patientId = rawPatientId ? decodeURIComponent(rawPatientId) : undefined;
+  
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [currentSection, setCurrentSection] = useState<'medical' | 'payments'>('medical');
   const [showUpload, setShowUpload] = useState(false);
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploadNotes, setUploadNotes] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileCategory, setFileCategory] = useState('report');
+  const [patientFiles, setPatientFiles] = useState<any[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [selectedFileCategory, setSelectedFileCategory] = useState<string>('all');
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   // API hooks
   const { data: patient, isLoading: patientLoading } = usePatient(patientId || '', !!patientId);
@@ -34,6 +47,40 @@ const PrescriptionPage: React.FC = () => {
   // Local state for UI interactions
   const [expandedPrescriptions, setExpandedPrescriptions] = useState<Set<string>>(new Set());
   const [editablePrescriptions, setEditablePrescriptions] = useState<Set<string>>(new Set());
+
+  // Fetch patient files when component mounts or patientId changes
+  React.useEffect(() => {
+    const fetchPatientFiles = async () => {
+      if (!patientId) return;
+      
+      setIsLoadingFiles(true);
+      try {
+        const files = await fileUploadService.getPatientFiles(patientId);
+        setPatientFiles(files);
+      } catch (error) {
+        console.error('Error fetching patient files:', error);
+        toast.error('Failed to load patient files');
+      } finally {
+        setIsLoadingFiles(false);
+      }
+    };
+
+    fetchPatientFiles();
+  }, [patientId]);
+
+  // Filter files based on selected category
+  const filteredFiles = React.useMemo(() => {
+    if (selectedFileCategory === 'all') {
+      return patientFiles;
+    }
+    return patientFiles.filter((file: any) => file.file_category === selectedFileCategory);
+  }, [patientFiles, selectedFileCategory]);
+
+  // Get unique categories from files
+  const fileCategories = React.useMemo(() => {
+    const categories = new Set(patientFiles.map((file: any) => file.file_category).filter(Boolean));
+    return Array.from(categories);
+  }, [patientFiles]);
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -82,6 +129,78 @@ const PrescriptionPage: React.FC = () => {
   const handleNewAppointment = () => {
     // Navigate to new appointment page with patient ID pre-filled
     navigate(`/appointments/new?patientId=${patientId}`);
+  };
+
+  // File upload handlers
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      setSelectedFiles(prev => [...prev, ...fileArray]);
+    }
+  };
+
+  const handleTakePhoto = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Use rear camera on mobile
+    input.onchange = (e: any) => handleFileSelect(e);
+    input.click();
+  };
+
+  const handleUploadFiles = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = 'image/*,application/pdf,.doc,.docx';
+    input.onchange = (e: any) => handleFileSelect(e);
+    input.click();
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveReport = async () => {
+    if (selectedFiles.length === 0) {
+      toast.error('Please select at least one file to upload');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const uploadPromises = selectedFiles.map(file =>
+        fileUploadService.uploadFile(file, {
+          file_category: fileCategory,
+          description: uploadNotes || `${fileCategory} uploaded on ${uploadDate}`,
+          reference_doctype: 'Patient',
+          reference_name: patientId || '',
+          is_private: true,
+        })
+      );
+
+      const results = await Promise.all(uploadPromises);
+      
+      setUploadedFiles(prev => [...prev, ...results]);
+      toast.success(`Successfully uploaded ${results.length} file(s)`);
+      
+      // Refresh patient files list
+      const files = await fileUploadService.getPatientFiles(patientId || '');
+      setPatientFiles(files);
+      
+      // Reset state
+      setSelectedFiles([]);
+      setUploadNotes('');
+      setShowUpload(false);
+      setFileCategory('report');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error?.message || 'Failed to upload files');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -210,6 +329,188 @@ const PrescriptionPage: React.FC = () => {
                 Medical History
               </h3>
 
+              {/* Uploaded Files Section */}
+              {isLoadingFiles ? (
+                <div className="mb-6">
+                  <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
+                    Uploaded Documents
+                  </h4>
+                  <div className="space-y-2">
+                    {[1, 2].map((i) => (
+                      <Card key={i} className="animate-pulse">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-200 rounded"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-2 bg-gray-200 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : patientFiles.length > 0 ? (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold text-gray-700 font-lato">
+                      Uploaded Documents ({filteredFiles.length})
+                    </h4>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  {fileCategories.length > 0 && (
+                    <div className="overflow-x-auto pb-3 -mx-6 px-6 mb-4">
+                      <div className="flex space-x-2" style={{ minWidth: 'min-content' }}>
+                        <button
+                          onClick={() => setSelectedFileCategory('all')}
+                          className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                            selectedFileCategory === 'all'
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          All ({patientFiles.length})
+                        </button>
+                        {fileCategories.map((category: string) => {
+                          const count = patientFiles.filter((f: any) => f.file_category === category).length;
+                          return (
+                            <button
+                              key={category}
+                              onClick={() => setSelectedFileCategory(category)}
+                              className={`px-4 py-2 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-colors ${
+                                selectedFileCategory === category
+                                  ? 'bg-primary-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {category} ({count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Horizontal scrollable image gallery - Instagram Reel size */}
+                  {filteredFiles.length > 0 ? (
+                    <>
+                      <div className="overflow-x-auto pb-2 -mx-6 px-6">
+                        <div className="flex space-x-4" style={{ minWidth: 'min-content' }}>
+                          {filteredFiles.map((file: any) => (
+                            <div key={file.file_id} className="flex-shrink-0 w-80">
+                              <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+                                {/* Image preview - Instagram post size */}
+                                {fileUploadService.isImageFile(file.file_name) ? (
+                                  <div 
+                                    className="relative w-full h-96 bg-gray-100 overflow-hidden cursor-pointer group"
+                                    onClick={() => setFullscreenImage(`http://dev2.localhost:8800${file.file_url}`)}
+                                  >
+                                    <img
+                                      src={`http://dev2.localhost:8800${file.file_url}`}
+                                      alt={file.file_name}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                    {/* Overlay on hover */}
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                    {/* Category badge */}
+                                    <div className="absolute top-3 right-3">
+                                      <span className="px-3 py-1 bg-black/60 backdrop-blur-sm text-white text-xs rounded-full capitalize font-semibold">
+                                        {file.file_category || 'image'}
+                                      </span>
+                                    </div>
+                                    {/* Click to fullscreen hint */}
+                                    <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <span className="px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs rounded">
+                                        Click to view fullscreen
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="relative w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center">
+                                    <div className="text-8xl mb-4">
+                                      {fileUploadService.getFileIcon(file.file_name)}
+                                    </div>
+                                    <span className="px-4 py-2 bg-white text-gray-700 text-sm rounded-full font-semibold capitalize shadow-sm">
+                                      {file.file_category || 'document'}
+                                    </span>
+                                  </div>
+                                )}
+                                
+                                {/* File details */}
+                                <div className="p-4">
+                                  <p className="text-sm font-semibold text-gray-900 truncate mb-2">
+                                    {file.file_name}
+                                  </p>
+                                  <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                                    <span className="font-medium">{fileUploadService.formatFileSize(file.file_size)}</span>
+                                    <span>{new Date(file.creation).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                  </div>
+                                  {file.description && (
+                                    <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">
+                                      {file.description}
+                                    </p>
+                                  )}
+                                  
+                                  {/* Action buttons */}
+                                  <div className="flex space-x-2">
+                                    <a
+                                      href={`http://dev2.localhost:8800${file.file_url}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex-1 flex items-center justify-center px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+                                    >
+                                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                      View
+                                    </a>
+                                    <a
+                                      href={`http://dev2.localhost:8800${file.download_url}`}
+                                      download
+                                      className="flex items-center justify-center px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                      </svg>
+                                    </a>
+                                  </div>
+                                </div>
+                              </Card>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Scroll hint */}
+                      {filteredFiles.length > 1 && (
+                        <div className="flex items-center justify-center mt-3 text-xs text-gray-400">
+                          <svg className="w-4 h-4 mr-1 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                          </svg>
+                          Swipe to see more
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Card className="text-center py-8">
+                      <p className="text-gray-500">No {selectedFileCategory === 'all' ? '' : selectedFileCategory} documents found</p>
+                    </Card>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Prescriptions Section */}
+              <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
+                Prescriptions & Clinical Records
+              </h4>
+
               {prescriptionsLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
@@ -224,7 +525,10 @@ const PrescriptionPage: React.FC = () => {
                 </div>
               ) : !prescriptions || prescriptions.length === 0 ? (
                 <Card className="text-center py-8">
-                  <p className="text-gray-500">No medical history available</p>
+                  <p className="text-gray-500">No prescription records available</p>
+                  {patientFiles.length === 0 && (
+                    <p className="text-gray-400 text-sm mt-2">Upload documents using the button above</p>
+                  )}
                 </Card>
               ) : (
 
@@ -595,13 +899,17 @@ const PrescriptionPage: React.FC = () => {
         {/* Upload Modal */}
         {showUpload && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-sm max-h-96 overflow-y-auto">
+            <div className="bg-white rounded-xl p-6 w-full max-w-sm max-h-[600px] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-gray-800 font-lato">
-                  Upload Report
+                  Upload Medical Records
                 </h3>
                 <button
-                  onClick={() => setShowUpload(false)}
+                  onClick={() => {
+                    setShowUpload(false);
+                    setSelectedFiles([]);
+                    setUploadNotes('');
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -611,6 +919,25 @@ const PrescriptionPage: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                {/* File Category Selection */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
+                    Document Type
+                  </label>
+                  <select
+                    value={fileCategory}
+                    onChange={(e) => setFileCategory(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-sm font-montserrat"
+                  >
+                    <option value="report">Medical Report</option>
+                    <option value="xray">X-ray</option>
+                    <option value="photo">Clinical Photo</option>
+                    <option value="prescription">Prescription</option>
+                    <option value="consent">Consent Form</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
                 {/* Date Selection */}
                 <InputField
                   label="Report Date"
@@ -621,46 +948,68 @@ const PrescriptionPage: React.FC = () => {
 
                 {/* Upload Actions */}
                 <div className="flex space-x-4">
-                  <Button size="sm" variant="primary" className="flex-1">
+                  <Button 
+                    size="sm" 
+                    variant="primary" 
+                    className="flex-1"
+                    onClick={handleTakePhoto}
+                    disabled={isUploading}
+                  >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     Take Photo
                   </Button>
-                  <Button size="sm" variant="primary" className="flex-1">
+                  <Button 
+                    size="sm" 
+                    variant="primary" 
+                    className="flex-1"
+                    onClick={handleUploadFiles}
+                    disabled={isUploading}
+                  >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    Upload Files
+                    Browse Files
                   </Button>
                 </div>
 
-                {/* File Preview */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 border-2 border-dashed border-gray-300 rounded-lg">
-                    <div className="w-8 h-8 bg-blue-100 rounded mx-auto mb-2 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
+                {/* Selected Files Preview */}
+                {selectedFiles.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
+                      Selected Files ({selectedFiles.length})
+                    </label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <span className="text-lg">
+                              {fileUploadService.getFileIcon(file.name)}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-700 truncate">
+                                {file.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {fileUploadService.formatFileSize(file.size)}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeFile(index)}
+                            className="text-red-500 hover:text-red-700 ml-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-xs text-gray-600 font-montserrat">
-                      Prescription<br />
-                      {new Date(uploadDate).toLocaleDateString()}
-                    </p>
                   </div>
-                  <div className="text-center p-3 border-2 border-dashed border-gray-300 rounded-lg">
-                    <div className="w-8 h-8 bg-green-100 rounded mx-auto mb-2 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </div>
-                    <p className="text-xs text-gray-600 font-montserrat">
-                      X-ray<br />
-                      {new Date(uploadDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
+                )}
 
                 {/* Notes */}
                 <div>
@@ -670,7 +1019,7 @@ const PrescriptionPage: React.FC = () => {
                   <textarea
                     value={uploadNotes}
                     onChange={(e) => setUploadNotes(e.target.value)}
-                    placeholder="Add any additional notes about the reports..."
+                    placeholder="Add any additional notes about the files..."
                     className="w-full p-3 border border-gray-300 rounded-lg text-sm font-montserrat"
                     rows={3}
                   />
@@ -684,8 +1033,10 @@ const PrescriptionPage: React.FC = () => {
                     className="flex-1"
                     onClick={() => {
                       setShowUpload(false);
+                      setSelectedFiles([]);
                       setUploadNotes('');
                     }}
+                    disabled={isUploading}
                   >
                     Cancel
                   </Button>
@@ -693,22 +1044,44 @@ const PrescriptionPage: React.FC = () => {
                     size="sm" 
                     variant="primary" 
                     className="flex-1"
-                    onClick={() => {
-                      // Here you would handle the actual upload
-                      console.log('Uploading report:', {
-                        date: uploadDate,
-                        notes: uploadNotes,
-                        patientId: patientId
-                      });
-                      setShowUpload(false);
-                      setUploadNotes('');
-                      alert('Report uploaded successfully!');
-                    }}
+                    onClick={handleSaveReport}
+                    disabled={isUploading || selectedFiles.length === 0}
                   >
-                    Save Report
+                    {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}`}
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fullscreen Image Modal */}
+        {fullscreenImage && (
+          <div 
+            className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
+            onClick={() => setFullscreenImage(null)}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white/10 backdrop-blur-sm rounded-full hover:bg-white/20 transition-colors"
+            >
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Image */}
+            <img
+              src={fullscreenImage}
+              alt="Fullscreen view"
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            {/* Pinch to zoom hint */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full">
+              <p className="text-white text-sm">Pinch to zoom • Tap to close</p>
             </div>
           </div>
         )}

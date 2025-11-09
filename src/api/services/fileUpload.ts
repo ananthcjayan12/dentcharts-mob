@@ -157,8 +157,16 @@ export class FileUploadService {
         `${API_ENDPOINTS.FILES.LIST}?${queryParams.toString()}`
       );
 
+      // Handle nested response structure: {message: {data: {files: [...]}}}
       if (response.data) {
-        return response.data;
+        // Check if data is an object with 'files' property
+        if (typeof response.data === 'object' && 'files' in response.data) {
+          return (response.data as any).files || [];
+        }
+        // Check if data is already an array
+        if (Array.isArray(response.data)) {
+          return response.data;
+        }
       }
 
       return [];
