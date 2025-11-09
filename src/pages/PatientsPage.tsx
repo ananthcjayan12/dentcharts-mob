@@ -148,9 +148,9 @@ const PatientsPage: React.FC = () => {
               <div className="space-y-3">
                 {filteredPatients.map((patient) => (
                   <Card 
-                    key={patient.patient_id}
+                    key={patient.name}
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handlePatientClick(patient.patient_id)}
+                    onClick={() => handlePatientClick(patient.name)}
                   >
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
@@ -164,7 +164,7 @@ const PatientsPage: React.FC = () => {
                           {patient.patient_name}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat mt-1">
-                          ID: {patient.patient_id} • Age: {patient.age || 'N/A'} • {patient.sex}
+                          ID: {patient.name} • Age: {patient.age || 'N/A'} • {patient.sex}
                         </p>
                         <p className="text-xs text-gray-500 font-montserrat">
                           {patient.mobile}

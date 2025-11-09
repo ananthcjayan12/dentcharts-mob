@@ -96,7 +96,7 @@ const InvoicePage: React.FC = () => {
     }
 
     const invoiceRequest = {
-      patient_id: selectedPatient.patient_id,
+      patient_id: selectedPatient.name, // Use 'name' which is the actual patient ID
       items: invoiceItems.map(({ id, ...item }) => item), // Remove local id field
       posting_date: invoiceData.date,
       due_date: invoiceData.dueDate,

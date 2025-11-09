@@ -69,7 +69,8 @@ export interface CreatePatientRequest {
 }
 
 export interface PatientResponse {
-  patient_id: string;
+  name: string; // Patient ID/name from Frappe
+  patient_id?: string; // Alias for name
   patient_name: string;
   sex: string;
   mobile: string;
@@ -77,7 +78,15 @@ export interface PatientResponse {
   dob: string;
   address?: string;
   occupation?: string;
-  age?: number;
+  age?: number | null;
+  blood_group?: string;
+  status?: string;
+  image?: string | null;
+  avatar?: string | null;
+  preferred_language?: string;
+  last_visit?: string | null;
+  total_visits?: number;
+  pending_amount?: number;
 }
 
 export interface UpdatePatientRequest {

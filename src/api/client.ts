@@ -108,32 +108,169 @@ class ApiClient {
 
   // GET request
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.get<ApiResponse<T>>(url, config);
-    return response.data;
+    const response = await this.client.get(url, config);
+    const responseData = response.data;
+    
+    // Handle Frappe's nested response structure
+    if (responseData.message && typeof responseData.message === 'object') {
+      const messageObj = responseData.message;
+      
+      // Check if this is a paginated response (has data array + pagination fields)
+      if (messageObj.data && Array.isArray(messageObj.data) && 
+          (messageObj.total_count !== undefined || messageObj.page_length !== undefined)) {
+        // Return the entire message object as data (includes data, total_count, page_length, start)
+        return {
+          message: messageObj.message || 'Success',
+          data: messageObj as T,
+        };
+      }
+      
+      // Regular nested response with data field
+      if (messageObj.data !== undefined) {
+        return {
+          message: messageObj.message || 'Success',
+          data: messageObj.data,
+        };
+      }
+      
+      // Message object is the data itself
+      return {
+        message: messageObj.message || 'Success',
+        data: messageObj as T,
+      };
+    }
+    
+    // Direct structure
+    return {
+      message: 'Success',
+      data: responseData,
+    };
   }
 
   // POST request
-  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.post<ApiResponse<T>>(url, data, config);
-    return response.data;
+  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.post(endpoint, data);
+    
+    // Handle Frappe's nested response structure
+    // Frappe returns: { message: { message: "...", data: {...} } }
+    const responseData = response.data;
+    
+    if (responseData.message && typeof responseData.message === 'object') {
+      const messageObj = responseData.message;
+      
+      // Check if this is a paginated response
+      if (messageObj.data && Array.isArray(messageObj.data) && 
+          (messageObj.total_count !== undefined || messageObj.page_length !== undefined)) {
+        return {
+          message: messageObj.message || 'Success',
+          data: messageObj as T,
+        };
+      }
+      
+      // Regular nested response with data field
+      if (messageObj.data !== undefined) {
+        return {
+          message: messageObj.message || 'Success',
+          data: messageObj.data,
+        };
+      }
+      
+      // Message object is the data itself
+      return {
+        message: messageObj.message || 'Success',
+        data: messageObj as T,
+      };
+    }
+    
+    // Direct structure
+    return {
+      message: 'Success',
+      data: responseData,
+    };
   }
 
   // PUT request
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.put<ApiResponse<T>>(url, data, config);
-    return response.data;
+    const response = await this.client.put(url, data, config);
+    const responseData = response.data;
+    
+    // Handle Frappe's nested response structure
+    if (responseData.message && typeof responseData.message === 'object') {
+      const messageObj = responseData.message;
+      
+      if (messageObj.data !== undefined) {
+        return {
+          message: messageObj.message || 'Success',
+          data: messageObj.data,
+        };
+      }
+      
+      return {
+        message: messageObj.message || 'Success',
+        data: messageObj as T,
+      };
+    }
+    
+    return {
+      message: 'Success',
+      data: responseData,
+    };
   }
 
   // PATCH request
   async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.patch<ApiResponse<T>>(url, data, config);
-    return response.data;
+    const response = await this.client.patch(url, data, config);
+    const responseData = response.data;
+    
+    // Handle Frappe's nested response structure
+    if (responseData.message && typeof responseData.message === 'object') {
+      const messageObj = responseData.message;
+      
+      if (messageObj.data !== undefined) {
+        return {
+          message: messageObj.message || 'Success',
+          data: messageObj.data,
+        };
+      }
+      
+      return {
+        message: messageObj.message || 'Success',
+        data: messageObj as T,
+      };
+    }
+    
+    return {
+      message: 'Success',
+      data: responseData,
+    };
   }
 
   // DELETE request
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.delete<ApiResponse<T>>(url, config);
-    return response.data;
+    const response = await this.client.delete(url, config);
+    const responseData = response.data;
+    
+    // Handle Frappe's nested response structure
+    if (responseData.message && typeof responseData.message === 'object') {
+      const messageObj = responseData.message;
+      
+      if (messageObj.data !== undefined) {
+        return {
+          message: messageObj.message || 'Success',
+          data: messageObj.data,
+        };
+      }
+      
+      return {
+        message: messageObj.message || 'Success',
+        data: messageObj as T,
+      };
+    }
+    
+    return {
+      message: 'Success',
+      data: responseData,
+    };
   }
 
   // File upload with progress
@@ -142,13 +279,27 @@ class ApiClient {
     formData: FormData,
     onUploadProgress?: (progressEvent: any) => void
   ): Promise<ApiResponse<T>> {
-    const response = await this.client.post<ApiResponse<T>>(url, formData, {
+    const response = await this.client.post(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
       onUploadProgress,
     });
-    return response.data;
+    
+    const responseData = response.data;
+    
+    // Handle Frappe's nested response structure
+    if (responseData.message && typeof responseData.message === 'object') {
+      return {
+        message: responseData.message.message || 'File uploaded successfully',
+        data: responseData.message.data || responseData.message,
+      };
+    }
+    
+    return {
+      message: 'File uploaded successfully',
+      data: responseData,
+    };
   }
 
   // Get raw axios instance for advanced usage

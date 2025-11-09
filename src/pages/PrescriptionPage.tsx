@@ -425,13 +425,13 @@ const PrescriptionPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <Card className="text-center">
                     <div className="text-2xl font-bold text-green-600 font-lato">
-                      ₹{paymentSummary.paid_amount.toLocaleString()}
+                      ₹{(paymentSummary.paid_amount || 0).toLocaleString()}
                     </div>
                     <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
                   </Card>
                   <Card className="text-center">
                     <div className="text-2xl font-bold text-red-600 font-lato">
-                      ₹{paymentSummary.outstanding_amount.toLocaleString()}
+                      ₹{(paymentSummary.outstanding_amount || 0).toLocaleString()}
                     </div>
                     <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
                   </Card>
