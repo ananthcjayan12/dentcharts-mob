@@ -34,7 +34,7 @@ const NewAppointmentPage: React.FC = () => {
   useEffect(() => {
     const patientId = searchParams.get('patientId');
     if (patientId && patients.length > 0) {
-      const patient = patients.find(p => p.patient_id === patientId);
+      const patient = patients.find(p => p.name === patientId);
       if (patient) {
         setSelectedPatient(patient);
       }
@@ -72,7 +72,7 @@ const NewAppointmentPage: React.FC = () => {
     }
 
     const appointmentData = {
-      patient_id: selectedPatient.patient_id,
+      patient_id: selectedPatient.name, // Use 'name' which is the actual patient ID
       appointment_date: formData.appointment_date,
       appointment_time: formData.appointment_time,
       duration: formData.duration,
