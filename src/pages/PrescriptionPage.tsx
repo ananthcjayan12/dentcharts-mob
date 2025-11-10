@@ -15,6 +15,75 @@ import toast from 'react-hot-toast';
 // Get API base URL from environment variable (same as API client)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
 
+/**
+ * Compress image file to reduce size
+ * @param file - Original image file
+ * @param maxWidth - Maximum width (default 1920px)
+ * @param maxHeight - Maximum height (default 1920px)
+ * @param quality - JPEG quality 0-1 (default 0.8)
+ */
+const compressImage = async (
+  file: File,
+  maxWidth: number = 1920,
+  maxHeight: number = 1920,
+  quality: number = 0.8
+): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions while maintaining aspect ratio
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error('Canvas to Blob conversion failed'));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      
+      img.onerror = () => reject(new Error('Image load failed'));
+    };
+    
+    reader.onerror = () => reject(new Error('FileReader failed'));
+  });
+};
+
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const { patientId: rawPatientId } = useParams<{ patientId: string }>();
@@ -150,11 +219,61 @@ const PrescriptionPage: React.FC = () => {
   };
 
   // File upload handlers
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      setSelectedFiles(prev => [...prev, ...fileArray]);
+      
+      // Compress images before adding to state
+      const processedFiles = await Promise.all(
+        fileArray.map(async (file) => {
+          if (file.type.startsWith('image/')) {
+            try {
+              const originalSize = (file.size / 1024 / 1024).toFixed(2);
+              // Browser file selection: max 1920px, 80% quality
+              const compressed = await compressImage(file, 1920, 1920, 0.8);
+              const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
+              console.log(`Compressed ${file.name}: ${originalSize}MB → ${compressedSize}MB`);
+              return compressed;
+            } catch (error) {
+              console.error('Image compression failed, using original:', error);
+              return file;
+            }
+          }
+          return file;
+        })
+      );
+      
+      setSelectedFiles(prev => [...prev, ...processedFiles]);
+    }
+  };
+
+  const handleCameraCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      
+      // Compress camera images more aggressively (mobile photos are large)
+      const processedFiles = await Promise.all(
+        fileArray.map(async (file) => {
+          if (file.type.startsWith('image/')) {
+            try {
+              const originalSize = (file.size / 1024 / 1024).toFixed(2);
+              // Camera capture: max 1280px, 70% quality (mobile photos are typically high-res)
+              const compressed = await compressImage(file, 1280, 1280, 0.7);
+              const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
+              console.log(`Camera compressed ${file.name}: ${originalSize}MB → ${compressedSize}MB`);
+              return compressed;
+            } catch (error) {
+              console.error('Camera image compression failed, using original:', error);
+              return file;
+            }
+          }
+          return file;
+        })
+      );
+      
+      setSelectedFiles(prev => [...prev, ...processedFiles]);
     }
   };
 
@@ -162,8 +281,8 @@ const PrescriptionPage: React.FC = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment'; // Use rear camera on mobile
-    input.onchange = (e: any) => handleFileSelect(e);
+    input.setAttribute('capture', 'environment'); // Use rear camera on mobile (iOS compatible)
+    input.onchange = (e: any) => handleCameraCapture(e);
     input.click();
   };
 
