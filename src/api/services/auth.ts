@@ -20,9 +20,9 @@ export class AuthService {
       );
 
       // Handle Frappe's nested response structure
-      // Response structure: { message: { message: "Logged In", user: {...}, ... }, ... }
-      if (response.message && typeof response.message === 'object') {
-        const loginData: any = response.message;
+      // Response structure: { message: { message: "Logged In", user: {...}, ... }, data: {...} }
+      if (response.data && typeof response.data === 'object') {
+        const loginData: any = response.data;
         
         if (loginData.message === 'Logged In' && loginData.user) {
           // Store session data
@@ -30,7 +30,8 @@ export class AuthService {
             email: loginData.user.email || loginData.user.id,
             full_name: loginData.full_name || loginData.user.name,
             mobile: loginData.user.phone,
-            practitioner_id: loginData.user.id,
+            practitioner_id: loginData.user.clinic?.practitioner_id || loginData.user.id,
+            clinic: loginData.user.clinic,
           };
           
           setStoredUserData(userData);
