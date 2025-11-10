@@ -316,7 +316,13 @@ const HomePage: React.FC = () => {
                     <Card 
                       key={appointment.appointment_id}
                       className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => navigate(`/prescriptions/${appointment.patient_id}`)}
+                      onClick={() => {
+                        // Use patient_id if it contains full name, otherwise use patient_name
+                        const patientIdentifier = appointment.patient_id || appointment.patient_name;
+                        if (patientIdentifier) {
+                          navigate(`/prescriptions/${encodeURIComponent(patientIdentifier)}`);
+                        }
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -384,7 +390,13 @@ const HomePage: React.FC = () => {
                   <Card 
                     key={appointment.appointment_id}
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => navigate(`/prescriptions/${appointment.patient_id}`)}
+                    onClick={() => {
+                      // Use patient_id if it contains full name, otherwise use patient_name
+                      const patientIdentifier = appointment.patient_id || appointment.patient_name;
+                      if (patientIdentifier) {
+                        navigate(`/prescriptions/${encodeURIComponent(patientIdentifier)}`);
+                      }
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <div>

@@ -8,7 +8,7 @@ import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
 import { usePatient } from '../hooks/usePatients';
 import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
-import { usePatientInvoices, usePaymentSummary } from '../hooks/usePayments';
+import { usePatientInvoices, usePaymentSummary, useRecordPayment } from '../hooks/usePayments';
 import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
 
@@ -32,6 +32,13 @@ const PrescriptionPage: React.FC = () => {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [selectedFileCategory, setSelectedFileCategory] = useState<string>('all');
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMode, setPaymentMode] = useState('Cash');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentReference, setPaymentReference] = useState('');
+  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
 
   // API hooks
   const { data: patient, isLoading: patientLoading } = usePatient(patientId || '', !!patientId);
@@ -39,8 +46,16 @@ const PrescriptionPage: React.FC = () => {
   const { data: invoices, isLoading: invoicesLoading } = usePatientInvoices(patientId || '');
   const { data: paymentSummary, isLoading: paymentSummaryLoading } = usePaymentSummary(patientId || '');
   
+  // Use pending_invoices from payment summary if invoices are not available
+  const displayInvoices = React.useMemo(() => {
+    if (invoices && invoices.length > 0) return invoices;
+    if (paymentSummary?.pending_invoices) return paymentSummary.pending_invoices;
+    return [];
+  }, [invoices, paymentSummary]);
+  
   const { mutate: createPrescription, isPending: isCreating } = useCreatePrescription();
   const { mutate: updatePrescription, isPending: isUpdating } = useUpdatePrescription();
+  const { mutate: recordPayment, isPending: isPaymentProcessing } = useRecordPayment();
 
   const isLoading = patientLoading || prescriptionsLoading || invoicesLoading || paymentSummaryLoading;
 
@@ -203,6 +218,55 @@ const PrescriptionPage: React.FC = () => {
     }
   };
 
+  const handleOpenPaymentModal = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setPaymentAmount(invoice.outstanding_amount?.toString() || invoice.pending?.toString() || '');
+    setShowPaymentModal(true);
+  };
+
+  const handleRecordPayment = async () => {
+    if (!selectedInvoice) return;
+    
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid payment amount');
+      return;
+    }
+
+    if (!paymentMode) {
+      toast.error('Please select a payment mode');
+      return;
+    }
+
+    setIsRecordingPayment(true);
+
+    try {
+      await recordPayment({
+        invoice_id: selectedInvoice.invoice_id,
+        paid_amount: amount,
+        mode_of_payment: paymentMode,
+        payment_date: paymentDate,
+        reference_no: paymentReference || undefined,
+        reference_date: paymentDate,
+      });
+
+      toast.success('Payment recorded successfully!');
+      
+      // Close modal and reset form
+      setShowPaymentModal(false);
+      setSelectedInvoice(null);
+      setPaymentAmount('');
+      setPaymentMode('Cash');
+      setPaymentReference('');
+      setPaymentDate(new Date().toISOString().split('T')[0]);
+    } catch (error: any) {
+      console.error('Payment recording error:', error);
+      toast.error(error?.message || 'Failed to record payment');
+    } finally {
+      setIsRecordingPayment(false);
+    }
+  };
+
   return (
     <MobileContainer>
       <div className="min-h-screen bg-white relative">
@@ -287,11 +351,11 @@ const PrescriptionPage: React.FC = () => {
             <div className="mt-3 pt-3 border-t border-white/30">
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div className="text-center">
-                  <div className="font-bold">₹{paymentSummary?.paid_amount?.toLocaleString() || '0'}</div>
+                  <div className="font-bold">₹{paymentSummary?.total_paid?.toLocaleString() || '0'}</div>
                   <div className="text-white/80">Total Paid</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-bold text-yellow-200">₹{paymentSummary?.outstanding_amount?.toLocaleString() || '0'}</div>
+                  <div className="font-bold text-yellow-200">₹{paymentSummary?.total_pending?.toLocaleString() || '0'}</div>
                   <div className="text-white/80">Pending</div>
                 </div>
               </div>
@@ -729,13 +793,13 @@ const PrescriptionPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <Card className="text-center">
                     <div className="text-2xl font-bold text-green-600 font-lato">
-                      ₹{(paymentSummary.paid_amount || 0).toLocaleString()}
+                      ₹{(paymentSummary.total_paid || 0).toLocaleString()}
                     </div>
                     <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
                   </Card>
                   <Card className="text-center">
                     <div className="text-2xl font-bold text-red-600 font-lato">
-                      ₹{(paymentSummary.outstanding_amount || 0).toLocaleString()}
+                      ₹{(paymentSummary.total_pending || 0).toLocaleString()}
                     </div>
                     <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
                   </Card>
@@ -777,13 +841,13 @@ const PrescriptionPage: React.FC = () => {
                     </Card>
                   ))}
                 </div>
-              ) : !invoices || invoices.length === 0 ? (
+              ) : !displayInvoices || displayInvoices.length === 0 ? (
                 <Card className="text-center py-8">
                   <p className="text-gray-500">No payment history available</p>
                 </Card>
               ) : (
                 <div className="space-y-4">
-                  {invoices.map((invoice) => (
+                  {displayInvoices.map((invoice: any) => (
                   <Card key={invoice.invoice_id}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
@@ -797,30 +861,30 @@ const PrescriptionPage: React.FC = () => {
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {invoice.status}
+                          {invoice.status || (invoice.pending > 0 ? 'Unpaid' : 'Paid')}
                         </span>
                       </div>
                       <span className="text-xs text-gray-500 font-lato">
-                        {new Date(invoice.posting_date).toLocaleDateString()}
+                        {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
                       </span>
                     </div>
 
                     <div className="space-y-2">
                       <div className="text-sm text-gray-600 font-montserrat">
-                        <strong>Patient:</strong> {invoice.patient_name}
+                        <strong>Patient:</strong> {invoice.patient_name || patient?.patient_name}
                       </div>
                       
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="text-center p-2 bg-gray-50 rounded">
-                          <div className="font-bold text-gray-700">₹{invoice.grand_total.toLocaleString()}</div>
+                          <div className="font-bold text-gray-700">₹{(invoice.grand_total || invoice.amount || 0).toLocaleString()}</div>
                           <div className="text-gray-500">Total</div>
                         </div>
                         <div className="text-center p-2 bg-green-50 rounded">
-                          <div className="font-bold text-green-600">₹{(invoice.grand_total - invoice.outstanding_amount).toLocaleString()}</div>
+                          <div className="font-bold text-green-600">₹{(invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
                           <div className="text-gray-500">Paid</div>
                         </div>
                         <div className="text-center p-2 bg-red-50 rounded">
-                          <div className="font-bold text-red-600">₹{invoice.outstanding_amount.toLocaleString()}</div>
+                          <div className="font-bold text-red-600">₹{(invoice.pending || invoice.outstanding_amount || 0).toLocaleString()}</div>
                           <div className="text-gray-500">Pending</div>
                         </div>
                       </div>
@@ -829,15 +893,13 @@ const PrescriptionPage: React.FC = () => {
                         <strong>Due Date:</strong> {new Date(invoice.due_date).toLocaleDateString()}
                       </div>
 
-                      {invoice.outstanding_amount > 0 && (
+                      {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
                         <div className="flex space-x-2 mt-3">
                           <Button
                             size="sm"
                             variant="primary"
                             className="flex-1"
-                            onClick={() => {
-                              alert(`Recording payment for ${invoice.invoice_id}`);
-                            }}
+                            onClick={() => handleOpenPaymentModal(invoice)}
                           >
                             Record Payment
                           </Button>
@@ -846,7 +908,7 @@ const PrescriptionPage: React.FC = () => {
                             variant="outline"
                             className="flex-1"
                             onClick={() => {
-                              alert(`Sending reminder for ${invoice.invoice_id}`);
+                              toast('Payment reminder feature coming soon');
                             }}
                           >
                             Send Reminder
@@ -1048,6 +1110,129 @@ const PrescriptionPage: React.FC = () => {
                     disabled={isUploading || selectedFiles.length === 0}
                   >
                     {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}`}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Recording Modal */}
+        {showPaymentModal && selectedInvoice && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-800 font-lato">
+                  Record Payment
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setSelectedInvoice(null);
+                    setPaymentAmount('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                  disabled={isRecordingPayment}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Invoice Details */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-700">Invoice:</span>
+                  <span className="text-sm text-gray-900 font-mono">{selectedInvoice.invoice_id}</span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-700">Total Amount:</span>
+                  <span className="text-sm text-gray-900">₹{((selectedInvoice as any).amount || selectedInvoice.grand_total || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-700">Already Paid:</span>
+                  <span className="text-sm text-green-600">₹{((selectedInvoice as any).paid || (selectedInvoice.grand_total - selectedInvoice.outstanding_amount) || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                  <span className="text-sm font-bold text-gray-700">Outstanding:</span>
+                  <span className="text-lg font-bold text-red-600">₹{((selectedInvoice as any).pending || selectedInvoice.outstanding_amount || 0).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Payment Amount */}
+                <InputField
+                  label="Payment Amount"
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  disabled={isRecordingPayment}
+                />
+
+                {/* Payment Mode */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
+                    Payment Mode
+                  </label>
+                  <select
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-sm font-montserrat"
+                    disabled={isRecordingPayment}
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Credit/Debit Card</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Net Banking">Net Banking</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                  </select>
+                </div>
+
+                {/* Payment Date */}
+                <InputField
+                  label="Payment Date"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  disabled={isRecordingPayment}
+                />
+
+                {/* Reference Number (Optional) */}
+                <InputField
+                  label="Reference Number (Optional)"
+                  type="text"
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="Transaction ID / Cheque No"
+                  disabled={isRecordingPayment}
+                />
+
+                {/* Action Buttons */}
+                <div className="flex space-x-4 pt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowPaymentModal(false);
+                      setSelectedInvoice(null);
+                      setPaymentAmount('');
+                    }}
+                    disabled={isRecordingPayment}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    className="flex-1"
+                    onClick={handleRecordPayment}
+                    disabled={isRecordingPayment || !paymentAmount}
+                  >
+                    {isRecordingPayment ? 'Recording...' : 'Record Payment'}
                   </Button>
                 </div>
               </div>

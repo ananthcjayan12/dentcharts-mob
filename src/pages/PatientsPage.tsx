@@ -155,19 +155,21 @@ const PatientsPage: React.FC = () => {
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
                         <span className="text-white font-bold">
-                          {patient.patient_name.split(' ').map((n: string) => n[0]).join('')}
+                          {(patient.patient_name || patient.patient_id || patient.name)
+                            ? (patient.patient_name || patient.patient_id || patient.name).split(' ').map((n: string) => n[0]).join('')
+                            : '??'}
                         </span>
                       </div>
                       
                       <div className="flex-1">
                         <h4 className="text-sm font-bold text-gray-800 font-lato">
-                          {patient.patient_name}
+                          {patient.patient_name || patient.patient_id || patient.name || 'Unknown Patient'}
                         </h4>
                         <p className="text-xs text-gray-600 font-montserrat mt-1">
-                          ID: {patient.name} • Age: {patient.age || 'N/A'} • {patient.sex}
+                          ID: {patient.name} • Age: {patient.age || 'N/A'} • {patient.sex || 'N/A'}
                         </p>
                         <p className="text-xs text-gray-500 font-montserrat">
-                          {patient.mobile}
+                          {patient.mobile || 'No phone'}
                         </p>
                       </div>
                       

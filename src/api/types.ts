@@ -245,11 +245,26 @@ export interface UpdatePaymentRequest {
 }
 
 export interface PaymentSummary {
-  total_invoices: number;
-  total_amount: number;
-  paid_amount: number;
-  outstanding_amount: number;
-  overdue_amount: number;
+  patient_id: string;
+  patient_name: string;
+  total_invoiced: number;
+  total_paid: number;
+  total_pending: number;
+  invoice_count: number;
+  pending_invoices_count: number;
+  next_due_date?: string;
+  pending_invoices?: Array<{
+    invoice_id: string;
+    date: string;
+    due_date: string;
+    amount: number;
+    paid: number;
+    pending: number;
+    is_overdue: boolean;
+  }>;
+  // Legacy field names for backward compatibility
+  paid_amount?: number;
+  outstanding_amount?: number;
 }
 
 export interface SendPaymentReminderRequest {

@@ -29,8 +29,14 @@ const AppointmentsPage: React.FC = () => {
     }
   };
 
-  const handleAppointmentClick = (patientId: string) => {
-    navigate(`/prescriptions/${patientId}`);
+  const handleAppointmentClick = (appointment: any) => {
+    // Use patient_id (which contains patient name in Frappe), fallback to patient_name
+    const patientIdentifier = appointment.patient_id || appointment.patient_name;
+    if (patientIdentifier) {
+      navigate(`/prescriptions/${encodeURIComponent(patientIdentifier)}`);
+    } else {
+      console.error('No patient identifier found for appointment:', appointment);
+    }
   };
 
   // Real API data instead of mock data
@@ -100,7 +106,7 @@ const AppointmentsPage: React.FC = () => {
                   <Card 
                     key={appointment.appointment_id} 
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handleAppointmentClick(appointment.patient_id)}
+                    onClick={() => handleAppointmentClick(appointment)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 pr-3">
@@ -161,7 +167,7 @@ const AppointmentsPage: React.FC = () => {
                   <Card 
                     key={appointment.appointment_id}
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handleAppointmentClick(appointment.patient_id)}
+                    onClick={() => handleAppointmentClick(appointment)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 pr-3">
