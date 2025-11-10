@@ -12,6 +12,9 @@ import { usePatientInvoices, usePaymentSummary, useRecordPayment } from '../hook
 import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
 
+// Get API base URL from environment variable (same as API client)
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
+
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const { patientId: rawPatientId } = useParams<{ patientId: string }>();
@@ -467,10 +470,10 @@ const PrescriptionPage: React.FC = () => {
                                 {fileUploadService.isImageFile(file.file_name) ? (
                                   <div 
                                     className="relative w-full h-96 bg-gray-100 overflow-hidden cursor-pointer group"
-                                    onClick={() => setFullscreenImage(`http://dev2.localhost:8800${file.file_url}`)}
+                                    onClick={() => setFullscreenImage(`${API_BASE_URL}${file.file_url}`)}
                                   >
                                     <img
-                                      src={`http://dev2.localhost:8800${file.file_url}`}
+                                      src={`${API_BASE_URL}${file.file_url}`}
                                       alt={file.file_name}
                                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
@@ -524,7 +527,7 @@ const PrescriptionPage: React.FC = () => {
                                   {/* Action buttons */}
                                   <div className="flex space-x-2">
                                     <a
-                                      href={`http://dev2.localhost:8800${file.file_url}`}
+                                      href={`${API_BASE_URL}${file.file_url}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="flex-1 flex items-center justify-center px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors"
@@ -536,7 +539,7 @@ const PrescriptionPage: React.FC = () => {
                                       View
                                     </a>
                                     <a
-                                      href={`http://dev2.localhost:8800${file.download_url}`}
+                                      href={`${API_BASE_URL}${file.download_url}`}
                                       download
                                       className="flex items-center justify-center px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                                     >
