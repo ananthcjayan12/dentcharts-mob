@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8800}
+    restart: unless-stopped
+    networks:
+      - dentcharts-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+networks:
+  dentcharts-network:
+    driver: bridge
