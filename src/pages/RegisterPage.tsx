@@ -115,7 +115,7 @@ const RegisterPage: React.FC = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 error={errors.password}
-                icon={<span className="text-gray-400">🔒</span>}
+                leftIcon={<span className="text-gray-400">🔒</span>}
               />
 
               <Button

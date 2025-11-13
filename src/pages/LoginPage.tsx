@@ -93,7 +93,7 @@ const LoginPage: React.FC = () => {
                 value={formData.email}
                 onChange={handleInputChange}
                 error={errors.email}
-                icon={<span className="text-gray-400">👤</span>}
+                leftIcon={<span className="text-gray-400">👤</span>}
               />
 
               <InputField
@@ -104,7 +104,7 @@ const LoginPage: React.FC = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 error={errors.password}
-                icon={<span className="text-gray-400">🔒</span>}
+                leftIcon={<span className="text-gray-400">🔒</span>}
               />
 
               <Button
