@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Sidebar } from '../components';
 import MobileContainer from '../components/layout/MobileContainer';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
@@ -390,20 +391,458 @@ const PrescriptionPage: React.FC = () => {
   };
 
   return (
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar for Desktop */}
+      <Sidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
     <MobileContainer>
-      <div className="min-h-screen bg-white relative">
+      <div className="min-h-screen bg-gray-50 relative">
         <TopBar 
-          title={`PID - ${patientId || '201892521'}`}
-          onBack={() => navigate('/home')}
+          title={`Patient - ${patient?.patient_name || patientId || 'Details'}`}
+          onBack={() => navigate('/patients')}
           showMenu
         />
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
-          <div className="px-6 space-y-6">
+        <div className="overflow-y-auto pb-20 lg:pb-4" style={{ height: 'calc(100vh - 60px)' }}>
+          
+          {/* Desktop Layout - Two Column */}
+          <div className="hidden lg:block px-6 py-6">
+            <div className="grid grid-cols-3 gap-6">
+              
+              {/* Left Sidebar - Patient Info */}
+              <div className="col-span-1 space-y-4">
+                
+                {/* Patient Card */}
+                <Card className="p-6">
+                  {patientLoading ? (
+                    <div className="animate-pulse">
+                      <div className="w-20 h-20 rounded-full bg-gray-200 mx-auto mb-4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                    </div>
+                  ) : patient ? (
+                    <div className="text-center">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-4">
+                        <span className="text-white font-bold text-2xl">
+                          {patient.patient_name?.split(' ')[0]?.[0]}{patient.patient_name?.split(' ')[1]?.[0]}
+                        </span>
+                      </div>
+                      <h2 className="text-xl font-bold text-gray-800 mb-1">{patient.patient_name}</h2>
+                      <p className="text-sm text-gray-500 mb-4">ID: {patient.patient_id}</p>
+                      
+                      <div className="space-y-3 text-left border-t pt-4">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Phone:</span>
+                          <span className="font-semibold text-gray-800">{patient.mobile}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Age:</span>
+                          <span className="font-semibold text-gray-800">{patient.age || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Gender:</span>
+                          <span className="font-semibold text-gray-800">{patient.sex || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">DOB:</span>
+                          <span className="font-semibold text-gray-800">
+                            {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Patient not found</p>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Payment Summary Card */}
+                <Card className="p-6">
+                  <h3 className="text-sm font-bold text-gray-700 mb-4">Payment Summary</h3>
+                  {paymentSummaryLoading ? (
+                    <div className="space-y-3">
+                      <div className="h-16 bg-gray-100 rounded animate-pulse"></div>
+                      <div className="h-16 bg-gray-100 rounded animate-pulse"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-green-600">
+                          ₹{paymentSummary?.total_paid?.toLocaleString() || '0'}
+                        </div>
+                        <div className="text-xs text-green-700 mt-1">Total Paid</div>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                        <div className="text-2xl font-bold text-orange-600">
+                          ₹{paymentSummary?.total_pending?.toLocaleString() || '0'}
+                        </div>
+                        <div className="text-xs text-orange-700 mt-1">Pending</div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Quick Actions */}
+                <Card className="p-6">
+                  <h3 className="text-sm font-bold text-gray-700 mb-4">Quick Actions</h3>
+                  <div className="space-y-2">
+                    <Button 
+                      size="sm" 
+                      className="w-full justify-start"
+                      onClick={() => setShowUpload(true)}
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Upload Documents
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={handleNewAppointment}
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      New Appointment
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => navigate('/invoice')}
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Create Invoice
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Right Content - Medical Records & Payments */}
+              <div className="col-span-2 space-y-6">
+                
+                {/* Section Tabs */}
+                <div className="flex bg-white rounded-lg border border-gray-200">
+                  <button
+                    onClick={() => setCurrentSection('medical')}
+                    className={`flex-1 py-3 px-6 text-sm font-bold font-lato transition-colors ${
+                      currentSection === 'medical'
+                        ? 'bg-primary-600 text-white rounded-lg shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Medical History
+                  </button>
+                  <button
+                    onClick={() => setCurrentSection('payments')}
+                    className={`flex-1 py-3 px-6 text-sm font-bold font-lato transition-colors ${
+                      currentSection === 'payments'
+                        ? 'bg-primary-600 text-white rounded-lg shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Payment Details
+                  </button>
+                </div>
+
+                {/* Medical History Content */}
+                {currentSection === 'medical' && (
+                  <div className="space-y-6">
+                    
+                    {/* Uploaded Documents */}
+                    {isLoadingFiles ? (
+                      <Card className="p-6">
+                        <div className="animate-pulse space-y-4">
+                          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+                          <div className="grid grid-cols-3 gap-4">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="h-48 bg-gray-200 rounded"></div>
+                            ))}
+                          </div>
+                        </div>
+                      </Card>
+                    ) : patientFiles.length > 0 ? (
+                      <Card className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-bold text-gray-800">Uploaded Documents ({filteredFiles.length})</h3>
+                        </div>
+
+                        {/* Category Filter Pills */}
+                        {fileCategories.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-6">
+                            <button
+                              onClick={() => setSelectedFileCategory('all')}
+                              className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                                selectedFileCategory === 'all'
+                                  ? 'bg-primary-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              All ({patientFiles.length})
+                            </button>
+                            {fileCategories.map((category: string) => {
+                              const count = patientFiles.filter((f: any) => f.file_category === category).length;
+                              return (
+                                <button
+                                  key={category}
+                                  onClick={() => setSelectedFileCategory(category)}
+                                  className={`px-4 py-2 rounded-full text-xs font-semibold capitalize transition-colors ${
+                                    selectedFileCategory === category
+                                      ? 'bg-primary-600 text-white'
+                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {category} ({count})
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Desktop Grid */}
+                        {filteredFiles.length > 0 ? (
+                          <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                            {filteredFiles.map((file: any) => (
+                              <div key={file.file_id} className="group">
+                                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                                  {fileUploadService.isImageFile(file.file_name) ? (
+                                    <div 
+                                      className="relative w-full h-40 bg-gray-100 overflow-hidden cursor-pointer"
+                                      onClick={() => setFullscreenImage(`${API_BASE_URL}${file.file_url}`)}
+                                    >
+                                      <img
+                                        src={`${API_BASE_URL}${file.file_url}`}
+                                        alt={file.file_name}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                                        <svg className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                        </svg>
+                                      </div>
+                                      <div className="absolute top-2 right-2">
+                                        <span className="px-2 py-1 bg-black/60 text-white text-xs rounded-full capitalize">
+                                          {file.file_category || 'image'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="relative w-full h-40 bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center">
+                                      <div className="text-5xl mb-2">
+                                        {fileUploadService.getFileIcon(file.file_name)}
+                                      </div>
+                                      <span className="px-3 py-1 bg-white text-gray-700 text-xs rounded-full capitalize shadow-sm">
+                                        {file.file_category || 'document'}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="p-3">
+                                    <p className="text-sm font-semibold text-gray-900 truncate mb-1">
+                                      {file.file_name}
+                                    </p>
+                                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                                      <span>{fileUploadService.formatFileSize(file.file_size)}</span>
+                                      <span>{new Date(file.creation).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                      <a
+                                        href={`${API_BASE_URL}${file.file_url}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 flex items-center justify-center px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded hover:bg-primary-700 transition-colors"
+                                      >
+                                        View
+                                      </a>
+                                      <a
+                                        href={`${API_BASE_URL}${file.download_url}`}
+                                        download
+                                        className="flex items-center justify-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                      </a>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 bg-gray-50 rounded-lg">
+                            <p className="text-gray-500">No {selectedFileCategory === 'all' ? '' : selectedFileCategory} documents found</p>
+                          </div>
+                        )}
+                      </Card>
+                    ) : null}
+
+                    {/* Prescriptions */}
+                    <Card className="p-6">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">Prescriptions & Clinical Records</h3>
+                      
+                      {prescriptionsLoading ? (
+                        <div className="space-y-4">
+                          {[1, 2].map((i) => (
+                            <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">
+                              <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+                              <div className="space-y-2">
+                                <div className="h-3 bg-gray-200 rounded w-full"></div>
+                                <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : !prescriptions || prescriptions.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-50 rounded-lg">
+                          <p className="text-gray-500">No prescription records available</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {prescriptions?.map((prescription) => (
+                            <div key={prescription.record_id} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-bold text-gray-700">
+                                  {new Date(prescription.posting_date).toLocaleDateString()}
+                                </h4>
+                                <div className="flex items-center space-x-2">
+                                  <button 
+                                    onClick={() => toggleEdit(prescription.record_id)}
+                                    className="text-blue-500 hover:text-blue-700 p-1"
+                                    title="Edit prescription"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button 
+                                    onClick={() => togglePrescription(prescription.record_id)}
+                                    className="text-gray-400 transform transition-transform duration-200"
+                                  >
+                                    <svg 
+                                      className={`w-4 h-4 ${expandedPrescriptions.has(prescription.record_id) ? 'rotate-180' : ''}`}
+                                      fill="none" 
+                                      stroke="currentColor" 
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {expandedPrescriptions.has(prescription.record_id) && (
+                                <div className="space-y-4 pt-3 border-t">
+                                  {/* Keep existing prescription details */}
+                                  <div>
+                                    <h5 className="text-xs font-bold text-gray-700 mb-2">CLINICAL DETAILS</h5>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <span className="font-semibold text-gray-600">Chief Complaint:</span>
+                                        <p className="text-gray-900">{prescription.chief_complaint}</p>
+                                      </div>
+                                      <div>
+                                        <span className="font-semibold text-gray-600">Diagnosis:</span>
+                                        <p className="text-gray-900">{prescription.diagnosis}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+                  </div>
+                )}
+
+                {/* Payments Content */}
+                {currentSection === 'payments' && (
+                  <Card className="p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Payment History</h3>
+                    {invoicesLoading ? (
+                      <div className="space-y-4">
+                        {[1, 2].map((i) => (
+                          <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">
+                            <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+                            <div className="h-12 bg-gray-200 rounded"></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : !displayInvoices || displayInvoices.length === 0 ? (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <p className="text-gray-500">No payment history available</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {displayInvoices.map((invoice: any) => (
+                          <div key={invoice.invoice_id} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <h4 className="text-sm font-bold text-gray-700">{invoice.invoice_id}</h4>
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  invoice.status === 'Paid' 
+                                    ? 'bg-green-100 text-green-800'
+                                    : invoice.status === 'Partially Paid'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {invoice.status || (invoice.pending > 0 ? 'Unpaid' : 'Paid')}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="bg-gray-50 rounded p-2">
+                                <div className="text-sm font-bold text-gray-700">₹{(invoice.grand_total || invoice.amount || 0).toLocaleString()}</div>
+                                <div className="text-xs text-gray-500">Total</div>
+                              </div>
+                              <div className="bg-green-50 rounded p-2">
+                                <div className="text-sm font-bold text-green-600">₹{(invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
+                                <div className="text-xs text-gray-500">Paid</div>
+                              </div>
+                              <div className="bg-red-50 rounded p-2">
+                                <div className="text-sm font-bold text-red-600">₹{(invoice.pending || invoice.outstanding_amount || 0).toLocaleString()}</div>
+                                <div className="text-xs text-gray-500">Pending</div>
+                              </div>
+                            </div>
+                            {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
+                              <div className="flex space-x-2 mt-3">
+                                <Button
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => handleOpenPaymentModal(invoice)}
+                                >
+                                  Record Payment
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Layout - Original */}
+          <div className="lg:hidden px-4 space-y-6 py-4">
           {/* Patient Header */}
-          <div className="bg-gradient-to-r from-primary-500 to-green-400 rounded-xl p-4 text-white">
-            {patientLoading ? (
+          <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-4 text-white shadow-lg">{patientLoading ? (
               <div className="animate-pulse">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 rounded-full bg-white/20"></div>
@@ -577,18 +1016,18 @@ const PrescriptionPage: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Horizontal scrollable image gallery - Instagram Reel size */}
+                  {/* Mobile: Horizontal scrollable gallery */}
                   {filteredFiles.length > 0 ? (
                     <>
                       <div className="overflow-x-auto pb-2 -mx-6 px-6">
                         <div className="flex space-x-4" style={{ minWidth: 'min-content' }}>
                           {filteredFiles.map((file: any) => (
-                            <div key={file.file_id} className="flex-shrink-0 w-80">
+                            <div key={file.file_id} className="flex-shrink-0 w-64">
                               <Card className="hover:shadow-lg transition-shadow overflow-hidden">
-                                {/* Image preview - Instagram post size */}
+                                {/* Image preview */}
                                 {fileUploadService.isImageFile(file.file_name) ? (
                                   <div 
-                                    className="relative w-full h-96 bg-gray-100 overflow-hidden cursor-pointer group"
+                                    className="relative w-full h-64 bg-gray-100 overflow-hidden cursor-pointer group"
                                     onClick={() => setFullscreenImage(`${API_BASE_URL}${file.file_url}`)}
                                   >
                                     <img
@@ -618,8 +1057,8 @@ const PrescriptionPage: React.FC = () => {
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="relative w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center">
-                                    <div className="text-8xl mb-4">
+                                  <div className="relative w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center">
+                                    <div className="text-6xl mb-4">
                                       {fileUploadService.getFileIcon(file.file_name)}
                                     </div>
                                     <span className="px-4 py-2 bg-white text-gray-700 text-sm rounded-full font-semibold capitalize shadow-sm">
@@ -1397,6 +1836,8 @@ const PrescriptionPage: React.FC = () => {
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </MobileContainer>
+      </div>
+    </div>
   );
 };
 

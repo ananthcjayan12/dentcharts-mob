@@ -46,7 +46,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 max-w-sm w-full bg-white border-t border-gray-100 px-2 py-1 z-50 shadow-xl">
+    <div className="lg:hidden fixed bottom-0 left-1/2 transform -translate-x-1/2 max-w-sm w-full bg-white border-t border-gray-100 px-2 py-1 z-50 shadow-xl">
       <div className="flex justify-around items-center">
         {tabs.map((tab) => (
           <button

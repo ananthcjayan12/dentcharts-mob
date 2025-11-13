@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MobileContainer from '../components/layout/MobileContainer';
+import { Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
@@ -11,13 +12,20 @@ import { useCreateInvoice } from '../hooks/usePayments';
 import { PatientResponse, InvoiceItem as APIInvoiceItem } from '../api/types';
 import toast from 'react-hot-toast';
 
+// Local type for invoice items that allows empty strings for editing
+type LocalInvoiceItem = Omit<APIInvoiceItem, 'qty' | 'rate'> & {
+  id: string;
+  qty: number | '';
+  rate: number | '';
+};
+
 const InvoicePage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [selectedPatient, setSelectedPatient] = useState<PatientResponse | null>(null);
   const [showPatientList, setShowPatientList] = useState(false);
-  const [invoiceItems, setInvoiceItems] = useState<(APIInvoiceItem & { id: string })[]>([
-    { id: '1', item_code: '', description: '', qty: 1, rate: 0 }
+  const [invoiceItems, setInvoiceItems] = useState<LocalInvoiceItem[]>([
+    { id: '1', item_code: '', description: '', qty: '' as const, rate: '' as const }
   ]);
   const [invoiceData, setInvoiceData] = useState({
     invoiceNumber: `INV-${Date.now()}`,
@@ -25,6 +33,7 @@ const InvoicePage: React.FC = () => {
     dueDate: '',
     notes: ''
   });
+  const [applyGST, setApplyGST] = useState(false);
 
   // API hooks
   const { data: patients, isLoading: patientsLoading } = usePatients();
@@ -51,7 +60,7 @@ const InvoicePage: React.FC = () => {
   const addInvoiceItem = () => {
     setInvoiceItems(prev => [
       ...prev,
-      { id: Date.now().toString(), item_code: '', description: '', qty: 1, rate: 0 }
+      { id: Date.now().toString(), item_code: '', description: '', qty: '' as const, rate: '' as const }
     ]);
   };
 
@@ -61,18 +70,29 @@ const InvoicePage: React.FC = () => {
     }
   };
 
-  const updateInvoiceItem = (id: string, field: keyof (APIInvoiceItem & { id: string }), value: any) => {
-    setInvoiceItems(prev => prev.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+  const updateInvoiceItem = (id: string, field: keyof LocalInvoiceItem, value: any) => {
+    setInvoiceItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      if (field === 'qty' || field === 'rate') {
+        const input = String(value);
+        if (input === '') return { ...item, [field]: '' as const };
+        const num = field === 'qty' ? parseInt(input, 10) : parseFloat(input);
+        return { ...item, [field]: isNaN(num) ? ('' as const) : num };
+      }
+      return { ...item, [field]: value };
+    }));
   };
 
   const calculateSubtotal = () => {
-    return invoiceItems.reduce((sum, item) => sum + (item.qty * item.rate), 0);
+    return invoiceItems.reduce((sum, item) => {
+      const qty = typeof item.qty === 'number' ? item.qty : parseFloat(String(item.qty)) || 0;
+      const rate = typeof item.rate === 'number' ? item.rate : parseFloat(String(item.rate)) || 0;
+      return sum + qty * rate;
+    }, 0);
   };
 
   const calculateTax = () => {
-    return calculateSubtotal() * 0.18; // 18% GST
+    return applyGST ? calculateSubtotal() * 0.18 : 0;
   };
 
   const calculateTotal = () => {
@@ -85,7 +105,7 @@ const InvoicePage: React.FC = () => {
       return;
     }
 
-    if (invoiceItems.some(item => !item.item_code || !item.description || item.rate <= 0)) {
+    if (invoiceItems.some(item => !item.item_code || !item.description || Number(item.rate) <= 0)) {
       toast.error('Please fill in all required fields (Item Code, Description, and Rate)');
       return;
     }
@@ -97,7 +117,11 @@ const InvoicePage: React.FC = () => {
 
     const invoiceRequest = {
       patient_id: selectedPatient.name, // Use 'name' which is the actual patient ID
-      items: invoiceItems.map(({ id, ...item }) => item), // Remove local id field
+      items: invoiceItems.map(({ id, qty, rate, ...rest }) => ({
+        ...rest,
+        qty: Number(qty) || 0,
+        rate: Number(rate) || 0,
+      })), // Remove local id field and coerce numerics
       posting_date: invoiceData.date,
       due_date: invoiceData.dueDate,
       remarks: invoiceData.notes || undefined
@@ -105,30 +129,40 @@ const InvoicePage: React.FC = () => {
 
     createInvoice(invoiceRequest, {
       onSuccess: () => {
-        navigate('/home');
+        navigate(-1);
       }
     });
   };
 
   return (
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar for Desktop */}
+      <Sidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
     <MobileContainer>
       <div className="min-h-screen bg-gray-50 relative">
         <TopBar 
           title="New Invoice"
-          onBack={() => navigate('/home')}
+          onBack={() => navigate(-1)}
           showMenu
         />
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
-          <div className="px-6 space-y-6">
+        <div className="overflow-y-auto pb-20 lg:pb-4" style={{ height: 'calc(100vh - 60px)' }}>
+          
+          {/* Desktop Layout - Centered with max width */}
+          <div className="px-4 lg:px-6 py-4 lg:py-6">
+            <div className="max-w-4xl mx-auto space-y-6">
+          
           {/* Invoice Header */}
-          <Card>
-            <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
+          <Card className="p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
               Invoice Details
             </h3>
             
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
               <InputField
                 label="Invoice Number"
                 type="text"
@@ -145,7 +179,7 @@ const InvoicePage: React.FC = () => {
             </div>
 
             <InputField
-              label="Due Date"
+              label="Due Date *"
               type="date"
               value={invoiceData.dueDate}
               onChange={(e) => setInvoiceData(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -153,8 +187,8 @@ const InvoicePage: React.FC = () => {
           </Card>
 
           {/* Patient Selection */}
-          <Card>
-            <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
+          <Card className="p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
               Bill To
             </h3>
             
@@ -197,29 +231,35 @@ const InvoicePage: React.FC = () => {
           </Card>
 
           {/* Invoice Items */}
-          <Card>
+          <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-700 font-lato">
-                Items
+              <h3 className="text-lg font-bold text-gray-800">
+                Invoice Items
               </h3>
-              <Button size="sm" onClick={addInvoiceItem}>
-                Add Item
+              <Button
+                size="sm"
+                onClick={addInvoiceItem}
+                className="flex items-center space-x-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span>Add Item</span>
               </Button>
             </div>
 
             <div className="space-y-4">
               {invoiceItems.map((item, index) => (
-                <div key={item.id} className="p-3 border border-gray-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-bold text-gray-600 font-lato">
-                      Item {index + 1}
-                    </span>
+                <div key={item.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-start justify-between mb-3">
+                    <span className="text-sm font-bold text-gray-700">Item {index + 1}</span>
                     {invoiceItems.length > 1 && (
                       <button
                         onClick={() => removeInvoiceItem(item.id)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Remove item"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
@@ -227,45 +267,61 @@ const InvoicePage: React.FC = () => {
                   </div>
                   
                   <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Item Code"
-                      value={item.item_code}
-                      onChange={(e) => updateInvoiceItem(item.id, 'item_code', e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded text-sm"
-                    />
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="number"
-                        placeholder="Quantity"
-                        min="1"
-                        value={item.qty}
-                        onChange={(e) => updateInvoiceItem(item.id, 'qty', parseInt(e.target.value) || 1)}
-                        className="w-full p-2 border border-gray-300 rounded text-sm"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Rate"
-                        min="0"
-                        step="0.01"
-                        value={item.rate}
-                        onChange={(e) => updateInvoiceItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                        className="w-full p-2 border border-gray-300 rounded text-sm"
-                      />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Item Code *</label>
+                        <input
+                          type="text"
+                          placeholder="Enter item code"
+                          value={item.item_code}
+                          onChange={(e) => updateInvoiceItem(item.id, 'item_code', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Description *</label>
+                        <input
+                          type="text"
+                          placeholder="Enter description"
+                          value={item.description}
+                          onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
                     </div>
                     
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-gray-700">
-                        Total: ₹{(item.qty * item.rate).toFixed(2)}
-                      </span>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Quantity</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          value={item.qty === '' ? '' : item.qty}
+                          onChange={(e) => updateInvoiceItem(item.id, 'qty', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Rate (₹) *</label>
+                        <input
+                          type="number"
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
+                          value={item.rate === '' ? '' : item.rate}
+                          onChange={(e) => updateInvoiceItem(item.id, 'rate', e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <div className="w-full p-2 bg-primary-50 border border-primary-200 rounded text-right">
+                          <span className="text-xs text-gray-600 block">Amount</span>
+                          <span className="text-sm font-bold text-primary-600">
+                            ₹{(((typeof item.qty === 'number' ? item.qty : parseFloat(String(item.qty)) || 0) * (typeof item.rate === 'number' ? item.rate : parseFloat(String(item.rate)) || 0))).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -274,58 +330,78 @@ const InvoicePage: React.FC = () => {
           </Card>
 
           {/* Invoice Summary */}
-          <Card>
-            <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
+          <Card className="p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
               Summary
             </h3>
             
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 font-montserrat">Subtotal:</span>
-                <span className="font-bold">₹{calculateSubtotal().toFixed(2)}</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="gst-toggle"
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500" 
+                    checked={applyGST} 
+                    onChange={(e) => setApplyGST(e.target.checked)} 
+                  />
+                  <label htmlFor="gst-toggle" className="text-sm font-semibold text-gray-700 cursor-pointer">
+                    Apply GST (18%)
+                  </label>
+                </div>
+                <span className="text-xs text-gray-500">Optional</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 font-montserrat">Tax (18% GST):</span>
-                <span className="font-bold">₹{calculateTax().toFixed(2)}</span>
-              </div>
-              <hr className="my-2" />
-              <div className="flex justify-between text-base">
-                <span className="font-bold text-gray-800 font-lato">Total:</span>
-                <span className="font-bold text-primary-600 text-lg">₹{calculateTotal().toFixed(2)}</span>
+              
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-semibold">₹{calculateSubtotal().toFixed(2)}</span>
+                </div>
+                {applyGST && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">GST (18%):</span>
+                    <span className="font-semibold text-green-600">₹{calculateTax().toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="border-t pt-2 flex justify-between">
+                  <span className="font-bold text-gray-800">Total Amount:</span>
+                  <span className="font-bold text-primary-600 text-xl">₹{(calculateSubtotal() + calculateTax()).toFixed(2)}</span>
+                </div>
               </div>
             </div>
 
-            <div className="mt-4">
-              <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
+            <div className="mt-6">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Notes (Optional)
               </label>
               <textarea
                 value={invoiceData.notes}
                 onChange={(e) => setInvoiceData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Additional notes or payment terms..."
-                className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
+                placeholder="Additional notes, payment terms, or special instructions..."
+                className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 rows={3}
               />
             </div>
 
-            <div className="flex space-x-4 mt-6">
+            <div className="grid grid-cols-2 gap-4 mt-6">
               <Button
                 variant="outline"
-                onClick={() => navigate('/home')}
-                className="flex-1"
+                onClick={() => navigate(-1)}
+                className="w-full"
                 disabled={isCreating}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmit}
-                className="flex-1"
+                className="w-full"
                 disabled={isCreating}
               >
                 {isCreating ? 'Creating...' : 'Create Invoice'}
               </Button>
             </div>
           </Card>
+            </div>
           </div>
         </div>
 
@@ -399,6 +475,8 @@ const InvoicePage: React.FC = () => {
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </MobileContainer>
+      </div>
+    </div>
   );
 };
 

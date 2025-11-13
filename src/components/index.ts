@@ -18,6 +18,7 @@ export { Avatar } from './common/Avatar';
 export { Divider } from './common/Divider';
 export { default as TopBar } from './common/TopBar';
 export { default as BottomNav } from './common/BottomNav';
+export { default as Sidebar } from './common/Sidebar';
 
 // Layout
 export { default as Layout } from './layout/Layout';

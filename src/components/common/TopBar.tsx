@@ -17,7 +17,7 @@ const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const baseClasses = "flex items-center justify-between p-4 h-14 relative z-10";
   const variantClasses = variant === 'gradient' 
-    ? "bg-gradient-to-r from-primary-500 to-green-400 text-white" 
+    ? "bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md" 
     : "bg-white text-black border-b border-gray-100";
 
   return (

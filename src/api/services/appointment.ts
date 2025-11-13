@@ -178,20 +178,27 @@ export class AppointmentService {
    */
   async getUpcomingAppointments(days: number = 7): Promise<AppointmentResponse[]> {
     const today = new Date();
-    const futureDate = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1); // Start from tomorrow
+    const futureDate = new Date(today);
     futureDate.setDate(today.getDate() + days);
 
     try {
       const response = await this.getAppointments(
         { limit_page_length: 100 },
         {
-          date_from: today.toISOString().split('T')[0],
+          date_from: tomorrow.toISOString().split('T')[0],
           date_to: futureDate.toISOString().split('T')[0],
-          status: 'Scheduled',
         }
       );
 
-      return response.data || [];
+      // Filter out cancelled/completed appointments on the client side
+      const filteredData = (response.data || []).filter(
+        apt => apt.status !== 'Cancelled' && apt.status !== 'Completed'
+      );
+
+      return filteredData;
     } catch (error) {
       console.error('Get upcoming appointments error:', error);
       throw error;

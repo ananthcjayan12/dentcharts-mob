@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MobileContainer from '../components/layout/MobileContainer';
+import { Container, Grid, Stack, Flex, Card, Button, InputField, Typography, Badge, Avatar, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
-import Card from '../components/common/Card';
-import Button from '../components/common/Button';
-import InputField from '../components/common/InputField';
 import { usePatientsWithSearch, usePatientStats } from '../hooks/usePatients';
 import { Patient } from '../types';
 
@@ -57,8 +54,12 @@ const PatientsPage: React.FC = () => {
   };
 
   return (
-    <MobileContainer>
-      <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar for Desktop */}
+      <Sidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
         <TopBar 
           title="Patients"
           onBack={() => navigate('/home')}
@@ -66,24 +67,30 @@ const PatientsPage: React.FC = () => {
         />
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
-          <div className="px-6 space-y-6">
+        <div className="overflow-y-auto pb-20 lg:pb-4 flex-1" style={{ height: 'calc(100vh - 60px)' }}>
+        <Container size="xl">
+          <Stack spacing={6} className="py-4 sm:py-6">
           {/* Search and Filter */}
-          <Card>
-            <div className="space-y-4">
+          <Card padding="md">
+            <Stack spacing={4}>
               <InputField
                 label="Search Patients"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, ID, or phone..."
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                }
               />
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
+              <Stack spacing={2}>
+                <Typography variant="body2" weight="semibold" className="text-gray-700 text-xs sm:text-sm">
                   Filter by Gender
-                </label>
-                <div className="flex space-x-2">
+                </Typography>
+                <Flex gap={2}>
                   <Button
                     variant={selectedFilter === 'all' ? 'primary' : 'outline'}
                     size="sm"
@@ -108,152 +115,158 @@ const PatientsPage: React.FC = () => {
                   >
                     Female
                   </Button>
-                </div>
-              </div>
-            </div>
+                </Flex>
+              </Stack>
+            </Stack>
           </Card>
 
           {/* Patient List */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-gray-700 font-lato">
+          <Stack spacing={3}>
+            <Flex align="center" justify="between">
+              <Typography variant="h6" className="text-gray-700 text-sm sm:text-base font-bold">
                 Patients ({filteredPatients.length})
-              </h3>
+              </Typography>
               <Button
                 size="sm"
                 onClick={() => navigate('/patients/new')}
               >
                 Add Patient
               </Button>
-            </div>
+            </Flex>
 
             {isLoading ? (
               // Loading skeleton
-              <div className="space-y-3">
+              <Stack spacing={3}>
                 {Array.from({ length: 5 }).map((_, index) => (
-                  <Card key={index}>
-                    <div className="flex items-center space-x-4">
+                  <Card key={index} padding="md" hoverable>
+                    <Flex align="center" gap={4}>
                       <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse"></div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
-                        <div className="h-3 bg-gray-200 rounded animate-pulse mb-1 w-48"></div>
+                      <Stack spacing={1} className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                        <div className="h-3 bg-gray-200 rounded animate-pulse w-48"></div>
                         <div className="h-3 bg-gray-200 rounded animate-pulse w-24"></div>
-                      </div>
+                      </Stack>
                       <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
+                    </Flex>
                   </Card>
                 ))}
-              </div>
+              </Stack>
             ) : filteredPatients.length > 0 ? (
-              <div className="space-y-3">
+              <Stack spacing={2}>
                 {filteredPatients.map((patient) => (
                   <Card 
                     key={patient.name}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    padding="md"
+                    hoverable
+                    className="cursor-pointer bg-white border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all"
                     onClick={() => handlePatientClick(patient.name)}
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                        <span className="text-white font-bold">
-                          {(patient.patient_name || patient.patient_id || patient.name)
-                            ? (patient.patient_name || patient.patient_id || patient.name).split(' ').map((n: string) => n[0]).join('')
-                            : '??'}
-                        </span>
-                      </div>
+                    <Flex align="center" gap={4}>
+                      <Avatar 
+                        size="lg" 
+                        name={patient.patient_name || patient.patient_id || patient.name || 'Unknown'}
+                        className="bg-gradient-to-br from-primary-500 to-primary-600 text-white flex-shrink-0"
+                      />
                       
-                      <div className="flex-1">
-                        <h4 className="text-sm font-bold text-gray-800 font-lato">
+                      <Stack spacing={1} className="flex-1 min-w-0">
+                        <Typography variant="body1" weight="semibold" className="text-gray-900 text-sm">
                           {patient.patient_name || patient.patient_id || patient.name || 'Unknown Patient'}
-                        </h4>
-                        <p className="text-xs text-gray-600 font-montserrat mt-1">
-                          ID: {patient.name} • Age: {patient.age || 'N/A'} • {patient.sex || 'N/A'}
-                        </p>
-                        <p className="text-xs text-gray-500 font-montserrat">
-                          {patient.mobile || 'No phone'}
-                        </p>
-                      </div>
+                        </Typography>
+                        <Typography variant="caption" className="text-gray-600 text-xs">
+                          {patient.mobile || 'No phone'} • {patient.email || 'No email'}
+                        </Typography>
+                        <Flex align="center" gap={2} className="flex-wrap">
+                          <Badge variant="gray" size="sm" className="text-xs">
+                            ID: {patient.name}
+                          </Badge>
+                          {patient.age && (
+                            <Badge variant="gray" size="sm" className="text-xs">
+                              Age: {patient.age}
+                            </Badge>
+                          )}
+                          {patient.sex && (
+                            <Badge variant={patient.sex === 'Male' ? 'primary' : 'success'} size="sm" className="text-xs">
+                              {patient.sex}
+                            </Badge>
+                          )}
+                        </Flex>
+                      </Stack>
                       
-                      <div className="text-right">
-                        <div className="flex flex-col space-y-1">
-                          {patient.email && (
-                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                              Email
-                            </span>
-                          )}
-                          {patient.occupation && (
-                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                              {patient.occupation}
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
-                    </div>
+                    </Flex>
                   </Card>
                 ))}
-              </div>
+              </Stack>
             ) : (
-              <Card>
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <Card padding="lg">
+                <Stack spacing={3} align="center" className="text-center py-4 sm:py-8">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                   </div>
-                  <p className="text-gray-500 font-montserrat text-sm">
+                  <Typography variant="body2" className="text-gray-500 text-xs sm:text-sm">
                     No patients found matching your search
-                  </p>
-                </div>
+                  </Typography>
+                </Stack>
               </Card>
             )}
-          </div>
+          </Stack>
 
           {/* Statistics */}
-          <Card>
-            <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
-              Patient Statistics
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600 font-lato">
-                  {isLoading ? '...' : (patientStats?.totalPatients || 0)}
-                </p>
-                <p className="text-xs text-gray-600 font-montserrat">
-                  Total Patients
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600 font-lato">
-                  {isLoading ? '...' : filteredPatients.filter(p => p.sex === 'Male').length}
-                </p>
-                <p className="text-xs text-gray-600 font-montserrat">
-                  Male
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-red-600 font-lato">
-                  {isLoading ? '...' : filteredPatients.filter(p => p.sex === 'Female').length}
-                </p>
-                <p className="text-xs text-gray-600 font-montserrat">
-                  Female
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-orange-600 font-lato">
-                  {isLoading ? '...' : filteredPatients.length}
-                </p>
-                <p className="text-xs text-gray-600 font-montserrat">
-                  Filtered Results
-                </p>
-              </div>
-            </div>
+          <Card padding="md">
+            <Stack spacing={4}>
+              <Typography variant="h6" className="text-gray-700 text-sm sm:text-base font-bold">
+                Patient Statistics
+              </Typography>
+              <Grid cols={{ xs: 2, sm: 2, md: 4 }} gap={4}>
+                <Stack spacing={1} align="center" className="text-center">
+                  <Typography variant="h3" className="text-primary-600 text-xl sm:text-2xl font-bold">
+                    {isLoading ? '...' : (patientStats?.totalPatients || 0)}
+                  </Typography>
+                  <Typography variant="caption" className="text-gray-600 text-xs">
+                    Total Patients
+                  </Typography>
+                </Stack>
+                <Stack spacing={1} align="center" className="text-center">
+                  <Typography variant="h3" className="text-success-600 text-xl sm:text-2xl font-bold">
+                    {isLoading ? '...' : filteredPatients.filter(p => p.sex === 'Male').length}
+                  </Typography>
+                  <Typography variant="caption" className="text-gray-600 text-xs">
+                    Male
+                  </Typography>
+                </Stack>
+                <Stack spacing={1} align="center" className="text-center">
+                  <Typography variant="h3" className="text-danger-600 text-xl sm:text-2xl font-bold">
+                    {isLoading ? '...' : filteredPatients.filter(p => p.sex === 'Female').length}
+                  </Typography>
+                  <Typography variant="caption" className="text-gray-600 text-xs">
+                    Female
+                  </Typography>
+                </Stack>
+                <Stack spacing={1} align="center" className="text-center">
+                  <Typography variant="h3" className="text-warning-600 text-xl sm:text-2xl font-bold">
+                    {isLoading ? '...' : filteredPatients.length}
+                  </Typography>
+                  <Typography variant="caption" className="text-gray-600 text-xs">
+                    Filtered Results
+                  </Typography>
+                </Stack>
+              </Grid>
+            </Stack>
           </Card>
-          </div>
+        </Stack>
+      </Container>
         </div>
 
         {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
-    </MobileContainer>
+    </div>
   );
 };
 
