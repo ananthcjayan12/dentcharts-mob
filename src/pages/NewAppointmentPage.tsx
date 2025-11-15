@@ -93,7 +93,7 @@ const NewAppointmentPage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-primary-50">
         <TopBar 
           title="New Appointment"
           onBack={() => navigate('/appointments')}

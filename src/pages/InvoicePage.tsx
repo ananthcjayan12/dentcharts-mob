@@ -135,14 +135,14 @@ const InvoicePage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-primary-50">
       {/* Sidebar for Desktop */}
       <Sidebar />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-    <MobileContainer>
-      <div className="min-h-screen bg-gray-50 relative">
+        <MobileContainer>
+      <div className="min-h-screen bg-primary-50 relative">
         <TopBar 
           title="New Invoice"
           onBack={() => navigate(-1)}

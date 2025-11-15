@@ -6,18 +6,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Primary colors from design system
+        // Primary colors from design system - Light & Soothing
         primary: {
-          50: '#EFF6FF',
-          100: '#DBEAFE',
-          200: '#BFDBFE',
-          300: '#93C5FD',
-          400: '#60A5FA',
-          500: '#3B82F6', // Main primary
-          600: '#2563EB',
-          700: '#1D4ED8',
-          800: '#1E40AF',
-          900: '#1E3A8A',
+          50: '#F7F9FC',   // Very light blue background
+          100: '#EDF2F9',  // Light background
+          200: '#E1E8F0',  // Subtle borders
+          300: '#C7D7E8',  // Soft accents
+          400: '#A3BFD9',  // Muted blue
+          500: '#63afdaff',  // Main primary - soft blue
+          600: '#6391BA',  // Hover state
+          700: '#507BA3',  // Active state
+          800: '#3D5E7D',  // Deep accent
+          900: '#2D4558',  // Darkest
         },
         // Success colors
         success: {

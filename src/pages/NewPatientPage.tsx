@@ -18,6 +18,7 @@ const NewPatientPage: React.FC = () => {
     last_name: '',
     sex: 'Male' as 'Male' | 'Female' | 'Other',
     dob: '',
+    age: '',
     mobile: '',
     email: '',
     address: '',
@@ -28,7 +29,8 @@ const NewPatientPage: React.FC = () => {
     cardiacHistory: false,
     allergies: false,
     familyHeartDisease: false,
-    covidVaccinated: false
+    covidVaccinated: false,
+    otherMedicalHistory: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -80,10 +82,6 @@ const NewPatientPage: React.FC = () => {
       newErrors.last_name = 'Last name is required';
     }
 
-    if (!formData.dob) {
-      newErrors.dob = 'Date of birth is required';
-    }
-
     if (!formData.mobile.trim()) {
       newErrors.mobile = 'Mobile number is required';
     } else if (!/^\+?[\d\s-()]{10,}$/.test(formData.mobile)) {
@@ -114,9 +112,19 @@ const NewPatientPage: React.FC = () => {
       sex: formData.sex,
       mobile: formData.mobile.trim(),
       email: formData.email.trim() || undefined,
-      dob: formData.dob,
+      dob: formData.dob || undefined,
+      age: formData.age ? parseInt(formData.age) : undefined,
       address: formData.address.trim() || undefined,
       occupation: formData.occupation.trim() || undefined,
+      medical_history: JSON.stringify({
+        diabetic: formData.diabetic,
+        blood_pressure: formData.bloodPressure,
+        cardiac_history: formData.cardiacHistory,
+        allergies: formData.allergies,
+        family_heart_disease: formData.familyHeartDisease,
+        covid_vaccinated: formData.covidVaccinated,
+        other: formData.otherMedicalHistory.trim() || null
+      })
     };
 
     createPatient(patientData, {
@@ -133,7 +141,7 @@ const NewPatientPage: React.FC = () => {
 
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gray-50 relative">
+      <div className="min-h-screen bg-primary-50 relative">
         <TopBar 
           title="Add New Patient"
           onBack={() => navigate('/patients')}
@@ -174,14 +182,23 @@ const NewPatientPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <InputField
-                  label="Date of Birth *"
+                  label="Date of Birth"
                   type="date"
                   value={formData.dob}
                   onChange={(e) => handleInputChange('dob', e.target.value)}
                   error={errors.dob}
-                  required
                 />
 
+                <InputField
+                  label="Age"
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => handleInputChange('age', e.target.value)}
+                  placeholder="Enter age"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
                     Sex *
@@ -196,17 +213,17 @@ const NewPatientPage: React.FC = () => {
                     <option value="Other">Other</option>
                   </select>
                 </div>
-              </div>
 
-              <InputField
-                label="Mobile Number *"
-                type="tel"
-                value={formData.mobile}
-                onChange={(e) => handleInputChange('mobile', e.target.value)}
-                placeholder="+91XXXXXXXXXX"
-                error={errors.mobile}
-                required
-              />
+                <InputField
+                  label="Mobile Number *"
+                  type="tel"
+                  value={formData.mobile}
+                  onChange={(e) => handleInputChange('mobile', e.target.value)}
+                  placeholder="+91XXXXXXXXXX"
+                  error={errors.mobile}
+                  required
+                />
+              </div>
 
               <InputField
                 label="Email Address"
@@ -346,6 +363,19 @@ const NewPatientPage: React.FC = () => {
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
+                  Other Medical History
+                </label>
+                <textarea
+                  value={formData.otherMedicalHistory}
+                  onChange={(e) => handleInputChange('otherMedicalHistory', e.target.value)}
+                  placeholder="Any other medical conditions or notes..."
+                  className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
+                  rows={3}
+                />
               </div>
             </div>
           </Card>

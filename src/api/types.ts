@@ -63,9 +63,11 @@ export interface CreatePatientRequest {
   sex: 'Male' | 'Female' | 'Other';
   mobile: string;
   email?: string;
-  dob: string;
+  dob?: string;
+  age?: number;
   address?: string;
   occupation?: string;
+  medical_history?: string; // JSON string containing medical history data
 }
 
 export interface PatientResponse {
