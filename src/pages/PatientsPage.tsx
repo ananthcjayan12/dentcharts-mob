@@ -4,6 +4,7 @@ import { Container, Grid, Stack, Flex, Card, Button, InputField, Typography, Bad
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import { usePatientsWithSearch, usePatientStats } from '../hooks/usePatients';
+import { useProfile } from '../hooks/useAuth';
 import { Patient } from '../types';
 
 const PatientsPage: React.FC = () => {
@@ -11,6 +12,7 @@ const PatientsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'male' | 'female'>('all');
+  const { data: profile } = useProfile();
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -59,7 +61,7 @@ const PatientsPage: React.FC = () => {
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col lg:pl-20">
         <TopBar 
           title="Patients"
           onBack={() => navigate('/home')}
@@ -277,7 +279,7 @@ const PatientsPage: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <Typography variant="body2" className="text-gray-600 text-sm">
-                              Dr Harish
+                              {profile?.practitioner_name || profile?.name || 'N/A'}
                             </Typography>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">

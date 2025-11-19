@@ -10,6 +10,8 @@ const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('appointments');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -51,13 +53,21 @@ const AppointmentsPage: React.FC = () => {
 
   const todaysAppointments = selectedDateAppointments || [];
 
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAppointments = todaysAppointments.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(todaysAppointments.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-primary-50 to-white">
       {/* Sidebar for Desktop */}
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col lg:pl-20">
         <TopBar 
           title="Appointments"
           onBack={() => navigate('/home')}
@@ -173,7 +183,7 @@ const AppointmentsPage: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
-                            {todaysAppointments.map((appointment, index) => (
+                            {currentAppointments.map((appointment, index) => (
                               <tr 
                                 key={appointment.appointment_id}
                                 className="hover:bg-primary-50 cursor-pointer transition-colors"

@@ -140,7 +140,7 @@ const InvoicePage: React.FC = () => {
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col lg:pl-20">
         <MobileContainer>
       <div className="min-h-screen bg-primary-50 relative">
         <TopBar 

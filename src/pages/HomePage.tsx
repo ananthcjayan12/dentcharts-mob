@@ -92,7 +92,7 @@ const HomePage: React.FC = () => {
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col relative">
+      <div className="flex-1 flex flex-col relative lg:pl-20">
         <TopBar 
           title="DentCare Dashboard"
           variant="gradient"

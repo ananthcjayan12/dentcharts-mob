@@ -28,6 +28,9 @@ const NewPatientPage: React.FC = () => {
     otherMedicalHistory: ''
   });
 
+  const [selectedAppointmentDate, setSelectedAppointmentDate] = useState('');
+  const [addToQueue, setAddToQueue] = useState(false);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   // API mutation hook
@@ -124,7 +127,18 @@ const NewPatientPage: React.FC = () => {
     createPatient(patientData, {
       onSuccess: (response) => {
         toast.success(`Patient "${formData.first_name} ${formData.last_name}" created successfully!`);
-        navigate('/patients');
+        
+        // If date is selected or add to queue is checked, navigate to appointments
+        if (selectedAppointmentDate || addToQueue) {
+          const patientId = response.patient_id;
+          if (addToQueue) {
+            navigate(`/appointments/new?patientId=${patientId}&date=${new Date().toISOString().split('T')[0]}`);
+          } else if (selectedAppointmentDate) {
+            navigate(`/appointments/new?patientId=${patientId}&date=${selectedAppointmentDate}`);
+          }
+        } else {
+          navigate('/patients');
+        }
       },
       onError: (error) => {
         console.error('Error creating patient:', error);
@@ -404,24 +418,37 @@ const NewPatientPage: React.FC = () => {
 
             {/* Date Selection Buttons */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button 
-                type="button"
-                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Select Date
-              </button>
+              <div className="flex-1">
+                <input
+                  type="date"
+                  value={selectedAppointmentDate}
+                  onChange={(e) => {
+                    setSelectedAppointmentDate(e.target.value);
+                    setAddToQueue(false);
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Select appointment date"
+                />
+              </div>
 
               <button 
                 type="button"
-                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 transition-colors"
+                onClick={() => {
+                  setAddToQueue(!addToQueue);
+                  if (!addToQueue) {
+                    setSelectedAppointmentDate('');
+                  }
+                }}
+                className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-md text-sm transition-colors ${
+                  addToQueue
+                    ? 'bg-primary-600 text-white border-primary-600'
+                    : 'border-gray-300 hover:bg-gray-50'
+                }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Add to Todays Queue
+                {addToQueue ? 'Added to Queue' : 'Add to Todays Queue'}
               </button>
             </div>
           </div>
