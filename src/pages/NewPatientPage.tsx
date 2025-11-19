@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MobileContainer from '../components/layout/MobileContainer';
-import TopBar from '../components/common/TopBar';
-import BottomNav from '../components/common/BottomNav';
-import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
 import { useCreatePatient } from '../hooks/usePatients';
@@ -12,7 +8,6 @@ import toast from 'react-hot-toast';
 
 const NewPatientPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -39,7 +34,6 @@ const NewPatientPage: React.FC = () => {
   const { mutate: createPatient, isPending: isCreating } = useCreatePatient();
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
-    setActiveTab(tab);
     switch (tab) {
       case 'appointments':
         navigate('/appointments');
@@ -140,271 +134,319 @@ const NewPatientPage: React.FC = () => {
   };
 
   return (
-    <MobileContainer>
-      <div className="min-h-screen bg-primary-50 relative">
-        <TopBar 
-          title="Add New Patient"
-          onBack={() => navigate('/patients')}
-          showMenu
-        />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 font-lato">
+            New Patient Registration
+          </h2>
+          <button
+            onClick={() => navigate('/patients')}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-        {/* Scrollable Content */}
-        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
-          <div className="px-6 space-y-6">
-          {/* Basic Information */}
-          <Card>
-            <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
-              Basic Information
-            </h3>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <InputField
-                  label="First Name *"
-                  type="text"
-                  value={formData.first_name}
-                  onChange={(e) => handleInputChange('first_name', e.target.value)}
-                  placeholder="Enter first name"
-                  error={errors.first_name}
-                  required
-                />
-
-                <InputField
-                  label="Last Name *"
-                  type="text"
-                  value={formData.last_name}
-                  onChange={(e) => handleInputChange('last_name', e.target.value)}
-                  placeholder="Enter last name"
-                  error={errors.last_name}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <InputField
-                  label="Date of Birth"
-                  type="date"
-                  value={formData.dob}
-                  onChange={(e) => handleInputChange('dob', e.target.value)}
-                  error={errors.dob}
-                />
-
-                <InputField
-                  label="Age"
-                  type="number"
-                  value={formData.age}
-                  onChange={(e) => handleInputChange('age', e.target.value)}
-                  placeholder="Enter age"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                    Sex *
-                  </label>
-                  <select
-                    value={formData.sex}
-                    onChange={(e) => handleInputChange('sex', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <InputField
-                  label="Mobile Number *"
-                  type="tel"
-                  value={formData.mobile}
-                  onChange={(e) => handleInputChange('mobile', e.target.value)}
-                  placeholder="+91XXXXXXXXXX"
-                  error={errors.mobile}
-                  required
-                />
-              </div>
-
-              <InputField
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="patient@example.com"
-                error={errors.email}
-              />
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                  Address *
-                </label>
-                <textarea
-                  value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="Enter complete address"
-                  className={`w-full p-3 border rounded-lg font-montserrat text-sm ${
-                    errors.address ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  rows={3}
-                  required
-                />
-                {errors.address && (
-                  <p className="text-red-500 text-xs mt-1 font-montserrat">
-                    {errors.address}
-                  </p>
-                )}
-              </div>
-
-              <InputField
-                label="Occupation"
-                type="text"
-                value={formData.occupation}
-                onChange={(e) => handleInputChange('occupation', e.target.value)}
-                placeholder="Patient's occupation"
-              />
-            </div>
-          </Card>
-
-          {/* Medical History */}
-          <Card>
-            <h3 className="text-sm font-bold text-gray-700 font-lato mb-4">
-              Medical History
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                  Blood Pressure
-                </label>
-                <select
-                  value={formData.bloodPressure}
-                  onChange={(e) => handleInputChange('bloodPressure', e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
-                >
-                  <option value="Normal">Normal</option>
-                  <option value="High">High</option>
-                  <option value="Low">Low</option>
-                  <option value="Moderate High">Moderate High</option>
-                </select>
-              </div>
-
+        {/* Modal Body - Scrollable */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          <div className="space-y-5">
+            {/* Basic Information Section */}
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-sm font-bold text-gray-700 mb-3">Basic Information</h3>
+              
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700 font-lato">
-                    Diabetic
-                  </label>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                {/* Row 1: First Name and Last Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">First Name *</label>
                     <input
-                      type="checkbox"
-                      checked={formData.diabetic}
-                      onChange={(e) => handleInputChange('diabetic', e.target.checked)}
-                      className="sr-only peer"
+                      type="text"
+                      value={formData.first_name}
+                      onChange={(e) => handleInputChange('first_name', e.target.value)}
+                      placeholder="Enter first name"
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${
+                        errors.first_name ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+                    {errors.first_name && (
+                      <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Last Name *</label>
+                    <input
+                      type="text"
+                      value={formData.last_name}
+                      onChange={(e) => handleInputChange('last_name', e.target.value)}
+                      placeholder="Enter last name"
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${
+                        errors.last_name ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.last_name && (
+                      <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700 font-lato">
-                    Cardiac History
-                  </label>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                {/* Row 2: Gender and Age */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Gender *</label>
+                    <select
+                      value={formData.sex}
+                      onChange={(e) => handleInputChange('sex', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Age</label>
                     <input
-                      type="checkbox"
-                      checked={formData.cardiacHistory}
-                      onChange={(e) => handleInputChange('cardiacHistory', e.target.checked)}
-                      className="sr-only peer"
+                      type="number"
+                      value={formData.age}
+                      onChange={(e) => handleInputChange('age', e.target.value)}
+                      placeholder="Age"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={formData.dob}
+                      onChange={(e) => handleInputChange('dob', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700 font-lato">
-                    Known Allergies
-                  </label>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                {/* Row 3: Mobile and Email */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Mobile Number *</label>
                     <input
-                      type="checkbox"
-                      checked={formData.allergies}
-                      onChange={(e) => handleInputChange('allergies', e.target.checked)}
-                      className="sr-only peer"
+                      type="tel"
+                      value={formData.mobile}
+                      onChange={(e) => handleInputChange('mobile', e.target.value)}
+                      placeholder="+91XXXXXXXXXX"
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${
+                        errors.mobile ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+                    {errors.mobile && (
+                      <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder="patient@example.com"
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${
+                        errors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors.email && (
+                      <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700 font-lato">
-                    Family Heart Disease
-                  </label>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.familyHeartDisease}
-                      onChange={(e) => handleInputChange('familyHeartDisease', e.target.checked)}
-                      className="sr-only peer"
+                {/* Row 4: Address and Occupation */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Address *</label>
+                    <textarea
+                      value={formData.address}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      placeholder="Enter complete address"
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${
+                        errors.address ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      rows={2}
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
+                    {errors.address && (
+                      <p className="text-red-500 text-xs mt-1">{errors.address}</p>
+                    )}
+                  </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700 font-lato">
-                    COVID-19 Vaccinated
-                  </label>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Occupation</label>
                     <input
-                      type="checkbox"
-                      checked={formData.covidVaccinated}
-                      onChange={(e) => handleInputChange('covidVaccinated', e.target.checked)}
-                      className="sr-only peer"
+                      type="text"
+                      value={formData.occupation}
+                      onChange={(e) => handleInputChange('occupation', e.target.value)}
+                      placeholder="Patient's occupation"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+                  </div>
                 </div>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                  Other Medical History
-                </label>
-                <textarea
-                  value={formData.otherMedicalHistory}
-                  onChange={(e) => handleInputChange('otherMedicalHistory', e.target.value)}
-                  placeholder="Any other medical conditions or notes..."
-                  className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
-                  rows={3}
-                />
               </div>
             </div>
-          </Card>
 
-          {/* Action Buttons */}
-          <div className="flex space-x-4 pb-6">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/patients')}
-              className="flex-1"
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              className="flex-1"
-              disabled={isCreating}
-            >
-              {isCreating ? 'Creating...' : 'Add Patient'}
-            </Button>
-          </div>
+            {/* Medical History Section */}
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-sm font-bold text-gray-700 mb-3">Medical History</h3>
+              
+              <div className="space-y-3">
+                {/* Blood Pressure */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Blood Pressure</label>
+                    <select
+                      value={formData.bloodPressure}
+                      onChange={(e) => handleInputChange('bloodPressure', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      <option value="Normal">Normal</option>
+                      <option value="High">High</option>
+                      <option value="Low">Low</option>
+                      <option value="Moderate High">Moderate High</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Medical Conditions Toggles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Diabetic</label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.diabetic}
+                        onChange={(e) => handleInputChange('diabetic', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Cardiac History</label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.cardiacHistory}
+                        onChange={(e) => handleInputChange('cardiacHistory', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Known Allergies</label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.allergies}
+                        onChange={(e) => handleInputChange('allergies', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Family Heart Disease</label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.familyHeartDisease}
+                        onChange={(e) => handleInputChange('familyHeartDisease', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded col-span-1 sm:col-span-2">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">COVID-19 Vaccinated</label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.covidVaccinated}
+                        onChange={(e) => handleInputChange('covidVaccinated', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Other Medical History */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Other Medical History / Chief Complaint</label>
+                  <textarea
+                    value={formData.otherMedicalHistory}
+                    onChange={(e) => handleInputChange('otherMedicalHistory', e.target.value)}
+                    placeholder="Any other medical conditions or chief complaint..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Date Selection Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button 
+                type="button"
+                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Select Date
+              </button>
+
+              <button 
+                type="button"
+                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add to Todays Queue
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Fixed Bottom Navigation */}
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+        {/* Modal Footer */}
+        <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-gray-50">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/patients')}
+            disabled={isCreating}
+            className="px-4 sm:px-6 text-sm"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isCreating}
+            className="px-4 sm:px-6 bg-primary-600 hover:bg-primary-700 text-sm"
+          >
+            {isCreating ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
       </div>
-    </MobileContainer>
+    </div>
   );
 };
 
