@@ -36,8 +36,23 @@
   
   /* Mobile optimizations */
   input, textarea, select, button {
-    font-size: 16px; /* Prevents zoom on iOS */
+    font-size: 16px !important; /* Prevents zoom on iOS */
     font-family: inherit;
+  }
+  
+  /* Ensure all form inputs have minimum 16px font size */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="password"],
+  input[type="date"],
+  input[type="time"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    -webkit-text-size-adjust: 100%;
   }
   
   /* Custom scrollbar for webkit browsers */

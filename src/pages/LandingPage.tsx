@@ -57,13 +57,13 @@ const LandingPage: React.FC = () => {
 
           {/* Bottom section */}
           <div className="flex-shrink-0 px-4 pb-6 sm:pb-12">
-            <div className="bg-white/15 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-6 sm:mb-8 border border-white/20 shadow-xl">
+            <div className="bg-white/20 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-5 mb-6 sm:mb-8 border-2 border-white/40 shadow-2xl">
               <Button
                 variant="primary"
                 size="lg"
-                className="w-full bg-white text-primary-600 hover:bg-gray-50 shadow-lg h-12 sm:h-14 text-base sm:text-lg"
+                className="w-full text-primary-700 hover:bg-white/95 shadow-2xl h-14 sm:h-16 text-lg sm:text-xl font-extrabold border-4 border-primary-100"
                 onClick={() => navigate('/login')}
-                rightIcon={<span className="text-lg sm:text-xl">→</span>}
+                rightIcon={<span className="text-2xl sm:text-3xl font-bold">→</span>}
               >
                 Login as Doctor
               </Button>

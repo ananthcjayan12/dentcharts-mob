@@ -26,7 +26,7 @@ const InputField: React.FC<InputFieldProps> = ({
   const baseInputClasses = 'rounded-lg border transition-all duration-base focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-gray-100 disabled:cursor-not-allowed';
   
   const sizeClasses = {
-    sm: 'h-9 px-3 text-sm',
+    sm: 'h-9 px-3 text-base', // Changed from text-sm to text-base to prevent mobile zoom
     md: 'h-10 px-4 text-base',
     lg: 'h-12 px-5 text-lg',
   };
