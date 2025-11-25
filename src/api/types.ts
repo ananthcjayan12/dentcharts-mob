@@ -124,13 +124,29 @@ export interface CreateAppointmentRequest {
 }
 
 export interface AppointmentResponse {
-  appointment_id: string;
-  patient_id: string;
+  name?: string; // Frappe appointment ID (HLC-APP-2025-00195)
+  appointment_id?: string; // Alias for name
+  patient?: string; // Frappe patient ID
+  patient_id?: string; // Alias for patient
   patient_name: string;
+  patient_mobile?: string;
+  patient_email?: string;
+  patient_image?: string | null;
+  appointment_date?: string;
+  appointment_time?: string;
   appointment_datetime: string;
   duration: number;
-  status: 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled';
+  status: 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Open';
+  appointment_type?: string;
+  chief_complaint?: string;
   notes?: string;
+  location?: string;
+  practitioner?: string;
+  invoiced?: number;
+  paid_amount?: number;
+  booked_via_app?: number;
+  can_reschedule?: boolean;
+  can_cancel?: boolean;
 }
 
 export interface UpdateAppointmentRequest {

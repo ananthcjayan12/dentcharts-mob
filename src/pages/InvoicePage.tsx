@@ -31,7 +31,7 @@ const InvoicePage: React.FC = () => {
   const [invoiceData, setInvoiceData] = useState({
     invoiceNumber: `INV-${Date.now()}`,
     date: new Date().toISOString().split('T')[0],
-    dueDate: '',
+    dueDate: new Date().toISOString().split('T')[0],
     notes: ''
   });
   const [applyGST, setApplyGST] = useState(false);

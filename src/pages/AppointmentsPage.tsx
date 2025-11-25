@@ -40,8 +40,8 @@ const AppointmentsPage: React.FC = () => {
   };
 
   const handleAppointmentClick = (appointment: any) => {
-    // Use patient_id (which contains patient name in Frappe), fallback to patient_name
-    const patientIdentifier = appointment.patient_id || appointment.patient_name;
+    // Use patient (Frappe ID), fallback to patient_name
+    const patientIdentifier = appointment.patient || appointment.patient_name;
     if (patientIdentifier) {
       navigate(`/prescriptions/${encodeURIComponent(patientIdentifier)}`);
     } else {
@@ -53,7 +53,7 @@ const AppointmentsPage: React.FC = () => {
     e.stopPropagation();
     const appointmentTime = new Date(appointment.appointment_datetime);
     setEditingAppointment({
-      appointment_id: appointment.appointment_id,
+      appointment_id: appointment.name || appointment.appointment_id,
       patient_name: appointment.patient_name,
       appointment_date: appointmentTime.toISOString().split('T')[0],
       appointment_time: appointmentTime.toTimeString().split(' ')[0].substring(0, 5),
@@ -65,31 +65,26 @@ const AppointmentsPage: React.FC = () => {
   const handleUpdateAppointment = async () => {
     if (!editingAppointment) return;
 
-    try {
-      await updateAppointment({
-        appointment_id: editingAppointment.appointment_id,
-        appointment_time: editingAppointment.appointment_time + ':00',
-        notes: editingAppointment.notes,
-      });
-      setShowEditModal(false);
-      setEditingAppointment(null);
-    } catch (error: any) {
-      console.error('Update appointment error:', error);
-    }
+    updateAppointment({
+      appointment_id: editingAppointment.appointment_id,
+      appointment_time: editingAppointment.appointment_time + ':00',
+      notes: editingAppointment.notes,
+    }, {
+      onSuccess: () => {
+        setShowEditModal(false);
+        setEditingAppointment(null);
+      }
+    });
   };
 
   const handleCancelAppointment = async (appointmentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
 
-    try {
-      await cancelAppointment({
-        appointment_id: appointmentId,
-        reason: 'Cancelled by doctor',
-      });
-    } catch (error: any) {
-      console.error('Cancel appointment error:', error);
-    }
+    cancelAppointment({
+      appointment_id: appointmentId,
+      reason: 'Cancelled by doctor',
+    });
   };
 
   const handleCloseEditModal = () => {
@@ -104,11 +99,7 @@ const AppointmentsPage: React.FC = () => {
       return;
     }
 
-    try {
-      await deleteAppointment(appointmentId);
-    } catch (error: any) {
-      console.error('Delete appointment error:', error);
-    }
+    deleteAppointment(appointmentId);
   };
 
   const handleAddToTodaysQueue = async () => {
@@ -151,9 +142,18 @@ const AppointmentsPage: React.FC = () => {
   );
   
   const { 
-    data: upcomingAppointments, 
+    data: upcomingAppointmentsData, 
     isLoading: upcomingLoading 
-  } = useUpcomingAppointments();
+  } = useAppointments(
+    { 
+      limit_page_length: 20, 
+      limit_start: 0 
+    },
+    { 
+      date_from: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0],
+      date_to: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0]
+    }
+  );
 
   const { 
     data: todaysQueueData, 
@@ -161,6 +161,7 @@ const AppointmentsPage: React.FC = () => {
   } = useTodaysQueue();
 
   const todaysAppointments = appointmentsData?.data || [];
+  const upcomingAppointments = upcomingAppointmentsData?.data || [];
   const totalCount = appointmentsData?.total_count || 0;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const todaysQueue = todaysQueueData?.queue || [];
@@ -217,7 +218,7 @@ const AppointmentsPage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">📋 Today's Queue</h3>
                 <div className="space-y-2">
                   {todaysQueue.slice(0, 5).map((appointment: any) => (
-                    <div key={appointment.appointment_id} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                    <div key={appointment.name || appointment.appointment_id} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
                           {appointment.queue_position}
@@ -323,7 +324,7 @@ const AppointmentsPage: React.FC = () => {
                           <tbody className="divide-y divide-gray-200">
                             {todaysAppointments.map((appointment) => (
                               <tr 
-                                key={appointment.appointment_id}
+                                key={appointment.name || appointment.appointment_id}
                                 className="hover:bg-primary-50 cursor-pointer transition-colors"
                                 onClick={() => handleAppointmentClick(appointment)}
                               >
@@ -334,12 +335,12 @@ const AppointmentsPage: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <Typography variant="body2" className="text-gray-600">
-                                    Thrissur
+                                    {appointment.location || '-'}
                                   </Typography>
                                 </td>
                                 <td className="px-6 py-4">
                                   <Typography variant="body2" className="text-gray-600">
-                                    {appointment.patient_id || 'N/A'}
+                                    {appointment.patient_mobile || appointment.patient || 'N/A'}
                                   </Typography>
                                 </td>
                                 <td className="px-6 py-4">
@@ -369,7 +370,7 @@ const AppointmentsPage: React.FC = () => {
                                       </svg>
                                     </button>
                                     <button
-                                      onClick={(e) => handleDeleteAppointment(appointment.appointment_id, e)}
+                                      onClick={(e) => handleDeleteAppointment(appointment.name || appointment.appointment_id || '', e)}
                                       className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                       title="Delete Appointment"
                                       disabled={isUpdating || isCancelling || isDeleting}
@@ -377,7 +378,7 @@ const AppointmentsPage: React.FC = () => {
                                       🗑️
                                     </button>
                                     <button
-                                      onClick={(e) => handleCancelAppointment(appointment.appointment_id, e)}
+                                      onClick={(e) => handleCancelAppointment(appointment.name || appointment.appointment_id || '', e)}
                                       className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                       title="Cancel Appointment"
                                       disabled={isUpdating || isCancelling || isDeleting}
@@ -398,7 +399,7 @@ const AppointmentsPage: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <Typography variant="body2" className="text-gray-600">
-                                    Dr. Avinash
+                                    {appointment.practitioner || '-'}
                                   </Typography>
                                 </td>
                               </tr>
@@ -413,7 +414,7 @@ const AppointmentsPage: React.FC = () => {
                   <Stack spacing={3} className="lg:hidden">
                     {todaysAppointments.map((appointment) => (
                     <Card 
-                      key={appointment.appointment_id} 
+                      key={appointment.name || appointment.appointment_id} 
                       padding="lg"
                       variant="elevated"
                       hoverable
@@ -488,7 +489,7 @@ const AppointmentsPage: React.FC = () => {
                           Edit
                         </button>
                         <button
-                          onClick={(e) => handleDeleteAppointment(appointment.appointment_id, e)}
+                          onClick={(e) => handleDeleteAppointment(appointment.name || appointment.appointment_id || '', e)}
                           disabled={isUpdating || isCancelling || isDeleting}
                           className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Delete"
@@ -497,7 +498,7 @@ const AppointmentsPage: React.FC = () => {
                         </button>
                         {appointment.status === 'Scheduled' && (
                           <button
-                            onClick={(e) => handleCancelAppointment(appointment.appointment_id, e)}
+                            onClick={(e) => handleCancelAppointment(appointment.name || appointment.appointment_id || '', e)}
                             disabled={isUpdating || isCancelling || isDeleting}
                             className="flex-1 px-3 py-2 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -662,7 +663,7 @@ const AppointmentsPage: React.FC = () => {
                           <tbody className="divide-y divide-gray-200">
                             {upcomingAppointments.map((appointment) => (
                               <tr 
-                                key={appointment.appointment_id}
+                                key={appointment.name || appointment.appointment_id}
                                 className="hover:bg-success-50 cursor-pointer transition-colors"
                                 onClick={() => handleAppointmentClick(appointment)}
                               >
@@ -673,12 +674,12 @@ const AppointmentsPage: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <Typography variant="body2" className="text-gray-600">
-                                    Thrissur
+                                    {appointment.location || '-'}
                                   </Typography>
                                 </td>
                                 <td className="px-6 py-4">
                                   <Typography variant="body2" className="text-gray-600">
-                                    {appointment.patient_id || 'N/A'}
+                                    {appointment.patient_mobile || appointment.patient || 'N/A'}
                                   </Typography>
                                 </td>
                                 <td className="px-6 py-4">
@@ -719,7 +720,7 @@ const AppointmentsPage: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <Typography variant="body2" className="text-gray-600">
-                                    Dr. Avinash
+                                    {appointment.practitioner || '-'}
                                   </Typography>
                                 </td>
                               </tr>
@@ -734,7 +735,7 @@ const AppointmentsPage: React.FC = () => {
                   <Stack spacing={3} className="lg:hidden">
                     {upcomingAppointments.map((appointment) => (
                       <Card 
-                        key={appointment.appointment_id}
+                        key={appointment.name || appointment.appointment_id}
                         padding="lg"
                         variant="elevated"
                         hoverable
