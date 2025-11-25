@@ -7,6 +7,10 @@ import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
+import Typography from '../components/common/Typography';
+import Stack from '../components/layout/Stack';
+import Flex from '../components/layout/Flex';
+import DentalChart, { ToothData } from '../components/common/DentalChart';
 import { usePatient } from '../hooks/usePatients';
 import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
 import { usePatientInvoices, usePaymentSummary, useRecordPayment } from '../hooks/usePayments';
@@ -93,7 +97,8 @@ const PrescriptionPage: React.FC = () => {
   const patientId = rawPatientId ? decodeURIComponent(rawPatientId) : undefined;
   
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
-  const [currentSection, setCurrentSection] = useState<'medical' | 'payments'>('medical');
+  const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart'>('medical');
+  const [dentalChartData, setDentalChartData] = useState<Record<number, ToothData>>({});
   const [showUpload, setShowUpload] = useState(false);
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploadNotes, setUploadNotes] = useState('');
@@ -112,10 +117,19 @@ const PrescriptionPage: React.FC = () => {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentReference, setPaymentReference] = useState('');
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const [showNewPrescriptionModal, setShowNewPrescriptionModal] = useState(false);
+  const [newPrescription, setNewPrescription] = useState({
+    chief_complaint: '',
+    symptoms: '',
+    diagnosis: '',
+    treatment_plan: '',
+    medications: [{ drug_code: '', drug_name: '', dosage: '', period: '', dosage_form: 'Tablet', interval: '', comment: '' }],
+    investigations: [{ lab_test_code: '', lab_test_name: '', lab_test_comment: '' }],
+  });
 
   // API hooks
   const { data: patient, isLoading: patientLoading } = usePatient(patientId || '', !!patientId);
-  const { data: prescriptions, isLoading: prescriptionsLoading } = usePatientPrescriptions(patientId || '');
+  const { data: prescriptions, isLoading: prescriptionsLoading, refetch: refetchPrescriptions } = usePatientPrescriptions(patientId || '');
   const { data: invoices, isLoading: invoicesLoading } = usePatientInvoices(patientId || '');
   const { data: paymentSummary, isLoading: paymentSummaryLoading } = usePaymentSummary(patientId || '');
   
@@ -135,6 +149,9 @@ const PrescriptionPage: React.FC = () => {
   // Local state for UI interactions
   const [expandedPrescriptions, setExpandedPrescriptions] = useState<Set<string>>(new Set());
   const [editablePrescriptions, setEditablePrescriptions] = useState<Set<string>>(new Set());
+  const [editedPrescriptionData, setEditedPrescriptionData] = useState<Record<string, any>>({});
+  const [detailedPrescriptions, setDetailedPrescriptions] = useState<Record<string, any>>({});
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
@@ -190,33 +207,287 @@ const PrescriptionPage: React.FC = () => {
     }
   };
 
-  const togglePrescription = (recordId: string) => {
-    setExpandedPrescriptions(prev => {
+  const togglePrescription = async (recordId: string) => {
+    const isExpanded = expandedPrescriptions.has(recordId);
+    
+    if (isExpanded) {
+      // If already expanded, just collapse it
+      setExpandedPrescriptions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(recordId);
+        return newSet;
+      });
+    } else {
+      // If not expanded, fetch details and then expand
+      if (!detailedPrescriptions[recordId]) {
+        // Only fetch if we don't have the details yet
+        setLoadingDetails(prev => new Set(prev).add(recordId));
+        try {
+          const { prescriptionService } = await import('../api/services');
+          const details = await prescriptionService.getPrescription(recordId);
+          setDetailedPrescriptions(prev => ({ ...prev, [recordId]: details }));
+        } catch (error) {
+          console.error('Error fetching prescription details:', error);
+          toast.error('Failed to load prescription details');
+          return;
+        } finally {
+          setLoadingDetails(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(recordId);
+            return newSet;
+          });
+        }
+      }
+      
+      // Expand after fetching
+      setExpandedPrescriptions(prev => new Set(prev).add(recordId));
+    }
+  };
+
+  const toggleEdit = async (recordId: string) => {
+    setEditablePrescriptions(prev => {
       const newSet = new Set(prev);
       if (newSet.has(recordId)) {
         newSet.delete(recordId);
+        // Clear edited data when closing edit mode
+        setEditedPrescriptionData(prevData => {
+          const newData = { ...prevData };
+          delete newData[recordId];
+          return newData;
+        });
       } else {
         newSet.add(recordId);
+        
+        // Auto-expand when entering edit mode
+        if (!expandedPrescriptions.has(recordId)) {
+          // Fetch details if not already fetched
+          if (!detailedPrescriptions[recordId]) {
+            setLoadingDetails(prevLoading => new Set(prevLoading).add(recordId));
+            (async () => {
+              try {
+                const { prescriptionService } = await import('../api/services');
+                const details = await prescriptionService.getPrescription(recordId);
+                setDetailedPrescriptions(prev => ({ ...prev, [recordId]: details }));
+                
+                // Initialize edited data with fetched details
+                setEditedPrescriptionData(prevData => ({
+                  ...prevData,
+                  [recordId]: {
+                    chief_complaint: details.chief_complaint || '',
+                    symptoms: details.symptoms || '',
+                    diagnosis: details.diagnosis || '',
+                    treatment_plan: details.treatment_plan || '',
+                    status: details.status || 'Active',
+                  },
+                }));
+              } catch (error) {
+                console.error('Error fetching prescription details:', error);
+                toast.error('Failed to load prescription details');
+              } finally {
+                setLoadingDetails(prevLoading => {
+                  const newSet = new Set(prevLoading);
+                  newSet.delete(recordId);
+                  return newSet;
+                });
+              }
+            })();
+          } else {
+            // Use existing detailed data
+            const displayData = detailedPrescriptions[recordId];
+            setEditedPrescriptionData(prevData => ({
+              ...prevData,
+              [recordId]: {
+                chief_complaint: displayData.chief_complaint || '',
+                symptoms: displayData.symptoms || '',
+                diagnosis: displayData.diagnosis || '',
+                treatment_plan: displayData.treatment_plan || '',
+                status: displayData.status || 'Active',
+              },
+            }));
+          }
+          setExpandedPrescriptions(prev => new Set(prev).add(recordId));
+        } else {
+          // Already expanded, just initialize edit data
+          const detailedData = detailedPrescriptions[recordId];
+          const prescription = prescriptions?.find((p: any) => (p.name || p.record_id) === recordId);
+          const displayData = detailedData || prescription;
+          if (displayData) {
+            setEditedPrescriptionData(prevData => ({
+              ...prevData,
+              [recordId]: {
+                chief_complaint: displayData.chief_complaint || '',
+                symptoms: displayData.symptoms || '',
+                diagnosis: displayData.diagnosis || '',
+                treatment_plan: displayData.treatment_plan || '',
+                status: displayData.status || 'Active',
+              },
+            }));
+          }
+        }
       }
       return newSet;
     });
   };
 
-  const toggleEdit = (recordId: string) => {
-    setEditablePrescriptions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(recordId)) {
+  const handleSavePrescription = async (recordId: string) => {
+    const editedData = editedPrescriptionData[recordId];
+    if (!editedData) return;
+
+    try {
+      await updatePrescription({
+        record_id: recordId,
+        ...editedData,
+      });
+      // Close edit mode after successful update
+      toggleEdit(recordId);
+    } catch (error: any) {
+      console.error('Update prescription error:', error);
+    }
+  };
+
+  const handlePrescriptionFieldChange = (recordId: string, field: string, value: any) => {
+    setEditedPrescriptionData(prevData => ({
+      ...prevData,
+      [recordId]: {
+        ...prevData[recordId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleDeletePrescription = async (recordId: string) => {
+    if (!window.confirm('Are you sure you want to delete this prescription?')) return;
+
+    try {
+      const { prescriptionService } = await import('../api/services');
+      await prescriptionService.deletePrescription(recordId);
+      toast.success('Prescription deleted successfully');
+      
+      // Refresh prescriptions list
+      await refetchPrescriptions();
+      
+      // Clean up state
+      setExpandedPrescriptions(prev => {
+        const newSet = new Set(prev);
         newSet.delete(recordId);
-      } else {
-        newSet.add(recordId);
-      }
-      return newSet;
-    });
+        return newSet;
+      });
+      setEditablePrescriptions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(recordId);
+        return newSet;
+      });
+      setEditedPrescriptionData(prev => {
+        const newData = { ...prev };
+        delete newData[recordId];
+        return newData;
+      });
+      setDetailedPrescriptions(prev => {
+        const newData = { ...prev };
+        delete newData[recordId];
+        return newData;
+      });
+    } catch (error: any) {
+      console.error('Delete prescription error:', error);
+      toast.error(error?.message || 'Failed to delete prescription');
+    }
   };
 
   const handleNewAppointment = () => {
     // Navigate to new appointment page with patient ID pre-filled
     navigate(`/appointments/new?patientId=${patientId}`);
+  };
+
+  const handleCreatePrescription = async () => {
+    if (!patientId) return;
+
+    // Validation
+    if (!newPrescription.chief_complaint.trim()) {
+      toast.error('Please enter chief complaint');
+      return;
+    }
+    if (!newPrescription.diagnosis.trim()) {
+      toast.error('Please enter diagnosis');
+      return;
+    }
+    if (!newPrescription.treatment_plan.trim()) {
+      toast.error('Please enter treatment plan');
+      return;
+    }
+
+    try {
+      const prescriptionData: any = {
+        patient_id: patientId,
+        chief_complaint: newPrescription.chief_complaint,
+        symptoms: newPrescription.symptoms,
+        diagnosis: newPrescription.diagnosis,
+        treatment_plan: newPrescription.treatment_plan,
+        medications: newPrescription.medications.filter(m => m.drug_name.trim()),
+        investigations: newPrescription.investigations.filter(i => i.lab_test_name.trim()),
+      };
+
+      await createPrescription(prescriptionData);
+      
+      // Manually refetch prescriptions to ensure UI updates
+      await refetchPrescriptions();
+      
+      // Reset form and close modal
+      setNewPrescription({
+        chief_complaint: '',
+        symptoms: '',
+        diagnosis: '',
+        treatment_plan: '',
+        medications: [{ drug_code: '', drug_name: '', dosage: '', period: '', dosage_form: 'Tablet', interval: '', comment: '' }],
+        investigations: [{ lab_test_code: '', lab_test_name: '', lab_test_comment: '' }],
+      });
+      setShowNewPrescriptionModal(false);
+    } catch (error: any) {
+      console.error('Create prescription error:', error);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!window.confirm('Are you sure you want to delete this file?')) return;
+
+    try {
+      await fileUploadService.deleteFile(fileId);
+      toast.success('File deleted successfully');
+      
+      // Refresh patient files list
+      const files = await fileUploadService.getPatientFiles(patientId || '');
+      setPatientFiles(files);
+    } catch (error: any) {
+      console.error('Delete file error:', error);
+      toast.error(error?.message || 'Failed to delete file');
+    }
+  };
+
+  const addMedication = () => {
+    setNewPrescription(prev => ({
+      ...prev,
+      medications: [...prev.medications, { drug_code: '', drug_name: '', dosage: '', period: '', dosage_form: 'Tablet', interval: '', comment: '' }],
+    }));
+  };
+
+  const removeMedication = (index: number) => {
+    setNewPrescription(prev => ({
+      ...prev,
+      medications: prev.medications.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addInvestigation = () => {
+    setNewPrescription(prev => ({
+      ...prev,
+      investigations: [...prev.investigations, { lab_test_code: '', lab_test_name: '', lab_test_comment: '' }],
+    }));
+  };
+
+  const removeInvestigation = (index: number) => {
+    setNewPrescription(prev => ({
+      ...prev,
+      investigations: prev.investigations.filter((_, i) => i !== index),
+    }));
   };
 
   // File upload handlers
@@ -549,6 +820,16 @@ const PrescriptionPage: React.FC = () => {
                     Medical History
                   </button>
                   <button
+                    onClick={() => setCurrentSection('dental-chart')}
+                    className={`flex-1 py-3 px-6 text-sm font-bold font-lato transition-colors ${
+                      currentSection === 'dental-chart'
+                        ? 'bg-primary-600 text-white rounded-lg shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Dental Chart
+                  </button>
+                  <button
                     onClick={() => setCurrentSection('payments')}
                     className={`flex-1 py-3 px-6 text-sm font-bold font-lato transition-colors ${
                       currentSection === 'payments'
@@ -694,7 +975,18 @@ const PrescriptionPage: React.FC = () => {
 
                     {/* Prescriptions */}
                     <Card className="p-6">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">Prescriptions & Clinical Records</h3>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Prescriptions & Clinical Records</h3>
+                        <button
+                          onClick={() => setShowNewPrescriptionModal(true)}
+                          className="px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Create Prescription
+                        </button>
+                      </div>
                       
                       {prescriptionsLoading ? (
                         <div className="space-y-4">
@@ -714,15 +1006,31 @@ const PrescriptionPage: React.FC = () => {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {prescriptions?.map((prescription) => (
-                            <div key={prescription.record_id} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                          {prescriptions?.map((prescription) => {
+                            // Use detailed data if available, otherwise use list data
+                            const recordId = prescription.name || prescription.record_id;
+                            const detailedData = detailedPrescriptions[recordId];
+                            const displayData = detailedData || prescription;
+                            const isLoadingDetail = loadingDetails.has(recordId);
+                            
+                            return (
+                            <div key={recordId} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
                               <div className="flex items-center justify-between mb-3">
                                 <h4 className="text-sm font-bold text-gray-700">
-                                  {new Date(prescription.posting_date).toLocaleDateString()}
+                                  {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
                                 </h4>
                                 <div className="flex items-center space-x-2">
                                   <button 
-                                    onClick={() => toggleEdit(prescription.record_id)}
+                                    onClick={() => handleDeletePrescription(recordId)}
+                                    className="text-red-500 hover:text-red-700 p-1"
+                                    title="Delete prescription"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                  <button 
+                                    onClick={() => toggleEdit(recordId)}
                                     className="text-blue-500 hover:text-blue-700 p-1"
                                     title="Edit prescription"
                                   >
@@ -731,41 +1039,172 @@ const PrescriptionPage: React.FC = () => {
                                     </svg>
                                   </button>
                                   <button 
-                                    onClick={() => togglePrescription(prescription.record_id)}
+                                    onClick={() => togglePrescription(recordId)}
                                     className="text-gray-400 transform transition-transform duration-200"
+                                    disabled={isLoadingDetail}
                                   >
-                                    <svg 
-                                      className={`w-4 h-4 ${expandedPrescriptions.has(prescription.record_id) ? 'rotate-180' : ''}`}
-                                      fill="none" 
-                                      stroke="currentColor" 
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
+                                    {isLoadingDetail ? (
+                                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                    ) : (
+                                      <svg 
+                                        className={`w-4 h-4 ${expandedPrescriptions.has(recordId) ? 'rotate-180' : ''}`}
+                                        fill="none" 
+                                        stroke="currentColor" 
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    )}
                                   </button>
                                 </div>
                               </div>
 
-                              {expandedPrescriptions.has(prescription.record_id) && (
+                              {expandedPrescriptions.has(recordId) && detailedData && (
                                 <div className="space-y-4 pt-3 border-t">
-                                  {/* Keep existing prescription details */}
+                                  {/* Clinical Details */}
                                   <div>
                                     <h5 className="text-xs font-bold text-gray-700 mb-2">CLINICAL DETAILS</h5>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <span className="font-semibold text-gray-600">Chief Complaint:</span>
-                                        <p className="text-gray-900">{prescription.chief_complaint}</p>
+                                    {editablePrescriptions.has(recordId) ? (
+                                      <div className="space-y-3 text-sm">
+                                        <div>
+                                          <label className="block font-semibold text-gray-600 mb-1">Chief Complaint:</label>
+                                          <textarea
+                                            value={editedPrescriptionData[recordId]?.chief_complaint || displayData.chief_complaint}
+                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'chief_complaint', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                            rows={2}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block font-semibold text-gray-600 mb-1">Symptoms:</label>
+                                          <textarea
+                                            value={editedPrescriptionData[recordId]?.symptoms || displayData.symptoms}
+                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'symptoms', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                            rows={2}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block font-semibold text-gray-600 mb-1">Diagnosis:</label>
+                                          <textarea
+                                            value={editedPrescriptionData[recordId]?.diagnosis || displayData.diagnosis}
+                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'diagnosis', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                            rows={2}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block font-semibold text-gray-600 mb-1">Treatment Plan:</label>
+                                          <textarea
+                                            value={editedPrescriptionData[recordId]?.treatment_plan || displayData.treatment_plan}
+                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'treatment_plan', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                            rows={3}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block font-semibold text-gray-600 mb-1">Status:</label>
+                                          <select
+                                            value={editedPrescriptionData[recordId]?.status || displayData.status}
+                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'status', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                          >
+                                            <option value="Active">Active</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Completed">Completed</option>
+                                            <option value="Cancelled">Cancelled</option>
+                                          </select>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <span className="font-semibold text-gray-600">Diagnosis:</span>
-                                        <p className="text-gray-900">{prescription.diagnosis}</p>
+                                    ) : (
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <span className="font-semibold text-gray-600">Chief Complaint:</span>
+                                          <p className="text-gray-900">{displayData.chief_complaint}</p>
+                                        </div>
+                                        <div>
+                                          <span className="font-semibold text-gray-600">Symptoms:</span>
+                                          <p className="text-gray-900">{displayData.symptoms}</p>
+                                        </div>
+                                        <div>
+                                          <span className="font-semibold text-gray-600">Diagnosis:</span>
+                                          <p className="text-gray-900">{displayData.diagnosis}</p>
+                                        </div>
+                                        <div>
+                                          <span className="font-semibold text-gray-600">Treatment Plan:</span>
+                                          <p className="text-gray-900">{displayData.treatment_plan}</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Medications */}
+                                  {displayData.medications && displayData.medications.length > 0 && (
+                                    <div>
+                                      <h5 className="text-xs font-bold text-gray-700 mb-2">MEDICATIONS</h5>
+                                      <div className="space-y-2">
+                                        {displayData.medications.map((medication: any, index: number) => (
+                                          <div key={index} className="text-sm bg-green-50 p-3 rounded">
+                                            <div className="font-semibold text-green-800">{medication.drug_name}</div>
+                                            <div className="text-xs text-gray-600 mt-1">
+                                              {medication.dosage} - {medication.interval} for {medication.period}
+                                            </div>
+                                            <div className="text-xs text-gray-500">Form: {medication.dosage_form}</div>
+                                            {medication.comment && (
+                                              <div className="text-xs text-gray-500 mt-1">{medication.comment}</div>
+                                            )}
+                                          </div>
+                                        ))}
                                       </div>
                                     </div>
-                                  </div>
+                                  )}
+                                  
+                                  {/* Investigations */}
+                                  {displayData.investigations && displayData.investigations.length > 0 && (
+                                    <div>
+                                      <h5 className="text-xs font-bold text-gray-700 mb-2">INVESTIGATIONS</h5>
+                                      <div className="space-y-2">
+                                        {displayData.investigations.map((investigation: any, index: number) => (
+                                          <div key={index} className="text-sm bg-blue-50 p-3 rounded">
+                                            <div className="font-semibold text-blue-800">{investigation.lab_test_name}</div>
+                                            <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
+                                            {investigation.lab_test_comment && (
+                                              <div className="text-xs text-gray-500 mt-1">{investigation.lab_test_comment}</div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Action Buttons for Edit Mode - DESKTOP */}
+                                  {editablePrescriptions.has(recordId) && (
+                                    <div className="flex space-x-2 pt-4 border-t border-gray-100">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => toggleEdit(recordId)}
+                                        disabled={isUpdating}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleSavePrescription(recordId)}
+                                        disabled={isUpdating}
+                                      >
+                                        {isUpdating ? 'Saving...' : 'Save Changes'}
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </Card>
@@ -840,6 +1279,18 @@ const PrescriptionPage: React.FC = () => {
                       </div>
                     )}
                   </Card>
+                )}
+
+                {/* Dental Chart Content */}
+                {currentSection === 'dental-chart' && (
+                  <div>
+                    <DentalChart 
+                      patientId={patientId!}
+                      data={dentalChartData}
+                      onChange={setDentalChartData}
+                      readOnly={false}
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -1075,9 +1526,23 @@ const PrescriptionPage: React.FC = () => {
                                 
                                 {/* File details */}
                                 <div className="p-4">
-                                  <p className="text-sm font-semibold text-gray-900 truncate mb-2">
-                                    {file.file_name}
-                                  </p>
+                                  <div className="flex items-start justify-between mb-2">
+                                    <p className="text-sm font-semibold text-gray-900 truncate flex-1 mr-2">
+                                      {file.file_name}
+                                    </p>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteFile(file.file_id);
+                                      }}
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                                      title="Delete file"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                   <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
                                     <span className="font-medium">{fileUploadService.formatFileSize(file.file_size)}</span>
                                     <span>{new Date(file.creation).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
@@ -1138,9 +1603,20 @@ const PrescriptionPage: React.FC = () => {
               ) : null}
 
               {/* Prescriptions Section */}
-              <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
-                Prescriptions & Clinical Records
-              </h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-gray-700 font-lato">
+                  Prescriptions & Clinical Records
+                </h4>
+                <button
+                  onClick={() => setShowNewPrescriptionModal(true)}
+                  className="px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create
+                </button>
+              </div>
 
               {prescriptionsLoading ? (
                 <div className="space-y-4">
@@ -1164,15 +1640,31 @@ const PrescriptionPage: React.FC = () => {
               ) : (
 
               <div className="space-y-4">
-                {prescriptions?.map((prescription) => (
-                <Card key={prescription.record_id} className="relative">
+                {prescriptions?.map((prescription) => {
+                  // Use detailed data if available, otherwise use list data
+                  const recordId = prescription.name || prescription.record_id;
+                  const detailedData = detailedPrescriptions[recordId];
+                  const displayData = detailedData || prescription;
+                  const isLoadingDetail = loadingDetails.has(recordId);
+                  
+                  return (
+                <Card key={recordId} className="relative">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-bold text-gray-600 font-lato">
-                      {new Date(prescription.posting_date).toLocaleDateString()}
+                      {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
                     </h4>
                     <div className="flex items-center space-x-2">
                       <button 
-                        onClick={() => toggleEdit(prescription.record_id)}
+                        onClick={() => handleDeletePrescription(recordId)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Delete prescription"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => toggleEdit(recordId)}
                         className="text-blue-500 hover:text-blue-700 p-1"
                         title="Edit prescription"
                       >
@@ -1181,31 +1673,39 @@ const PrescriptionPage: React.FC = () => {
                         </svg>
                       </button>
                       <button 
-                        onClick={() => togglePrescription(prescription.record_id)}
+                        onClick={() => togglePrescription(recordId)}
                         className="text-gray-400 transform transition-transform duration-200"
+                        disabled={isLoadingDetail}
                       >
-                        <svg 
-                          className={`w-4 h-4 ${expandedPrescriptions.has(prescription.record_id) ? 'rotate-180' : ''}`}
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                        {isLoadingDetail ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg 
+                            className={`w-4 h-4 ${expandedPrescriptions.has(recordId) ? 'rotate-180' : ''}`}
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        )}
                       </button>
                     </div>
                   </div>
 
-                  {expandedPrescriptions.has(prescription.record_id) && (
+                  {expandedPrescriptions.has(recordId) && detailedData && (
                     <div className="space-y-4">
                       {/* Investigations Section */}
                       <div className="pt-4 border-t border-gray-100">
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
                           INVESTIGATIONS
                         </h5>
-                        {editablePrescriptions.has(prescription.record_id) ? (
+                        {editablePrescriptions.has(recordId) ? (
                           <div className="space-y-2">
-                            {prescription.investigations?.map((investigation, index) => (
+                            {displayData.investigations?.map((investigation: any, index: number) => (
                               <div key={index} className="p-2 border border-gray-300 rounded text-sm">
                                 <div className="font-semibold">{investigation.lab_test_name}</div>
                                 <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
@@ -1217,7 +1717,7 @@ const PrescriptionPage: React.FC = () => {
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            {prescription.investigations?.map((investigation, index) => (
+                            {displayData.investigations?.map((investigation: any, index: number) => (
                               <div key={index} className="text-sm text-black font-montserrat">
                                 <div className="font-semibold">{investigation.lab_test_name}</div>
                                 <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
@@ -1235,9 +1735,9 @@ const PrescriptionPage: React.FC = () => {
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
                           MEDICATIONS
                         </h5>
-                        {editablePrescriptions.has(prescription.record_id) ? (
+                        {editablePrescriptions.has(recordId) ? (
                           <div className="space-y-2">
-                            {prescription.medications?.map((medication, index) => (
+                            {displayData.medications?.map((medication: any, index: number) => (
                               <div key={index} className="p-2 border border-gray-300 rounded text-sm">
                                 <div className="font-semibold">{medication.drug_name}</div>
                                 <div className="text-xs text-gray-600">
@@ -1252,7 +1752,7 @@ const PrescriptionPage: React.FC = () => {
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            {prescription.medications?.map((medication, index) => (
+                            {displayData.medications?.map((medication: any, index: number) => (
                               <div key={index} className="text-sm text-green-700 font-montserrat">
                                 <div className="font-semibold">{medication.drug_name}</div>
                                 <div className="text-xs text-gray-600">
@@ -1276,20 +1776,74 @@ const PrescriptionPage: React.FC = () => {
                         <div className="space-y-3 text-sm font-montserrat">
                           <div>
                             <span className="font-semibold text-gray-700">Chief Complaint:</span>
-                            <p className="text-gray-900 mt-1">{prescription.chief_complaint}</p>
+                            {editablePrescriptions.has(recordId) ? (
+                              <textarea
+                                value={editedPrescriptionData[recordId]?.chief_complaint || displayData.chief_complaint}
+                                onChange={(e) => handlePrescriptionFieldChange(recordId, 'chief_complaint', e.target.value)}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                rows={2}
+                              />
+                            ) : (
+                              <p className="text-gray-900 mt-1">{displayData.chief_complaint}</p>
+                            )}
                           </div>
                           <div>
                             <span className="font-semibold text-gray-700">Symptoms:</span>
-                            <p className="text-gray-900 mt-1">{prescription.symptoms}</p>
+                            {editablePrescriptions.has(recordId) ? (
+                              <textarea
+                                value={editedPrescriptionData[recordId]?.symptoms || displayData.symptoms}
+                                onChange={(e) => handlePrescriptionFieldChange(recordId, 'symptoms', e.target.value)}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                rows={2}
+                              />
+                            ) : (
+                              <p className="text-gray-900 mt-1">{displayData.symptoms}</p>
+                            )}
                           </div>
                           <div>
                             <span className="font-semibold text-gray-700">Diagnosis:</span>
-                            <p className="text-gray-900 mt-1">{prescription.diagnosis}</p>
+                            {editablePrescriptions.has(recordId) ? (
+                              <textarea
+                                value={editedPrescriptionData[recordId]?.diagnosis || displayData.diagnosis}
+                                onChange={(e) => handlePrescriptionFieldChange(recordId, 'diagnosis', e.target.value)}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                rows={2}
+                              />
+                            ) : (
+                              <p className="text-gray-900 mt-1">{displayData.diagnosis}</p>
+                            )}
                           </div>
                           <div>
                             <span className="font-semibold text-gray-700">Treatment Plan:</span>
-                            <p className="text-gray-900 mt-1">{prescription.treatment_plan}</p>
+                            {editablePrescriptions.has(recordId) ? (
+                              <textarea
+                                value={editedPrescriptionData[recordId]?.treatment_plan || displayData.treatment_plan}
+                                onChange={(e) => handlePrescriptionFieldChange(recordId, 'treatment_plan', e.target.value)}
+                                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                rows={3}
+                              />
+                            ) : (
+                              <p className="text-gray-900 mt-1">{displayData.treatment_plan}</p>
+                            )}
                           </div>
+                          
+                          {editablePrescriptions.has(recordId) && (
+                            <>
+                              <div>
+                                <span className="font-semibold text-gray-700">Status:</span>
+                                <select
+                                  value={editedPrescriptionData[recordId]?.status || displayData.status}
+                                  onChange={(e) => handlePrescriptionFieldChange(recordId, 'status', e.target.value)}
+                                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                >
+                                  <option value="Active">Active</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Completed">Completed</option>
+                                  <option value="Cancelled">Cancelled</option>
+                                </select>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -1304,32 +1858,31 @@ const PrescriptionPage: React.FC = () => {
                       </div>
 
                                             {/* Action Buttons for Edit Mode */}
-                      {editablePrescriptions.has(prescription.record_id) && (
+                      {editablePrescriptions.has(recordId) && (
                         <div className="flex space-x-2 pt-4 border-t border-gray-100">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => toggleEdit(prescription.record_id)}
+                            onClick={() => toggleEdit(recordId)}
                             className="text-xs"
                           >
                             Cancel
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => {
-                              // Save changes - implement actual API call here
-                              toggleEdit(prescription.record_id);
-                            }}
+                            onClick={() => handleSavePrescription(recordId)}
+                            disabled={isUpdating}
                             className="text-xs"
                           >
-                            Save Changes
+                            {isUpdating ? 'Saving...' : 'Save Changes'}
                           </Button>
                         </div>
                       )}
                     </div>
                   )}
                 </Card>
-              ))}
+                );
+              })}
               </div>
             )}
             </div>
@@ -1838,6 +2391,263 @@ const PrescriptionPage: React.FC = () => {
             {/* Pinch to zoom hint */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full">
               <p className="text-white text-sm">Pinch to zoom • Tap to close</p>
+            </div>
+          </div>
+        )}
+
+        {/* Create Prescription Modal */}
+        {showNewPrescriptionModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8">
+              <div className="p-6 max-h-[80vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <Typography variant="h5" weight="bold" className="text-gray-900">
+                    Create New Prescription
+                  </Typography>
+                  <button
+                    onClick={() => setShowNewPrescriptionModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <Stack spacing={4}>
+                  {/* Clinical Details */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Chief Complaint *</label>
+                    <textarea
+                      value={newPrescription.chief_complaint}
+                      onChange={(e) => setNewPrescription({ ...newPrescription, chief_complaint: e.target.value })}
+                      placeholder="Main reason for visit..."
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Symptoms</label>
+                    <textarea
+                      value={newPrescription.symptoms}
+                      onChange={(e) => setNewPrescription({ ...newPrescription, symptoms: e.target.value })}
+                      placeholder="Describe symptoms..."
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Diagnosis *</label>
+                    <textarea
+                      value={newPrescription.diagnosis}
+                      onChange={(e) => setNewPrescription({ ...newPrescription, diagnosis: e.target.value })}
+                      placeholder="Clinical diagnosis..."
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Treatment Plan *</label>
+                    <textarea
+                      value={newPrescription.treatment_plan}
+                      onChange={(e) => setNewPrescription({ ...newPrescription, treatment_plan: e.target.value })}
+                      placeholder="Recommended treatment plan..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Medications */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700">Medications</label>
+                      <button
+                        onClick={addMedication}
+                        className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Medication
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {newPrescription.medications.map((med, index) => (
+                        <div key={index} className="p-3 border border-gray-200 rounded-lg">
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">Medication {index + 1}</span>
+                            {newPrescription.medications.length > 1 && (
+                              <button
+                                onClick={() => removeMedication(index)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={med.drug_name}
+                              onChange={(e) => {
+                                const newMeds = [...newPrescription.medications];
+                                newMeds[index].drug_name = e.target.value;
+                                setNewPrescription({ ...newPrescription, medications: newMeds });
+                              }}
+                              placeholder="Drug name"
+                              className="col-span-2 px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={med.dosage}
+                              onChange={(e) => {
+                                const newMeds = [...newPrescription.medications];
+                                newMeds[index].dosage = e.target.value;
+                                setNewPrescription({ ...newPrescription, medications: newMeds });
+                              }}
+                              placeholder="Dosage"
+                              className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={med.period}
+                              onChange={(e) => {
+                                const newMeds = [...newPrescription.medications];
+                                newMeds[index].period = e.target.value;
+                                setNewPrescription({ ...newPrescription, medications: newMeds });
+                              }}
+                              placeholder="Period (e.g., 7 days)"
+                              className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                            <select
+                              value={med.dosage_form}
+                              onChange={(e) => {
+                                const newMeds = [...newPrescription.medications];
+                                newMeds[index].dosage_form = e.target.value;
+                                setNewPrescription({ ...newPrescription, medications: newMeds });
+                              }}
+                              className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            >
+                              <option value="Tablet">Tablet</option>
+                              <option value="Capsule">Capsule</option>
+                              <option value="Syrup">Syrup</option>
+                              <option value="Injection">Injection</option>
+                              <option value="Cream">Cream</option>
+                              <option value="Drops">Drops</option>
+                            </select>
+                            <input
+                              type="text"
+                              value={med.interval}
+                              onChange={(e) => {
+                                const newMeds = [...newPrescription.medications];
+                                newMeds[index].interval = e.target.value;
+                                setNewPrescription({ ...newPrescription, medications: newMeds });
+                              }}
+                              placeholder="Interval (e.g., Every 8 hours)"
+                              className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={med.comment}
+                              onChange={(e) => {
+                                const newMeds = [...newPrescription.medications];
+                                newMeds[index].comment = e.target.value;
+                                setNewPrescription({ ...newPrescription, medications: newMeds });
+                              }}
+                              placeholder="Instructions (e.g., After meals)"
+                              className="col-span-2 px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Investigations */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700">Investigations</label>
+                      <button
+                        onClick={addInvestigation}
+                        className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Investigation
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {newPrescription.investigations.map((inv, index) => (
+                        <div key={index} className="p-3 border border-gray-200 rounded-lg">
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">Investigation {index + 1}</span>
+                            {newPrescription.investigations.length > 1 && (
+                              <button
+                                onClick={() => removeInvestigation(index)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={inv.lab_test_name}
+                              onChange={(e) => {
+                                const newInvs = [...newPrescription.investigations];
+                                newInvs[index].lab_test_name = e.target.value;
+                                setNewPrescription({ ...newPrescription, investigations: newInvs });
+                              }}
+                              placeholder="Test name (e.g., Blood Test, X-Ray)"
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={inv.lab_test_comment}
+                              onChange={(e) => {
+                                const newInvs = [...newPrescription.investigations];
+                                newInvs[index].lab_test_comment = e.target.value;
+                                setNewPrescription({ ...newPrescription, investigations: newInvs });
+                              }}
+                              placeholder="Additional notes"
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <Flex gap={3} className="mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowNewPrescriptionModal(false)}
+                      className="flex-1"
+                      disabled={isCreating}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleCreatePrescription}
+                      className="flex-1"
+                      disabled={isCreating}
+                    >
+                      {isCreating ? 'Creating...' : 'Create Prescription'}
+                    </Button>
+                  </Flex>
+                </Stack>
+              </div>
             </div>
           </div>
         )}

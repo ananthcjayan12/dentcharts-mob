@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar } from '../components';
+import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar, Button } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
-import { useAppointmentsByDate, useUpcomingAppointments } from '../hooks/useAppointments';
+import { useAppointments, useUpcomingAppointments, useUpdateAppointment, useCancelAppointment, useDeleteAppointment, useAddToTodaysQueue, useTodaysQueue } from '../hooks/useAppointments';
 import { Appointment } from '../types';
+import toast from 'react-hot-toast';
 
 const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('appointments');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddToQueueModal, setShowAddToQueueModal] = useState(false);
+  const [selectedPatientForQueue, setSelectedPatientForQueue] = useState<string>('');
+  const { mutate: updateAppointment, isPending: isUpdating } = useUpdateAppointment();
+  const { mutate: cancelAppointment, isPending: isCancelling } = useCancelAppointment();
+  const { mutate: deleteAppointment, isPending: isDeleting } = useDeleteAppointment();
+  const { mutate: addToQueue, isPending: isAddingToQueue } = useAddToTodaysQueue();
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -40,26 +49,121 @@ const AppointmentsPage: React.FC = () => {
     }
   };
 
-  // Real API data instead of mock data
+  const handleEditAppointment = (appointment: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const appointmentTime = new Date(appointment.appointment_datetime);
+    setEditingAppointment({
+      appointment_id: appointment.appointment_id,
+      patient_name: appointment.patient_name,
+      appointment_date: appointmentTime.toISOString().split('T')[0],
+      appointment_time: appointmentTime.toTimeString().split(' ')[0].substring(0, 5),
+      notes: appointment.notes || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateAppointment = async () => {
+    if (!editingAppointment) return;
+
+    try {
+      await updateAppointment({
+        appointment_id: editingAppointment.appointment_id,
+        appointment_time: editingAppointment.appointment_time + ':00',
+        notes: editingAppointment.notes,
+      });
+      setShowEditModal(false);
+      setEditingAppointment(null);
+    } catch (error: any) {
+      console.error('Update appointment error:', error);
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
+
+    try {
+      await cancelAppointment({
+        appointment_id: appointmentId,
+        reason: 'Cancelled by doctor',
+      });
+    } catch (error: any) {
+      console.error('Cancel appointment error:', error);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingAppointment(null);
+  };
+
+  const handleDeleteAppointment = async (appointmentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!window.confirm('Are you sure you want to delete this appointment? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteAppointment(appointmentId);
+    } catch (error: any) {
+      console.error('Delete appointment error:', error);
+    }
+  };
+
+  const handleAddToTodaysQueue = async () => {
+    if (!selectedPatientForQueue) {
+      toast.error('Please select a patient');
+      return;
+    }
+
+    try {
+      await addToQueue({
+        patient_id: selectedPatientForQueue,
+        duration: 30,
+        appointment_type: 'Walk In',
+      });
+      setShowAddToQueueModal(false);
+      setSelectedPatientForQueue('');
+    } catch (error: any) {
+      console.error('Add to queue error:', error);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Real API data with pagination
   const { 
-    data: selectedDateAppointments, 
+    data: appointmentsData, 
     isLoading: appointmentsLoading 
-  } = useAppointmentsByDate(selectedDate);
+  } = useAppointments(
+    { 
+      limit_page_length: itemsPerPage, 
+      limit_start: (currentPage - 1) * itemsPerPage 
+    },
+    { 
+      date_from: selectedDate, 
+      date_to: selectedDate 
+    }
+  );
   
   const { 
     data: upcomingAppointments, 
     isLoading: upcomingLoading 
   } = useUpcomingAppointments();
 
-  const todaysAppointments = selectedDateAppointments || [];
+  const { 
+    data: todaysQueueData, 
+    isLoading: queueLoading 
+  } = useTodaysQueue();
 
-  // Pagination logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentAppointments = todaysAppointments.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(todaysAppointments.length / itemsPerPage);
-
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const todaysAppointments = appointmentsData?.data || [];
+  const totalCount = appointmentsData?.total_count || 0;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const todaysQueue = todaysQueueData?.queue || [];
 
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-primary-50 to-white">
@@ -85,9 +189,15 @@ const AppointmentsPage: React.FC = () => {
                   Clinic Queue
                 </Typography>
                 <Typography variant="body2" className="text-gray-500">
-                  Manage your appointments
+                  {totalCount} total appointments
                 </Typography>
               </div>
+              <button
+                onClick={() => setShowAddToQueueModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                + Add to Today's Queue
+              </button>
               
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative">
@@ -100,6 +210,34 @@ const AppointmentsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Today's Queue Section */}
+            {todaysQueue.length > 0 && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">📋 Today's Queue</h3>
+                <div className="space-y-2">
+                  {todaysQueue.slice(0, 5).map((appointment: any) => (
+                    <div key={appointment.appointment_id} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                          {appointment.queue_position}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{appointment.patient_name}</p>
+                          <p className="text-sm text-gray-600">{appointment.appointment_time}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm text-gray-500">{appointment.appointment_type}</span>
+                    </div>
+                  ))}
+                </div>
+                {todaysQueue.length > 5 && (
+                  <p className="text-sm text-gray-600 mt-3 text-center">
+                    + {todaysQueue.length - 5} more in queue
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Selected Date Appointments */}
             <Stack spacing={4}>
@@ -183,7 +321,7 @@ const AppointmentsPage: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
-                            {currentAppointments.map((appointment, index) => (
+                            {todaysAppointments.map((appointment) => (
                               <tr 
                                 key={appointment.appointment_id}
                                 className="hover:bg-primary-50 cursor-pointer transition-colors"
@@ -219,9 +357,36 @@ const AppointmentsPage: React.FC = () => {
                                   </Badge>
                                 </td>
                                 <td className="px-6 py-4">
-                                  <button className="text-danger-600 hover:text-danger-700 font-medium text-sm">
-                                    Cancel Visit
-                                  </button>
+                                  <Flex gap={2}>
+                                    <button
+                                      onClick={(e) => handleEditAppointment(appointment, e)}
+                                      className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                      title="Edit Appointment"
+                                      disabled={isUpdating || isCancelling || isDeleting}
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleDeleteAppointment(appointment.appointment_id, e)}
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                      title="Delete Appointment"
+                                      disabled={isUpdating || isCancelling || isDeleting}
+                                    >
+                                      🗑️
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleCancelAppointment(appointment.appointment_id, e)}
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                      title="Cancel Appointment"
+                                      disabled={isUpdating || isCancelling || isDeleting}
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </Flex>
                                 </td>
                                 <td className="px-6 py-4">
                                   <Typography variant="body2" className="text-gray-900 font-medium">
@@ -309,6 +474,37 @@ const AppointmentsPage: React.FC = () => {
                           </svg>
                         </div>
                       </Flex>
+                      
+                      {/* Action Buttons for Mobile */}
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditAppointment(appointment, e);
+                          }}
+                          disabled={isUpdating || isCancelling || isDeleting}
+                          className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteAppointment(appointment.appointment_id, e)}
+                          disabled={isUpdating || isCancelling || isDeleting}
+                          className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                        {appointment.status === 'Scheduled' && (
+                          <button
+                            onClick={(e) => handleCancelAppointment(appointment.appointment_id, e)}
+                            disabled={isUpdating || isCancelling || isDeleting}
+                            className="flex-1 px-3 py-2 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </Card>
                   ))}
                 </Stack>
@@ -333,6 +529,111 @@ const AppointmentsPage: React.FC = () => {
                 </Card>
               )}
             </Stack>
+
+            {/* Pagination for Today's Appointments */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 px-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700">Rows per page:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700">
+                    {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} rows
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  {(() => {
+                    const pages = [];
+                    const maxVisible = 5;
+                    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                    
+                    if (endPage - startPage + 1 < maxVisible) {
+                      startPage = Math.max(1, endPage - maxVisible + 1);
+                    }
+                    
+                    if (startPage > 1) {
+                      pages.push(
+                        <button
+                          key={1}
+                          onClick={() => handlePageChange(1)}
+                          className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                        >
+                          1
+                        </button>
+                      );
+                      if (startPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                      }
+                    }
+                    
+                    for (let pageNum: number = startPage; pageNum <= endPage; pageNum++) {
+                      pages.push(
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-1 border rounded text-sm ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    }
+                    
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                      }
+                      pages.push(
+                        <button
+                          key={totalPages}
+                          onClick={() => handlePageChange(totalPages)}
+                          className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                        >
+                          {totalPages}
+                        </button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Upcoming Appointments - Only show when not loading and has data */}
             {!upcomingLoading && upcomingAppointments && upcomingAppointments.length > 0 && (
@@ -518,6 +819,147 @@ const AppointmentsPage: React.FC = () => {
           </Stack>
         </Container>
         </div>
+
+        {/* Edit Appointment Modal */}
+        {showEditModal && editingAppointment && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <Flex align="center" justify="between" className="mb-6">
+                  <Typography variant="h5" weight="bold" className="text-gray-900">
+                    Edit Appointment
+                  </Typography>
+                  <button
+                    onClick={handleCloseEditModal}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </Flex>
+
+                <Stack spacing={4}>
+                  <div className="p-4 bg-primary-50 rounded-lg">
+                    <Typography variant="body2" weight="semibold" className="text-primary-900">
+                      Patient: {editingAppointment.patient_name}
+                    </Typography>
+                  </div>
+
+                  <InputField
+                    label="Appointment Date"
+                    type="date"
+                    value={editingAppointment.appointment_date}
+                    disabled
+                  />
+
+                  <InputField
+                    label="Appointment Time"
+                    type="time"
+                    value={editingAppointment.appointment_time}
+                    onChange={(e) => setEditingAppointment({ ...editingAppointment, appointment_time: e.target.value })}
+                  />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      value={editingAppointment.notes}
+                      onChange={(e) => setEditingAppointment({ ...editingAppointment, notes: e.target.value })}
+                      placeholder="Add appointment notes..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+
+                  <Flex gap={3} className="mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={handleCloseEditModal}
+                      className="flex-1"
+                      disabled={isUpdating}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleUpdateAppointment}
+                      className="flex-1"
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? 'Updating...' : 'Update Appointment'}
+                    </Button>
+                  </Flex>
+                </Stack>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add to Today's Queue Modal */}
+        {showAddToQueueModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+              <div className="p-6">
+                <Flex align="center" justify="between" className="mb-6">
+                  <Typography variant="h5" weight="bold" className="text-gray-900">
+                    Add to Today's Queue
+                  </Typography>
+                  <button
+                    onClick={() => {
+                      setShowAddToQueueModal(false);
+                      setSelectedPatientForQueue('');
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </Flex>
+
+                <Stack spacing={4}>
+                  <InputField
+                    label="Patient ID or Name"
+                    type="text"
+                    value={selectedPatientForQueue}
+                    onChange={(e) => setSelectedPatientForQueue(e.target.value)}
+                    placeholder="Enter patient ID or name"
+                  />
+
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <Typography variant="body2" className="text-blue-900">
+                      ℹ️ The system will automatically find the nearest available slot in today's queue.
+                    </Typography>
+                  </div>
+
+                  <Flex gap={3} className="mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowAddToQueueModal(false);
+                        setSelectedPatientForQueue('');
+                      }}
+                      className="flex-1"
+                      disabled={isAddingToQueue}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleAddToTodaysQueue}
+                      className="flex-1"
+                      disabled={isAddingToQueue || !selectedPatientForQueue}
+                    >
+                      {isAddingToQueue ? 'Adding...' : 'Add to Queue'}
+                    </Button>
+                  </Flex>
+                </Stack>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />

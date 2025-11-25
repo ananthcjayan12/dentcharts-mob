@@ -252,6 +252,27 @@ export class PrescriptionService {
   }
 
   /**
+   * Delete prescription by record ID
+   */
+  async deletePrescription(recordId: string): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post<ApiResponse>(
+        API_ENDPOINTS.PRESCRIPTIONS.DELETE,
+        { record_id: recordId }
+      );
+
+      if (response.message === 'Prescription deleted successfully' || response.data) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to delete prescription');
+    } catch (error) {
+      console.error('Delete prescription error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get prescription status color for UI
    */
   getPrescriptionStatusColor(status: string): string {

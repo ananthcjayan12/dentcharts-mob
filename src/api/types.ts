@@ -174,10 +174,17 @@ export interface CreatePrescriptionRequest {
 }
 
 export interface PrescriptionResponse {
+  name?: string; // Record ID from list API (HLC-ENC-2025-00075)
   record_id: string;
   patient_id: string;
+  patient?: string; // Alias for patient_id in list API
   patient_name: string;
+  practitioner_id?: string;
+  practitioner?: string; // Alias for practitioner_id in list API
   posting_date: string;
+  encounter_date?: string; // From list API
+  encounter_time?: string; // From list API
+  creation?: string; // From list API
   chief_complaint: string;
   symptoms: string;
   diagnosis: string;
@@ -185,6 +192,17 @@ export interface PrescriptionResponse {
   medications: Medication[];
   investigations: Investigation[];
   status: string;
+  medications_count?: number; // From list API
+  investigations_count?: number; // From list API
+  invoiced?: number; // From list API
+  has_attachments?: any; // From list API
+  can_edit?: boolean; // From list API
+  can_share?: boolean; // From list API
+  company?: string; // From list API
+  docstatus?: number; // From list API
+  medical_department?: string | null; // From list API
+  patient_mobile?: string; // From list API
+  patient_email?: string | null; // From list API
 }
 
 export interface UpdatePrescriptionRequest {

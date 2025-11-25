@@ -180,28 +180,107 @@ export const useCancelAppointment = () => {
 };
 
 /**
- * Hook for appointment actions (create, update, cancel)
+ * Hook for deleting an appointment
+ */
+export const useDeleteAppointment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: mutationKeys.appointments.delete(''),
+    mutationFn: (appointmentId: string) =>
+      appointmentService.deleteAppointment(appointmentId),
+    onSuccess: (result, appointmentId) => {
+      invalidateQueriesHelper.invalidateAppointments();
+      invalidateQueriesHelper.invalidateDashboard();
+      
+      // Invalidate available slots
+      queryClient.invalidateQueries({
+        queryKey: ['appointments', 'slots'],
+      });
+      
+      toast.success('Appointment deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete appointment');
+    },
+  });
+};
+
+/**
+ * Hook for adding patient to today's queue
+ */
+export const useAddToTodaysQueue = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: mutationKeys.appointments.create(),
+    mutationFn: (params: {
+      patient_id: string;
+      duration?: number;
+      chief_complaint?: string;
+      notes?: string;
+      appointment_type?: string;
+    }) => appointmentService.addToTodaysQueue(params),
+    onSuccess: (result) => {
+      invalidateQueriesHelper.invalidateAppointments();
+      invalidateQueriesHelper.invalidateDashboard();
+      
+      // Invalidate today's queue
+      queryClient.invalidateQueries({
+        queryKey: ['appointments', 'queue'],
+      });
+      
+      toast.success(`Added to queue at position ${result.queue_position}`);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to add to queue');
+    },
+  });
+};
+
+/**
+ * Hook for getting today's queue
+ */
+export const useTodaysQueue = () => {
+  return useQuery({
+    queryKey: ['appointments', 'queue'],
+    queryFn: () => appointmentService.getTodaysQueue(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
+};
+
+/**
+ * Hook for appointment actions (create, update, cancel, delete, add to queue)
  */
 export const useAppointmentActions = () => {
   const createAppointment = useCreateAppointment();
   const updateAppointment = useUpdateAppointment();
   const cancelAppointment = useCancelAppointment();
+  const deleteAppointment = useDeleteAppointment();
+  const addToQueue = useAddToTodaysQueue();
 
   return {
     // Actions
     createAppointment: createAppointment.mutateAsync,
     updateAppointment: updateAppointment.mutateAsync,
     cancelAppointment: cancelAppointment.mutateAsync,
+    deleteAppointment: deleteAppointment.mutateAsync,
+    addToTodaysQueue: addToQueue.mutateAsync,
 
     // Loading states
     isCreating: createAppointment.isPending,
     isUpdating: updateAppointment.isPending,
     isCancelling: cancelAppointment.isPending,
+    isDeleting: deleteAppointment.isPending,
+    isAddingToQueue: addToQueue.isPending,
 
     // Error states
     createError: createAppointment.error,
     updateError: updateAppointment.error,
     cancelError: cancelAppointment.error,
+    deleteError: deleteAppointment.error,
+    addToQueueError: addToQueue.error,
   };
 };
 

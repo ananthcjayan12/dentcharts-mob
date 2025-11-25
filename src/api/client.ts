@@ -328,6 +328,7 @@ export const API_ENDPOINTS = {
     GET: '/api/method/mob_clinic.mob_clinic.api.patient.get_patient',
     LIST: '/api/method/mob_clinic.mob_clinic.api.patient.get_patients',
     UPDATE: '/api/method/mob_clinic.mob_clinic.api.patient.update_patient',
+    DELETE: '/api/method/mob_clinic.mob_clinic.api.patient.delete_patient',
     SEARCH: '/api/method/mob_clinic.mob_clinic.api.patient.search_patients',
   },
 
@@ -337,7 +338,10 @@ export const API_ENDPOINTS = {
     GET: '/api/method/mob_clinic.mob_clinic.api.appointment.get_appointment',
     LIST: '/api/method/mob_clinic.mob_clinic.api.appointment.get_appointments',
     UPDATE: '/api/method/mob_clinic.mob_clinic.api.appointment.update_appointment',
+    DELETE: '/api/method/mob_clinic.mob_clinic.api.appointment.delete_appointment',
     CANCEL: '/api/method/mob_clinic.mob_clinic.api.appointment.cancel_appointment',
+    ADD_TO_QUEUE: '/api/method/mob_clinic.mob_clinic.api.appointment.add_to_todays_queue',
+    GET_QUEUE: '/api/method/mob_clinic.mob_clinic.api.appointment.get_todays_queue',
     AVAILABLE_SLOTS: '/api/method/mob_clinic.mob_clinic.api.appointment.get_available_slots',
   },
 
@@ -347,6 +351,7 @@ export const API_ENDPOINTS = {
     GET: '/api/method/mob_clinic.mob_clinic.api.prescription.get_prescription',
     LIST: '/api/method/mob_clinic.mob_clinic.api.prescription.get_prescriptions',
     UPDATE: '/api/method/mob_clinic.mob_clinic.api.prescription.update_prescription',
+    DELETE: '/api/method/mob_clinic.mob_clinic.api.prescription.delete_prescription',
     SHARE: '/api/method/mob_clinic.mob_clinic.api.prescription.share_prescription',
     PATIENT_HISTORY: '/api/method/mob_clinic.mob_clinic.api.prescription.get_patient_history',
   },
@@ -368,6 +373,27 @@ export const API_ENDPOINTS = {
     LIST: '/api/method/mob_clinic.mob_clinic.api.file_upload.list_files',
     DELETE: '/api/method/mob_clinic.mob_clinic.api.file_upload.delete_file',
     CATEGORIES: '/api/method/mob_clinic.mob_clinic.api.file_upload.get_file_categories',
+  },
+
+  // Dental Chart Management
+  DENTAL_CHART: {
+    GET: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_dental_chart',
+    SAVE: '/api/method/mob_clinic.mob_clinic.api.dental_chart.save_dental_chart',
+    ADD_CONDITION: '/api/method/mob_clinic.mob_clinic.api.dental_chart.add_condition',
+    UPDATE_CONDITION: '/api/method/mob_clinic.mob_clinic.api.dental_chart.update_condition',
+    REMOVE_CONDITION: '/api/method/mob_clinic.mob_clinic.api.dental_chart.remove_condition',
+    GET_CONDITION_HISTORY: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_condition_history',
+    GET_CONDITION_TYPES: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_condition_types',
+    ADD_PROCEDURE: '/api/method/mob_clinic.mob_clinic.api.dental_chart.add_procedure',
+    UPDATE_PROCEDURE: '/api/method/mob_clinic.mob_clinic.api.dental_chart.update_procedure',
+    REMOVE_PROCEDURE: '/api/method/mob_clinic.mob_clinic.api.dental_chart.remove_procedure',
+    GET_PROCEDURE_TIMELINE: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_procedure_timeline',
+    GET_PROCEDURE_TYPES: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_procedure_types',
+    GET_SUMMARY: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_chart_summary',
+    EXPORT: '/api/method/mob_clinic.mob_clinic.api.dental_chart.export_chart',
+    GET_TREATMENT_PROGRESS: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_treatment_progress',
+    GET_CHART_TYPES: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_chart_types',
+    GET_TOOTH_STATUS_OPTIONS: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_tooth_status_options',
   },
 } as const;
 

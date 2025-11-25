@@ -132,6 +132,27 @@ export class PatientService {
   }
 
   /**
+   * Delete patient
+   */
+  async deletePatient(patientId: string): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post<ApiResponse>(
+        API_ENDPOINTS.PATIENTS.DELETE,
+        { patient_id: patientId }
+      );
+
+      if (response.message === 'Patient deleted successfully' || response.data) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to delete patient');
+    } catch (error) {
+      console.error('Delete patient error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get patients with search functionality (combines list and search)
    */
   async getPatientsWithSearch(

@@ -1,0 +1,532 @@
+{
+  "info": {
+    "_postman_id": "dental-chart-api-collection",
+    "name": "Dental Chart Management API",
+    "description": "API requirements for Dental Chart feature in Mobile Clinic Management System\n\n## Overview\nThis collection defines the required APIs for managing dental charts, including:\n- Tooth-level condition tracking (cavities, crowns, bridges, etc.)\n- Procedure management with timeline tracking\n- Treatment planning and progress monitoring\n- Comprehensive reporting and data visualization\n\n## Data Model\n\n### Tooth Data Structure\n```json\n{\n  \"tooth_number\": 11,\n  \"status\": \"in-treatment\",\n  \"conditions\": [...],\n  \"procedures\": [...]\n}\n```\n\n### Tooth Condition\n```json\n{\n  \"id\": \"unique-id\",\n  \"type\": \"cavity|crown|bridge|implant|root-canal|extraction|filling|fracture|abscess|other\",\n  \"severity\": \"mild|moderate|severe\",\n  \"notes\": \"Description\",\n  \"date\": \"2024-11-20\",\n  \"created_at\": \"ISO 8601 timestamp\",\n  \"updated_at\": \"ISO 8601 timestamp\",\n  \"created_by\": \"practitioner_id\"\n}\n```\n\n### Tooth Procedure\n```json\n{\n  \"id\": \"unique-id\",\n  \"name\": \"Root Canal Treatment\",\n  \"status\": \"planned|in-progress|completed|cancelled\",\n  \"notes\": \"Procedure notes\",\n  \"date\": \"2024-11-20\",\n  \"cost\": 3000,\n  \"duration_minutes\": 60,\n  \"created_at\": \"ISO 8601 timestamp\",\n  \"updated_at\": \"ISO 8601 timestamp\",\n  \"created_by\": \"practitioner_id\",\n  \"timeline\": [\n    {\n      \"status\": \"planned\",\n      \"timestamp\": \"ISO 8601 timestamp\",\n      \"notes\": \"Optional notes\",\n      \"changed_by\": \"practitioner_id\"\n    }\n  ]\n}\n```\n\n## Authentication\nAll endpoints require practitioner authentication via session cookies.\n\n## Base URL\n`{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Dental Chart Management",
+      "item": [
+        {
+          "name": "Get Dental Chart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_dental_chart?patient_id={{patient_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_dental_chart"
+              ],
+              "query": [
+                {
+                  "key": "patient_id",
+                  "value": "{{patient_id}}",
+                  "description": "Patient ID (required)"
+                },
+                {
+                  "key": "chart_type",
+                  "value": "adult",
+                  "disabled": true,
+                  "description": "Optional: adult|pediatric|mixed (defaults to adult)"
+                }
+              ]
+            },
+            "description": "Retrieves complete dental chart for a patient including all teeth data, conditions, and procedures.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Dental chart retrieved successfully\",\n  \"data\": {\n    \"patient_id\": \"PAT-00001\",\n    \"chart_type\": \"adult\",\n    \"last_updated\": \"2024-11-20T10:30:00Z\",\n    \"teeth\": {\n      \"11\": {\n        \"tooth_number\": 11,\n        \"status\": \"has-condition\",\n        \"conditions\": [...],\n        \"procedures\": [...]\n      },\n      \"16\": {...}\n    },\n    \"summary\": {\n      \"total_teeth_affected\": 6,\n      \"total_conditions\": 8,\n      \"total_procedures\": 10,\n      \"completed_procedures\": 4,\n      \"planned_procedures\": 3,\n      \"in_progress_procedures\": 3\n    }\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Save Dental Chart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"chart_type\": \"adult\",\n  \"teeth_data\": {\n    \"11\": {\n      \"tooth_number\": 11,\n      \"status\": \"has-condition\",\n      \"conditions\": [\n        {\n          \"type\": \"cavity\",\n          \"severity\": \"moderate\",\n          \"notes\": \"Small cavity on mesial surface\",\n          \"date\": \"2024-11-20\"\n        }\n      ],\n      \"procedures\": [\n        {\n          \"name\": \"Filling\",\n          \"status\": \"planned\",\n          \"notes\": \"Composite filling scheduled\",\n          \"date\": \"2024-11-25\",\n          \"cost\": 1500,\n          \"duration_minutes\": 30\n        }\n      ]\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.save_dental_chart",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.save_dental_chart"
+              ]
+            },
+            "description": "Saves complete dental chart data for a patient. This endpoint handles:\n- Creating new tooth records\n- Updating existing conditions and procedures\n- Maintaining timeline history for procedures\n- Automatically calculating tooth status based on conditions/procedures\n\n**Important Notes:**\n1. IDs for conditions/procedures should be included when updating existing items\n2. Omitting an ID creates a new record\n3. Timeline entries are automatically created for procedure status changes\n4. `created_by` and timestamps are set server-side\n\n**Response Format:**\n```json\n{\n  \"message\": \"Dental chart saved successfully\",\n  \"data\": {\n    \"patient_id\": \"PAT-00001\",\n    \"updated_teeth\": [11, 16, 21],\n    \"new_conditions\": 2,\n    \"new_procedures\": 1,\n    \"updated_procedures\": 3\n  }\n}\n```"
+          },
+          "response": []
+        }
+      ],
+      "description": "Core dental chart CRUD operations"
+    },
+    {
+      "name": "Condition Management",
+      "item": [
+        {
+          "name": "Add Tooth Condition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"tooth_numbers\": [11, 12, 13],\n  \"condition\": {\n    \"type\": \"cavity\",\n    \"severity\": \"moderate\",\n    \"notes\": \"Cavities detected during routine checkup\",\n    \"date\": \"2024-11-20\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.add_condition",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.add_condition"
+              ]
+            },
+            "description": "Adds a condition to one or multiple teeth. Supports bulk operations for applying same condition to multiple teeth.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Condition added successfully\",\n  \"data\": {\n    \"condition_ids\": [\"COND-001\", \"COND-002\", \"COND-003\"],\n    \"affected_teeth\": [11, 12, 13]\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Tooth Condition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"tooth_number\": 11,\n  \"condition_id\": \"COND-001\",\n  \"updates\": {\n    \"severity\": \"severe\",\n    \"notes\": \"Condition worsened, urgent treatment required\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.update_condition",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.update_condition"
+              ]
+            },
+            "description": "Updates an existing tooth condition.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Condition updated successfully\",\n  \"data\": {\n    \"condition_id\": \"COND-001\",\n    \"tooth_number\": 11,\n    \"updated_at\": \"2024-11-20T10:30:00Z\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Tooth Condition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"tooth_number\": 11,\n  \"condition_id\": \"COND-001\",\n  \"reason\": \"Condition resolved after treatment\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.remove_condition",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.remove_condition"
+              ]
+            },
+            "description": "Removes a condition from a tooth. Maintains audit trail by storing reason for removal.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Condition removed successfully\",\n  \"data\": {\n    \"condition_id\": \"COND-001\",\n    \"tooth_number\": 11,\n    \"removed_at\": \"2024-11-20T10:30:00Z\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Condition Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_condition_types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_condition_types"
+              ]
+            },
+            "description": "Returns list of available condition types with metadata.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Condition types retrieved successfully\",\n  \"data\": [\n    {\n      \"value\": \"cavity\",\n      \"label\": \"Cavity\",\n      \"description\": \"Tooth decay or dental caries\",\n      \"severity_options\": [\"mild\", \"moderate\", \"severe\"]\n    },\n    {\n      \"value\": \"crown\",\n      \"label\": \"Crown\",\n      \"description\": \"Dental crown placement\",\n      \"severity_options\": null\n    }\n  ]\n}\n```"
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for managing tooth conditions"
+    },
+    {
+      "name": "Procedure Management",
+      "item": [
+        {
+          "name": "Add Tooth Procedure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"tooth_numbers\": [11],\n  \"procedure\": {\n    \"name\": \"Root Canal Treatment\",\n    \"status\": \"planned\",\n    \"notes\": \"Deep cavity requires root canal\",\n    \"date\": \"2024-11-25\",\n    \"cost\": 3000,\n    \"duration_minutes\": 90\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.add_procedure",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.add_procedure"
+              ]
+            },
+            "description": "Adds a procedure to one or multiple teeth. Automatically creates initial timeline entry.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Procedure added successfully\",\n  \"data\": {\n    \"procedure_ids\": [\"PROC-001\"],\n    \"affected_teeth\": [11],\n    \"timeline_created\": true\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Procedure Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"tooth_number\": 11,\n  \"procedure_id\": \"PROC-001\",\n  \"status\": \"in-progress\",\n  \"notes\": \"First session completed - canal cleaned and shaped\",\n  \"cost\": 3500\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.update_procedure_status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.update_procedure_status"
+              ]
+            },
+            "description": "Updates procedure status and automatically adds timeline entry if status changed.\n\n**Important:** This endpoint should:\n1. Check if status changed from previous value\n2. If changed, create new timeline entry with timestamp\n3. Update procedure's `updated_at` timestamp\n4. Recalculate tooth status based on all procedures\n\n**Response Format:**\n```json\n{\n  \"message\": \"Procedure status updated successfully\",\n  \"data\": {\n    \"procedure_id\": \"PROC-001\",\n    \"tooth_number\": 11,\n    \"old_status\": \"planned\",\n    \"new_status\": \"in-progress\",\n    \"timeline_entry_added\": true,\n    \"updated_at\": \"2024-11-20T10:30:00Z\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Procedure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"tooth_number\": 11,\n  \"procedure_id\": \"PROC-001\",\n  \"updates\": {\n    \"name\": \"Root Canal Treatment with Crown\",\n    \"notes\": \"Additional crown placement required\",\n    \"cost\": 5000,\n    \"duration_minutes\": 120\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.update_procedure",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.update_procedure"
+              ]
+            },
+            "description": "Updates procedure details without changing status (no timeline entry created).\n\n**Response Format:**\n```json\n{\n  \"message\": \"Procedure updated successfully\",\n  \"data\": {\n    \"procedure_id\": \"PROC-001\",\n    \"tooth_number\": 11,\n    \"updated_at\": \"2024-11-20T10:30:00Z\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Tooth Procedure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient_id\": \"{{patient_id}}\",\n  \"tooth_number\": 11,\n  \"procedure_id\": \"PROC-001\",\n  \"reason\": \"Patient cancelled procedure\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.remove_procedure",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.remove_procedure"
+              ]
+            },
+            "description": "Removes a procedure from a tooth. Maintains audit trail.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Procedure removed successfully\",\n  \"data\": {\n    \"procedure_id\": \"PROC-001\",\n    \"tooth_number\": 11,\n    \"removed_at\": \"2024-11-20T10:30:00Z\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Procedure Timeline",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_procedure_timeline?patient_id={{patient_id}}&tooth_number=11&procedure_id=PROC-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_procedure_timeline"
+              ],
+              "query": [
+                {
+                  "key": "patient_id",
+                  "value": "{{patient_id}}"
+                },
+                {
+                  "key": "tooth_number",
+                  "value": "11"
+                },
+                {
+                  "key": "procedure_id",
+                  "value": "PROC-001"
+                }
+              ]
+            },
+            "description": "Retrieves complete timeline history for a specific procedure.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Procedure timeline retrieved successfully\",\n  \"data\": {\n    \"procedure_id\": \"PROC-001\",\n    \"procedure_name\": \"Root Canal Treatment\",\n    \"tooth_number\": 11,\n    \"current_status\": \"in-progress\",\n    \"timeline\": [\n      {\n        \"status\": \"planned\",\n        \"timestamp\": \"2024-11-15T10:30:00Z\",\n        \"notes\": \"Treatment plan approved\",\n        \"changed_by\": \"Dr. John Smith\"\n      },\n      {\n        \"status\": \"in-progress\",\n        \"timestamp\": \"2024-11-18T09:15:00Z\",\n        \"notes\": \"First session completed\",\n        \"changed_by\": \"Dr. John Smith\"\n      }\n    ]\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Procedure Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_procedure_types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_procedure_types"
+              ]
+            },
+            "description": "Returns list of common dental procedures with metadata.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Procedure types retrieved successfully\",\n  \"data\": [\n    {\n      \"name\": \"Cleaning\",\n      \"default_cost\": 500,\n      \"default_duration\": 30,\n      \"description\": \"Regular dental cleaning\"\n    },\n    {\n      \"name\": \"Root Canal Treatment\",\n      \"default_cost\": 3000,\n      \"default_duration\": 90,\n      \"description\": \"Endodontic treatment\"\n    }\n  ]\n}\n```"
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for managing tooth procedures and their lifecycle"
+    },
+    {
+      "name": "Reporting & Analytics",
+      "item": [
+        {
+          "name": "Get Dental Chart Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_chart_summary?patient_id={{patient_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_chart_summary"
+              ],
+              "query": [
+                {
+                  "key": "patient_id",
+                  "value": "{{patient_id}}"
+                }
+              ]
+            },
+            "description": "Generates comprehensive summary report for dental chart.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Chart summary generated successfully\",\n  \"data\": {\n    \"patient_id\": \"PAT-00001\",\n    \"patient_name\": \"John Doe\",\n    \"generated_at\": \"2024-11-20T10:30:00Z\",\n    \"statistics\": {\n      \"total_teeth_affected\": 6,\n      \"total_conditions\": 8,\n      \"total_procedures\": 10,\n      \"completed_procedures\": 4,\n      \"planned_procedures\": 3,\n      \"in_progress_procedures\": 3,\n      \"total_treatment_cost\": 15000,\n      \"paid_amount\": 8000,\n      \"pending_amount\": 7000\n    },\n    \"conditions_by_type\": {\n      \"cavity\": {\"count\": 3, \"teeth\": [11, 16, 26]},\n      \"crown\": {\"count\": 2, \"teeth\": [21, 46]},\n      \"root-canal\": {\"count\": 1, \"teeth\": [16]}\n    },\n    \"procedures_by_status\": {\n      \"planned\": [\n        {\"tooth_number\": 11, \"procedure\": \"Filling\", \"cost\": 1500}\n      ],\n      \"in-progress\": [\n        {\"tooth_number\": 16, \"procedure\": \"Root Canal\", \"cost\": 3000}\n      ],\n      \"completed\": [\n        {\"tooth_number\": 21, \"procedure\": \"Crown\", \"cost\": 5000}\n      ]\n    },\n    \"timeline_by_date\": [\n      {\n        \"date\": \"2024-11-20\",\n        \"items\": [\n          {\n            \"tooth_number\": 11,\n            \"type\": \"condition\",\n            \"details\": \"Cavity detected\"\n          },\n          {\n            \"tooth_number\": 16,\n            \"type\": \"procedure\",\n            \"details\": \"Root Canal - In Progress\"\n          }\n        ]\n      }\n    ]\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Export Dental Chart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.export_chart?patient_id={{patient_id}}&format=pdf",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.export_chart"
+              ],
+              "query": [
+                {
+                  "key": "patient_id",
+                  "value": "{{patient_id}}"
+                },
+                {
+                  "key": "format",
+                  "value": "pdf",
+                  "description": "pdf|json|excel"
+                }
+              ]
+            },
+            "description": "Exports dental chart in specified format for printing or sharing.\n\n**Response Format (for PDF/Excel):**\n- Returns file download with appropriate Content-Type header\n- Filename: `dental_chart_PAT00001_20241120.pdf`\n\n**Response Format (for JSON):**\n```json\n{\n  \"message\": \"Chart exported successfully\",\n  \"data\": {\n    \"export_format\": \"json\",\n    \"export_url\": \"/files/exports/dental_chart_PAT00001_20241120.json\",\n    \"expires_at\": \"2024-11-21T10:30:00Z\"\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Treatment Progress",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_treatment_progress?patient_id={{patient_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_treatment_progress"
+              ],
+              "query": [
+                {
+                  "key": "patient_id",
+                  "value": "{{patient_id}}"
+                },
+                {
+                  "key": "from_date",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "to_date",
+                  "value": "2024-12-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Tracks treatment progress over time for analytics.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Treatment progress retrieved successfully\",\n  \"data\": {\n    \"patient_id\": \"PAT-00001\",\n    \"period\": {\n      \"from\": \"2024-01-01\",\n      \"to\": \"2024-11-20\"\n    },\n    \"completion_percentage\": 65,\n    \"monthly_progress\": [\n      {\n        \"month\": \"2024-11\",\n        \"procedures_completed\": 3,\n        \"procedures_started\": 2,\n        \"total_cost_incurred\": 8000\n      }\n    ],\n    \"upcoming_procedures\": [\n      {\n        \"tooth_number\": 11,\n        \"procedure\": \"Filling\",\n        \"scheduled_date\": \"2024-11-25\",\n        \"estimated_cost\": 1500\n      }\n    ]\n  }\n}\n```"
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for reporting, analytics, and data export"
+    },
+    {
+      "name": "Chart Configuration",
+      "item": [
+        {
+          "name": "Get Chart Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_chart_types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_chart_types"
+              ]
+            },
+            "description": "Returns available chart types with tooth numbering information.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Chart types retrieved successfully\",\n  \"data\": [\n    {\n      \"type\": \"adult\",\n      \"label\": \"Adult Dentition\",\n      \"tooth_numbers\": {\n        \"upper\": [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28],\n        \"lower\": [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38]\n      },\n      \"total_teeth\": 32,\n      \"numbering_system\": \"FDI World Dental Federation notation\"\n    },\n    {\n      \"type\": \"pediatric\",\n      \"label\": \"Primary Dentition\",\n      \"tooth_numbers\": {\n        \"upper\": [55, 54, 53, 52, 51, 61, 62, 63, 64, 65],\n        \"lower\": [85, 84, 83, 82, 81, 71, 72, 73, 74, 75]\n      },\n      \"total_teeth\": 20,\n      \"numbering_system\": \"FDI World Dental Federation notation\"\n    },\n    {\n      \"type\": \"mixed\",\n      \"label\": \"Mixed Dentition\",\n      \"description\": \"Combination of primary and permanent teeth\"\n    }\n  ]\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tooth Status Options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/method/mob_clinic.mob_clinic.api.dental_chart.get_tooth_status_options",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "method",
+                "mob_clinic.mob_clinic.api.dental_chart.get_tooth_status_options"
+              ]
+            },
+            "description": "Returns available tooth status values and their meanings.\n\n**Response Format:**\n```json\n{\n  \"message\": \"Tooth status options retrieved successfully\",\n  \"data\": [\n    {\n      \"value\": \"healthy\",\n      \"label\": \"Healthy\",\n      \"description\": \"No conditions or procedures\",\n      \"color\": \"#FFFFFF\"\n    },\n    {\n      \"value\": \"has-condition\",\n      \"label\": \"Has Condition\",\n      \"description\": \"Condition identified, treatment not started\",\n      \"color\": \"#FEF3C7\"\n    },\n    {\n      \"value\": \"in-treatment\",\n      \"label\": \"In Treatment\",\n      \"description\": \"Active treatment in progress\",\n      \"color\": \"#CFFAFE\"\n    },\n    {\n      \"value\": \"treated\",\n      \"label\": \"Treated\",\n      \"description\": \"Treatment completed successfully\",\n      \"color\": \"#D1FAE5\"\n    }\n  ]\n}\n```"
+          },
+          "response": []
+        }
+      ],
+      "description": "Configuration and metadata APIs"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set current date",
+          "const today = new Date().toISOString().split('T')[0];",
+          "pm.environment.set('current_date', today);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://dev2.localhost:8800",
+      "type": "string"
+    }
+  ]
+}

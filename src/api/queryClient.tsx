@@ -104,6 +104,20 @@ export const queryKeys = {
     prescription: (prescriptionId: string, category?: string) => ['files', 'prescription', prescriptionId, category],
   },
   
+  // Dental Chart
+  dentalChart: {
+    all: () => ['dentalChart'],
+    byPatient: (patientId: string) => ['dentalChart', 'patient', patientId],
+    summary: (patientId: string) => ['dentalChart', 'summary', patientId],
+    progress: (patientId: string) => ['dentalChart', 'progress', patientId],
+    timeline: (patientId: string, toothNumber: number, procedureId: string) => 
+      ['dentalChart', 'timeline', patientId, toothNumber, procedureId],
+    conditionTypes: ['dentalChart', 'conditionTypes'],
+    procedureTypes: ['dentalChart', 'procedureTypes'],
+    chartTypes: ['dentalChart', 'chartTypes'],
+    statusOptions: ['dentalChart', 'statusOptions'],
+  },
+  
   // Dashboard
   dashboard: {
     stats: () => ['dashboard', 'stats'],
@@ -122,12 +136,14 @@ export const mutationKeys = {
   patients: {
     create: () => ['patients', 'create'],
     update: (id: string) => ['patients', 'update', id],
+    delete: (id: string) => ['patients', 'delete', id],
   },
   
   appointments: {
     create: () => ['appointments', 'create'],
     update: (id: string) => ['appointments', 'update', id],
     cancel: (id: string) => ['appointments', 'cancel', id],
+    delete: (id: string) => ['appointments', 'delete', id],
   },
   
   prescriptions: {
@@ -145,6 +161,18 @@ export const mutationKeys = {
   files: {
     upload: () => ['files', 'upload'],
     delete: (id: string) => ['files', 'delete', id],
+  },
+  
+  dentalChart: {
+    save: () => ['dentalChart', 'save'],
+    addCondition: () => ['dentalChart', 'addCondition'],
+    updateCondition: (conditionId: string) => ['dentalChart', 'updateCondition', conditionId],
+    removeCondition: (conditionId: string) => ['dentalChart', 'removeCondition', conditionId],
+    addProcedure: () => ['dentalChart', 'addProcedure'],
+    updateProcedure: (procedureId: string) => ['dentalChart', 'updateProcedure', procedureId],
+    updateProcedureStatus: (procedureId: string) => ['dentalChart', 'updateProcedureStatus', procedureId],
+    removeProcedure: (procedureId: string) => ['dentalChart', 'removeProcedure', procedureId],
+    export: () => ['dentalChart', 'export'],
   },
 } as const;
 
@@ -173,6 +201,11 @@ export const invalidateQueriesHelper = {
   // Invalidate all file-related queries
   invalidateFiles: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.files.all() });
+  },
+  
+  // Invalidate all dental chart-related queries
+  invalidateDentalCharts: () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.dentalChart.all() });
   },
   
   // Invalidate dashboard stats

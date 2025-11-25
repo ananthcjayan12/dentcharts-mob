@@ -113,24 +113,50 @@ export const useUpdatePatient = () => {
 };
 
 /**
- * Hook for patient actions (create, update)
+ * Hook for deleting a patient
+ */
+export const useDeletePatient = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: mutationKeys.patients.delete(''),
+    mutationFn: (patientId: string) =>
+      patientService.deletePatient(patientId),
+    onSuccess: (result, patientId) => {
+      // Invalidate all patient queries
+      invalidateQueriesHelper.invalidatePatients();
+      invalidateQueriesHelper.invalidateDashboard();
+      toast.success('Patient deleted successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete patient');
+    },
+  });
+};
+
+/**
+ * Hook for patient actions (create, update, delete)
  */
 export const usePatientActions = () => {
   const createPatient = useCreatePatient();
   const updatePatient = useUpdatePatient();
+  const deletePatient = useDeletePatient();
 
   return {
     // Actions
     createPatient: createPatient.mutateAsync,
     updatePatient: updatePatient.mutateAsync,
+    deletePatient: deletePatient.mutateAsync,
 
     // Loading states
     isCreating: createPatient.isPending,
     isUpdating: updatePatient.isPending,
+    isDeleting: deletePatient.isPending,
 
     // Error states
     createError: createPatient.error,
     updateError: updatePatient.error,
+    deleteError: deletePatient.error,
   };
 };
 

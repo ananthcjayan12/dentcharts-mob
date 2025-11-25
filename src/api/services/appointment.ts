@@ -155,6 +155,98 @@ export class AppointmentService {
   }
 
   /**
+   * Delete appointment
+   */
+  async deleteAppointment(appointmentId: string): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post<ApiResponse>(
+        API_ENDPOINTS.APPOINTMENTS.DELETE,
+        { appointment_id: appointmentId }
+      );
+
+      if (response.message === 'Appointment deleted successfully' || response.data) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to delete appointment');
+    } catch (error) {
+      console.error('Delete appointment error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add patient to today's queue
+   */
+  async addToTodaysQueue(params: {
+    patient_id: string;
+    duration?: number;
+    chief_complaint?: string;
+    notes?: string;
+    appointment_type?: string;
+  }): Promise<{
+    appointment_id: string;
+    queue_position: number;
+    appointment_time: string;
+  }> {
+    try {
+      const response = await apiClient.post<{
+        appointment_id: string;
+        patient_id: string;
+        patient_name: string;
+        appointment_date: string;
+        appointment_time: string;
+        status: string;
+        queue_position: number;
+      }>(
+        API_ENDPOINTS.APPOINTMENTS.ADD_TO_QUEUE,
+        params
+      );
+
+      if (response.data && response.message === 'Patient added to today\'s queue successfully') {
+        return {
+          appointment_id: response.data.appointment_id,
+          queue_position: response.data.queue_position,
+          appointment_time: response.data.appointment_time,
+        };
+      }
+
+      throw new Error(response.message || 'Failed to add to queue');
+    } catch (error) {
+      console.error('Add to queue error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get today's queue
+   */
+  async getTodaysQueue(): Promise<{
+    date: string;
+    total_queue: number;
+    queue: Array<AppointmentResponse & { queue_position: number; estimated_time: string }>;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        date: string;
+        total_queue: number;
+        queue: Array<AppointmentResponse & { queue_position: number; estimated_time: string }>;
+      }>(
+        API_ENDPOINTS.APPOINTMENTS.GET_QUEUE
+      );
+
+      if (response.data) {
+        return response.data;
+      }
+
+      throw new Error(response.message || 'Failed to fetch queue');
+    } catch (error) {
+      console.error('Get queue error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get today's appointments
    */
   async getTodaysAppointments(): Promise<AppointmentResponse[]> {
