@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import MobileContainer from '../components/layout/MobileContainer';
 import { Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
@@ -21,6 +21,7 @@ type LocalInvoiceItem = Omit<APIInvoiceItem, 'qty' | 'rate'> & {
 
 const InvoicePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [selectedPatient, setSelectedPatient] = useState<PatientResponse | null>(null);
   const [showPatientList, setShowPatientList] = useState(false);
@@ -38,6 +39,14 @@ const InvoicePage: React.FC = () => {
   // API hooks
   const { data: patients, isLoading: patientsLoading } = usePatients();
   const { mutate: createInvoice, isPending: isCreating } = useCreateInvoice();
+
+  // Set patient from navigation state if provided
+  useEffect(() => {
+    const statePatient = location.state?.patient;
+    if (statePatient && !selectedPatient) {
+      setSelectedPatient(statePatient);
+    }
+  }, [location.state, selectedPatient]);
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -200,18 +209,18 @@ const InvoicePage: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
                     <span className="text-white font-bold text-sm">
-                      {selectedPatient.patient_name.charAt(0)}
+                      {(selectedPatient.patient_name || selectedPatient.name || '?').charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-800 font-lato">
-                      {selectedPatient.patient_name}
+                      {selectedPatient.patient_name || selectedPatient.name || 'Unknown Patient'}
                     </p>
                     <p className="text-xs text-gray-600 font-montserrat">
-                      {selectedPatient.mobile}
+                      {selectedPatient.mobile || 'No phone'}
                     </p>
                     <p className="text-xs text-gray-500 font-montserrat">
-                      ID: {selectedPatient.patient_id}
+                      ID: {selectedPatient.patient_id || selectedPatient.name || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -443,7 +452,7 @@ const InvoicePage: React.FC = () => {
                 ) : (
                   patients.data.map((patient) => (
                     <div
-                      key={patient.patient_id}
+                      key={patient.patient_id || patient.name}
                       onClick={() => {
                         setSelectedPatient(patient);
                         setShowPatientList(false);
@@ -452,15 +461,15 @@ const InvoicePage: React.FC = () => {
                     >
                       <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
                         <span className="text-white font-bold text-sm">
-                          {patient.patient_name.charAt(0)}
+                          {(patient.patient_name || patient.name || '?').charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-bold text-gray-800 font-lato">
-                          {patient.patient_name}
+                          {patient.patient_name || patient.name || 'Unknown'}
                         </p>
                         <p className="text-xs text-gray-600 font-montserrat">
-                          ID: {patient.patient_id} • {patient.mobile}
+                          ID: {patient.patient_id || patient.name || 'N/A'} • {patient.mobile || 'No phone'}
                         </p>
                       </div>
                     </div>
