@@ -6,6 +6,7 @@ import {
   CancelAppointmentRequest,
   GetAvailableSlotsParams,
   AvailableSlot,
+  AvailableSlotsResponse,
   PaginationParams,
   PaginatedResponse,
   AppointmentFilters,
@@ -23,11 +24,22 @@ export class AppointmentService {
         duration: (params.duration || 30).toString(),
       });
 
-      const response = await apiClient.get<AvailableSlot[]>(
+      if (params.practitioner) {
+        queryParams.append('practitioner', params.practitioner);
+      }
+
+      const response = await apiClient.get<any>(
         `${API_ENDPOINTS.APPOINTMENTS.AVAILABLE_SLOTS}?${queryParams.toString()}`
       );
 
-      if (response.data) {
+      // Backend returns: { message: { message: "success", data: { slots: [...], ... } } }
+      // ApiClient unwraps to: { message: "success", data: { slots: [...], ... } }
+      if (response.data && response.data.slots) {
+        return response.data.slots;
+      }
+
+      // Fallback if data is already the slots array
+      if (Array.isArray(response.data)) {
         return response.data;
       }
 
@@ -184,6 +196,9 @@ export class AppointmentService {
     chief_complaint?: string;
     notes?: string;
     appointment_type?: string;
+    type?: string;
+    appointment_for?: string;
+    appointment_time?: string;
   }): Promise<{
     appointment_id: string;
     queue_position: number;
@@ -340,6 +355,93 @@ export class AppointmentService {
       return dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
       return 'Invalid time';
+    }
+  }
+
+  /**
+   * Check-in appointment
+   */
+  async checkInAppointment(appointmentId: string): Promise<ApiResponse<AppointmentResponse>> {
+    try {
+      const response = await apiClient.post<AppointmentResponse>(
+        '/api/method/mob_clinic.mob_clinic.api.appointment.check_in_appointment',
+        { appointment_id: appointmentId }
+      );
+
+      if (response.data) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to check in appointment');
+    } catch (error) {
+      console.error('Check-in appointment error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start visit for appointment
+   */
+  async startVisit(appointmentId: string): Promise<ApiResponse<AppointmentResponse>> {
+    try {
+      const response = await apiClient.post<AppointmentResponse>(
+        '/api/method/mob_clinic.mob_clinic.api.appointment.start_visit',
+        { appointment_id: appointmentId }
+      );
+
+      if (response.data) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to start visit');
+    } catch (error) {
+      console.error('Start visit error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Complete visit for appointment
+   */
+  async completeVisit(appointmentId: string): Promise<ApiResponse<AppointmentResponse>> {
+    try {
+      const response = await apiClient.post<AppointmentResponse>(
+        '/api/method/mob_clinic.mob_clinic.api.appointment.complete_visit',
+        { appointment_id: appointmentId }
+      );
+
+      if (response.data) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to complete visit');
+    } catch (error) {
+      console.error('Complete visit error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update review request status
+   */
+  async updateReviewStatus(appointmentId: string, requested: boolean): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post<ApiResponse>(
+        '/api/method/mob_clinic.mob_clinic.api.appointment.update_review_status',
+        { 
+          appointment_id: appointmentId,
+          review_requested: requested
+        }
+      );
+
+      if (response.message) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to update review status');
+    } catch (error) {
+      console.error('Update review status error:', error);
+      throw error;
     }
   }
 

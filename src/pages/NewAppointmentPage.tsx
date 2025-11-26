@@ -4,7 +4,9 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
 import { usePatients } from '../hooks/usePatients';
-import { useCreateAppointment } from '../hooks/useAppointments';
+import { useCreateAppointment, useAvailableSlots, useAppointments } from '../hooks/useAppointments';
+import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
+import { usePractitioners } from '../hooks/usePractitioners';
 import toast from 'react-hot-toast';
 
 const NewAppointmentPage: React.FC = () => {
@@ -13,7 +15,7 @@ const NewAppointmentPage: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [showPatientList, setShowPatientList] = useState(false);
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
-  const [selectedDoctor, setSelectedDoctor] = useState('Dr Avinash');
+  const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [appointmentType, setAppointmentType] = useState<'date' | 'today'>('today');
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [formData, setFormData] = useState({
@@ -25,24 +27,60 @@ const NewAppointmentPage: React.FC = () => {
 
   // API hooks
   const { data: patientsData, isLoading: patientsLoading } = usePatients();
+  const { data: practitionersData, isLoading: practitionersLoading } = usePractitioners();
   const { mutate: createAppointment, isPending: isCreating } = useCreateAppointment();
   
+  // Get available slots when date and doctor are selected or when adding to today's queue
+  const slotsDate = appointmentType === 'today' ? new Date().toISOString().split('T')[0] : formData.appointment_date;
+  // For 'today' we want slots even if practitioner is not yet selected so next-slot logic works
+  const shouldFetchSlots = (appointmentType === 'today') || (!!selectedDoctor && appointmentType === 'date' && !!formData.appointment_date);
+  const slotsParams: any = { date: slotsDate, duration: formData.duration };
+  if (selectedDoctor) slotsParams.practitioner = selectedDoctor;
+  const { data: availableSlots, isLoading: slotsLoading, refetch: refetchSlots } = useAvailableSlots(slotsParams, shouldFetchSlots);
+
+  // Get existing appointments for selected date
+  const { data: dateAppointmentsData } = useAppointments(
+    {},
+    {
+      date_from: formData.appointment_date,
+      date_to: formData.appointment_date,
+      practitioner: selectedDoctor,
+    }
+  );
+  
   const patients = patientsData?.data || [];
+  const practitioners = practitionersData?.data || [];
+  const slots = availableSlots || [];
+  const dateAppointments = dateAppointmentsData?.data || [];
+
+  // Auto-select first practitioner if available
+  useEffect(() => {
+    if (practitioners.length > 0 && !selectedDoctor) {
+      setSelectedDoctor(practitioners[0].name);
+    }
+  }, [practitioners, selectedDoctor]);
 
   // Check if patient ID is provided in URL params
   useEffect(() => {
-    const patientId = searchParams.get('patientId');
+    const rawPatientId = searchParams.get('patientId');
     const dateParam = searchParams.get('date');
-    
-    if (patientId && patients.length > 0) {
-      const patient = patients.find(p => p.name === patientId);
+    const typeParam = searchParams.get('type');
+
+    if (rawPatientId && patients.length > 0) {
+      const patientId = decodeURIComponent(rawPatientId);
+      const patient = patients.find(p => 
+        p.name === patientId || p.patient_id === patientId || p.patient_name === patientId
+      );
       if (patient) {
         setSelectedPatient(patient);
         setShowPatientList(false);
+        setPatientSearchQuery(patient.patient_name || '');
       }
     }
-    
-    if (dateParam) {
+
+    if (typeParam === 'today') {
+      setAppointmentType('today');
+    } else if (dateParam) {
       setFormData(prev => ({ ...prev, appointment_date: dateParam }));
       setAppointmentType('date');
     }
@@ -55,9 +93,14 @@ const NewAppointmentPage: React.FC = () => {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedPatient) {
       toast.error('Please select a patient');
+      return;
+    }
+
+    if (!selectedDoctor) {
+      toast.error('Please select a doctor');
       return;
     }
 
@@ -66,18 +109,80 @@ const NewAppointmentPage: React.FC = () => {
       return;
     }
 
-    const appointmentData = {
+    let appointment_time = formData.appointment_time;
+
+    // Ensure we have fresh slots for the selected practitioner/date before computing next slot
+    let freshSlots = slots;
+    if (refetchSlots) {
+      try {
+        const refetchResult = await refetchSlots();
+        freshSlots = refetchResult?.data || slots;
+      } catch (e) {
+        freshSlots = slots;
+      }
+    }
+
+    if (appointmentType === 'today' && !appointment_time) {
+      const next = findNextAvailableSlotTime(freshSlots, new Date());
+      if (next) {
+        appointment_time = next;
+      } else {
+        toast.error('No available slots found for today.');
+        return;
+      }
+    }
+
+    if (appointmentType === 'date' && !appointment_time) {
+      toast.error('Please select a time slot');
+      return;
+    }
+
+    // Normalize appointment_time to HH:MM:SS (handle inputs like '09', '09:00', '09:00:00', or malformed longer strings)
+    // NOTE: return undefined when no time provided so we don't fallback to 09:00 automatically.
+    const normalizedTime = normalizeToHHMMSS(appointment_time);
+
+    if (!normalizedTime) {
+      toast.error('Invalid appointment time');
+      return;
+    }
+
+    const appointmentData: any = {
       patient_id: selectedPatient.name,
+      practitioner: selectedDoctor,
       appointment_date: appointmentType === 'today' 
         ? new Date().toISOString().split('T')[0] 
         : formData.appointment_date,
-      appointment_time: formData.appointment_time || '09:00',
+      appointment_time: normalizedTime,
       duration: formData.duration,
       notes: formData.notes || undefined,
     };
 
+    // Debug log to inspect slots and payload when no time selected or unexpected behavior
+    // (development-only) — will help determine whether client computed a time
+    // eslint-disable-next-line no-console
+    console.debug('NewAppointment - freshSlots:', freshSlots, 'appointmentData:', appointmentData);
+
+    // If a specific slot was selected and the API provided occupancy info in slots,
+    // warn the user before booking when existing appointments > 0.
+    if (appointmentType === 'date' && formData.appointment_time) {
+      const selectedSlot = slots.find((s: any) => s.time === formData.appointment_time || s.time.startsWith(formData.appointment_time));
+      if (selectedSlot && typeof selectedSlot.existing_appointments !== 'undefined' && selectedSlot.existing_appointments > 0) {
+        const confirmMsg = `This slot already has ${selectedSlot.existing_appointments} existing appointment(s). Do you want to continue and book anyway?`;
+        if (!window.confirm(confirmMsg)) {
+          return;
+        }
+      }
+    }
+
     createAppointment(appointmentData, {
-      onSuccess: () => {
+      onSuccess: (res: any) => {
+        // Backend may return occupancy/warning fields; if present, surface a final warning
+        const data = res?.data || res;
+        if (data?.slot_existing_appointments && data.slot_existing_appointments > 0) {
+          const ok = window.confirm(`Note: This slot had ${data.slot_existing_appointments} existing booking(s). Proceed?`);
+          if (!ok) return;
+        }
+
         toast.success('Appointment created successfully!');
         if (sendWhatsApp) {
           toast.success('WhatsApp confirmation sent!');
@@ -181,7 +286,9 @@ const NewAppointmentPage: React.FC = () => {
                           <td className="px-4 py-3 text-sm text-gray-900">{patient.patient_name}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{patient.address?.split(',')[0] || 'N/A'}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{patient.mobile}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">Dr Harish</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {practitioners.length > 0 ? practitioners[0].practitioner_name : '-'}
+                          </td>
                           <td className="px-4 py-3">
                             <button
                               onClick={() => {
@@ -244,7 +351,7 @@ const NewAppointmentPage: React.FC = () => {
                             <div className="space-y-1 text-xs text-gray-600">
                               <p>📍 {patient.address?.split(',')[0] || 'N/A'}</p>
                               <p>📱 {patient.mobile}</p>
-                              <p>👨‍⚕️ Dr Harish</p>
+                              <p>👨‍⚕️ {practitioners.length > 0 ? practitioners[0].practitioner_name : '-'}</p>
                             </div>
                           </div>
                           <button
@@ -285,21 +392,27 @@ const NewAppointmentPage: React.FC = () => {
               {/* Select Doctor */}
               <div>
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3">Select Doctor</h3>
-                <div className="flex flex-wrap gap-2">
-                  {['Dr Avinash', 'Dr Prasad', 'Dr Harish'].map((doctor) => (
-                    <button
-                      key={doctor}
-                      onClick={() => setSelectedDoctor(doctor)}
-                      className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                        selectedDoctor === doctor
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {doctor}
-                    </button>
-                  ))}
-                </div>
+                {practitionersLoading ? (
+                  <div className="text-sm text-gray-500">Loading doctors...</div>
+                ) : practitioners.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {practitioners.map((practitioner) => (
+                      <button
+                        key={practitioner.name}
+                        onClick={() => setSelectedDoctor(practitioner.name)}
+                        className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                          selectedDoctor === practitioner.name
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {practitioner.practitioner_name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">No practitioners available</div>
+                )}
               </div>
 
               {/* Set Appointment */}
@@ -336,13 +449,83 @@ const NewAppointmentPage: React.FC = () => {
                 </div>
 
                 {appointmentType === 'date' && (
-                  <div className="mt-4">
+                  <div className="mt-4 space-y-4">
                     <input
                       type="date"
                       value={formData.appointment_date}
                       onChange={(e) => handleInputChange('appointment_date', e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
+
+                    {/* Time Slot Selection */}
+                    {formData.appointment_date && selectedDoctor && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Select Time Slot</h4>
+                        {slotsLoading ? (
+                          <div className="text-sm text-gray-500">Loading available slots...</div>
+                        ) : slots.length > 0 ? (
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                                {slots.map((slot) => {
+                                  const isSelectable = slot.available || (typeof slot.existing_appointments !== 'undefined' && slot.existing_appointments > 0);
+                                  return (
+                                  <button
+                                    key={slot.time}
+                                    onClick={() => handleInputChange('appointment_time', slot.time)}
+                                    disabled={!isSelectable}
+                                    className={`px-3 py-2 text-xs sm:text-sm rounded-lg font-medium transition-colors flex items-center justify-between gap-2 ${
+                                      formData.appointment_time === slot.time
+                                        ? 'bg-primary-600 text-white'
+                                        : isSelectable
+                                        ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                  >
+                                    <span>{slot.time}</span>
+                                    {typeof slot.existing_appointments !== 'undefined' && slot.existing_appointments > 0 && (
+                                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                                        {slot.existing_appointments} bookings
+                                      </span>
+                                    )}
+                                  </button>
+                                )})}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">No available slots for this date</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Existing Appointments for Selected Date */}
+                    {dateAppointments.length > 0 && (
+                      <div className="border-t border-gray-200 pt-4">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                          Existing Appointments ({dateAppointments.length})
+                        </h4>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {dateAppointments.map((apt) => (
+                            <div
+                              key={apt.name || apt.appointment_id}
+                              className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg text-xs"
+                            >
+                              <div className="flex-shrink-0 w-16 font-medium text-gray-900">
+                                {apt.appointment_time || '-'}
+                              </div>
+                              <div className="flex-1 text-gray-600 truncate">
+                                {apt.patient_name}
+                              </div>
+                              <div className={`flex-shrink-0 px-2 py-1 rounded text-xs font-medium ${
+                                apt.status === 'Confirmed' ? 'bg-success-100 text-success-700' :
+                                apt.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' :
+                                apt.status === 'Completed' ? 'bg-gray-200 text-gray-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {apt.status}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

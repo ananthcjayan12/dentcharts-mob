@@ -56,6 +56,19 @@ export interface PractitionerProfile {
   years_of_experience?: number;
 }
 
+// Practitioner list response type
+export interface PractitionerResponse {
+  name: string; // Practitioner ID from Frappe
+  practitioner_name: string;
+  email?: string;
+  mobile?: string;
+  department?: string;
+  designation?: string;
+  specialization?: string;
+  status?: string;
+  available?: boolean;
+}
+
 // Patient related types
 export interface CreatePatientRequest {
   first_name: string;
@@ -108,10 +121,30 @@ export interface PatientSearchParams {
 export interface AvailableSlot {
   time: string;
   available: boolean;
+  appointment?: AppointmentResponse; // Existing appointment at this time slot (if any)
+  // Number of existing appointments/bookings for this slot (if provided by API)
+  existing_appointments?: number;
+  // Optional occupancy percentage or count returned by some endpoints
+  occupancy?: number;
+}
+
+export interface AvailableSlotsResponse {
+  date: string;
+  is_working_day: boolean;
+  working_hours: {
+    start: string;
+    end: string;
+  };
+  slot_duration: string;
+  total_slots: number;
+  available_slots: string[];
+  slots: AvailableSlot[];
+  booked_count: number;
 }
 
 export interface GetAvailableSlotsParams {
   date: string;
+  practitioner?: string;
   duration?: number;
 }
 
@@ -136,17 +169,28 @@ export interface AppointmentResponse {
   appointment_time?: string;
   appointment_datetime: string;
   duration: number;
-  status: 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Open';
+  status: 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Open' | 'Waiting' | 'In Progress' | 'Pending Payment';
   appointment_type?: string;
   chief_complaint?: string;
   notes?: string;
   location?: string;
   practitioner?: string;
+  practitioner_name?: string; // Human-readable practitioner name
   invoiced?: number;
   paid_amount?: number;
   booked_via_app?: number;
   can_reschedule?: boolean;
   can_cancel?: boolean;
+  
+  // Status flow tracking fields
+  check_in_time?: string;
+  start_time?: string;
+  end_time?: string;
+  payment_time?: string;
+  review_requested?: boolean;
+  review_requested_time?: string;
+  invoice_id?: string;
+  invoice_status?: 'Unpaid' | 'Paid' | 'Partially Paid';
 }
 
 export interface UpdateAppointmentRequest {
@@ -155,11 +199,19 @@ export interface UpdateAppointmentRequest {
   appointment_time?: string;
   duration?: number;
   notes?: string;
+  appointment_type?: string;
+  type?: string;
+  practitioner?: string;
+  appointment_for?: string;
 }
 
 export interface CancelAppointmentRequest {
   appointment_id: string;
   reason: string;
+  appointment_type?: string;
+  type?: string;
+  practitioner?: string;
+  appointment_for?: string;
 }
 
 // Prescription related types
@@ -382,6 +434,7 @@ export interface AppointmentFilters {
   date_from?: string;
   date_to?: string;
   patient_id?: string;
+  practitioner?: string;
 }
 
 export interface PrescriptionFilters {

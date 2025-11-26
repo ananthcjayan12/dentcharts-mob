@@ -18,5 +18,8 @@ export * from './usePayments';
 // Dental chart management hooks
 export * from './useDentalChart';
 
+// Practitioner management hooks
+export * from './usePractitioners';
+
 // Re-export React Query client and utilities
 export { QueryProvider, queryClient, queryKeys, mutationKeys, invalidateQueriesHelper } from '../api/queryClient';

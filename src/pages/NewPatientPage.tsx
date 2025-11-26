@@ -132,7 +132,7 @@ const NewPatientPage: React.FC = () => {
         if (selectedAppointmentDate || addToQueue) {
           const patientId = response.patient_id;
           if (addToQueue) {
-            navigate(`/appointments/new?patientId=${patientId}&date=${new Date().toISOString().split('T')[0]}`);
+            navigate(`/appointments/new?patientId=${patientId}&type=today`);
           } else if (selectedAppointmentDate) {
             navigate(`/appointments/new?patientId=${patientId}&date=${selectedAppointmentDate}`);
           }

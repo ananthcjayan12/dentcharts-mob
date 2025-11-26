@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
  */
 export const useAvailableSlots = (params: GetAvailableSlotsParams, enabled: boolean = true) => {
   return useQuery({
-    queryKey: queryKeys.appointments.availableSlots(params.date, params.duration),
+    queryKey: ['appointments', 'available-slots', params.date, params.practitioner, params.duration],
     queryFn: () => appointmentService.getAvailableSlots(params),
     enabled: enabled && !!params.date,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -220,6 +220,9 @@ export const useAddToTodaysQueue = () => {
       chief_complaint?: string;
       notes?: string;
       appointment_type?: string;
+      type?: string;
+      appointment_for?: string;
+      appointment_time?: string;
     }) => appointmentService.addToTodaysQueue(params),
     onSuccess: (result) => {
       invalidateQueriesHelper.invalidateAppointments();
@@ -234,6 +237,86 @@ export const useAddToTodaysQueue = () => {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to add to queue');
+    },
+  });
+};
+
+/**
+ * Hook for check-in appointment
+ */
+export const useCheckInAppointment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['appointments', 'check-in'],
+    mutationFn: (appointmentId: string) => appointmentService.checkInAppointment(appointmentId),
+    onSuccess: () => {
+      invalidateQueriesHelper.invalidateAppointments();
+      invalidateQueriesHelper.invalidateDashboard();
+      toast.success('Patient checked in successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to check in patient');
+    },
+  });
+};
+
+/**
+ * Hook for start visit
+ */
+export const useStartVisit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['appointments', 'start-visit'],
+    mutationFn: (appointmentId: string) => appointmentService.startVisit(appointmentId),
+    onSuccess: () => {
+      invalidateQueriesHelper.invalidateAppointments();
+      invalidateQueriesHelper.invalidateDashboard();
+      toast.success('Visit started successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to start visit');
+    },
+  });
+};
+
+/**
+ * Hook for complete visit
+ */
+export const useCompleteVisit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['appointments', 'complete-visit'],
+    mutationFn: (appointmentId: string) => appointmentService.completeVisit(appointmentId),
+    onSuccess: () => {
+      invalidateQueriesHelper.invalidateAppointments();
+      invalidateQueriesHelper.invalidateDashboard();
+      toast.success('Visit completed successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to complete visit');
+    },
+  });
+};
+
+/**
+ * Hook for updating review request status
+ */
+export const useUpdateReviewStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['appointments', 'update-review'],
+    mutationFn: ({ appointmentId, requested }: { appointmentId: string; requested: boolean }) =>
+      appointmentService.updateReviewStatus(appointmentId, requested),
+    onSuccess: () => {
+      invalidateQueriesHelper.invalidateAppointments();
+      toast.success('Review status updated!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update review status');
     },
   });
 };

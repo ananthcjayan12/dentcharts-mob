@@ -7,6 +7,7 @@ export { prescriptionService } from './prescription';
 export { paymentService } from './payment';
 export { fileUploadService } from './fileUpload';
 export { dentalChartService } from './dentalChart';
+export { practitionerService } from './practitioner';
 
 // Re-export types for convenience
 export * from '../types';
