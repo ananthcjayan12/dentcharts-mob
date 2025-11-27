@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Grid, Stack, Flex, Card, Button, InputField, Typography, Badge, Avatar, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
-import { usePatientsWithSearch, usePatientStats, useUpdatePatient, useDeletePatient } from '../hooks/usePatients';
+import { usePatientsWithSearch, usePatientStats, useUpdatePatient, useDeletePatient, usePatient } from '../hooks/usePatients';
 import { useProfile } from '../hooks/useAuth';
 import { Patient } from '../types';
 import toast from 'react-hot-toast';
@@ -20,6 +20,11 @@ const PatientsPage: React.FC = () => {
   const { data: profile } = useProfile();
   const { mutate: updatePatient, isPending: isUpdating } = useUpdatePatient();
   const { mutate: deletePatient, isPending: isDeleting } = useDeletePatient();
+
+  // Fetch full patient details when editingPatient.patient_id is set
+  const patientDetailQuery = usePatient(editingPatient?.patient_id || '', Boolean(editingPatient?.patient_id));
+  const patientDetailData = patientDetailQuery.data;
+  const patientDetailLoading = patientDetailQuery.isLoading;
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -77,15 +82,76 @@ const PatientsPage: React.FC = () => {
       mobile: patient.mobile || '',
       address: patient.address || '',
       occupation: patient.occupation || '',
+      sex: patient.sex || '',
+      dob: patient.dob || '',
+      age: typeof patient.age !== 'undefined' && patient.age !== null ? String(patient.age) : '',
     });
     setShowEditModal(true);
   };
+
+  // When detailed patient data arrives from the server, populate the edit form
+  useEffect(() => {
+    if (!patientDetailData || !editingPatient) return;
+
+    const p: any = patientDetailData;
+
+    // Parse medical_history if present (backend may return JSON string)
+    let mh: any = {};
+    try {
+      mh = p.medical_history ? JSON.parse(p.medical_history) : {};
+    } catch (err) {
+      mh = {};
+    }
+
+    setEditingPatient((prev: any) => ({
+      ...prev,
+      patient_id: p.name,
+      first_name: p.first_name || p.patient_name?.split(' ')?.[0] || prev.first_name || '',
+      last_name: p.last_name || prev.last_name || '',
+      email: p.email || prev.email || '',
+      mobile: p.mobile || prev.mobile || '',
+      address: p.address || prev.address || '',
+      occupation: p.occupation || prev.occupation || '',
+      sex: p.sex || prev.sex || '',
+      dob: p.dob || prev.dob || '',
+      age: typeof p.age !== 'undefined' && p.age !== null ? String(p.age) : prev.age || '',
+
+      // medical history structured fields
+      diabetic: mh.diabetic ?? prev?.diabetic ?? false,
+      blood_pressure: mh.blood_pressure ?? prev?.blood_pressure ?? '',
+      cardiac_history: mh.cardiac_history ?? prev?.cardiac_history ?? false,
+      allergies: mh.allergies ?? prev?.allergies ?? false,
+      family_heart_disease: mh.family_heart_disease ?? prev?.family_heart_disease ?? false,
+      covid_vaccinated: mh.covid_vaccinated ?? prev?.covid_vaccinated ?? false,
+      other_medical_history: mh.other ?? prev?.other_medical_history ?? '',
+    }));
+  }, [patientDetailData]);
 
   const handleUpdatePatient = async () => {
     if (!editingPatient) return;
 
     try {
-      await updatePatient(editingPatient);
+      // Build payload and stringify medical_history
+      const medicalHistoryPayload = JSON.stringify({
+        diabetic: Boolean(editingPatient.diabetic),
+        blood_pressure: editingPatient.blood_pressure || '',
+        cardiac_history: Boolean(editingPatient.cardiac_history),
+        allergies: Boolean(editingPatient.allergies),
+        family_heart_disease: Boolean(editingPatient.family_heart_disease),
+        covid_vaccinated: Boolean(editingPatient.covid_vaccinated),
+        other: editingPatient.other_medical_history || '',
+      });
+
+      const payload: any = {
+        patient_id: editingPatient.patient_id,
+        email: editingPatient.email,
+        mobile: editingPatient.mobile,
+        address: editingPatient.address,
+        occupation: editingPatient.occupation,
+        medical_history: medicalHistoryPayload,
+      };
+
+      await updatePatient(payload as any);
       setShowEditModal(false);
       setEditingPatient(null);
     } catch (error: any) {
@@ -675,7 +741,6 @@ const PatientsPage: React.FC = () => {
                       value={editingPatient.first_name}
                       onChange={(e) => setEditingPatient({ ...editingPatient, first_name: e.target.value })}
                       placeholder="First name"
-                      disabled
                     />
                     <InputField
                       label="Last Name"
@@ -683,7 +748,37 @@ const PatientsPage: React.FC = () => {
                       value={editingPatient.last_name}
                       onChange={(e) => setEditingPatient({ ...editingPatient, last_name: e.target.value })}
                       placeholder="Last name"
-                      disabled
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Sex</label>
+                      <select
+                        value={editingPatient.sex}
+                        onChange={(e) => setEditingPatient({ ...editingPatient, sex: e.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <InputField
+                      label="Date of Birth"
+                      type="date"
+                      value={editingPatient.dob}
+                      onChange={(e) => setEditingPatient({ ...editingPatient, dob: e.target.value })}
+                    />
+
+                    <InputField
+                      label="Age"
+                      type="number"
+                      value={editingPatient.age}
+                      onChange={(e) => setEditingPatient({ ...editingPatient, age: e.target.value })}
+                      placeholder="Age"
                     />
                   </div>
 
@@ -718,6 +813,92 @@ const PatientsPage: React.FC = () => {
                     onChange={(e) => setEditingPatient({ ...editingPatient, occupation: e.target.value })}
                     placeholder="Software Engineer"
                   />
+
+                  {/* Medical history fields (parsed from medical_history JSON) */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <Typography variant="h6" weight="semibold" className="text-gray-800 mb-2">
+                      Medical History
+                    </Typography>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="diabetic"
+                          type="checkbox"
+                          checked={Boolean(editingPatient.diabetic)}
+                          onChange={(e) => setEditingPatient({ ...editingPatient, diabetic: e.target.checked })}
+                          className="h-4 w-4 text-primary-600 border-gray-300 rounded"
+                        />
+                        <label htmlFor="diabetic" className="text-sm text-gray-700">Diabetic</label>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Blood Pressure</label>
+                        <InputField
+                          label=""
+                          type="text"
+                          value={editingPatient.blood_pressure}
+                          onChange={(e) => setEditingPatient({ ...editingPatient, blood_pressure: e.target.value })}
+                          placeholder="e.g., 120/80"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="cardiac_history"
+                          type="checkbox"
+                          checked={Boolean(editingPatient.cardiac_history)}
+                          onChange={(e) => setEditingPatient({ ...editingPatient, cardiac_history: e.target.checked })}
+                          className="h-4 w-4 text-primary-600 border-gray-300 rounded"
+                        />
+                        <label htmlFor="cardiac_history" className="text-sm text-gray-700">Cardiac History</label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="allergies"
+                          type="checkbox"
+                          checked={Boolean(editingPatient.allergies)}
+                          onChange={(e) => setEditingPatient({ ...editingPatient, allergies: e.target.checked })}
+                          className="h-4 w-4 text-primary-600 border-gray-300 rounded"
+                        />
+                        <label htmlFor="allergies" className="text-sm text-gray-700">Allergies</label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="family_heart_disease"
+                          type="checkbox"
+                          checked={Boolean(editingPatient.family_heart_disease)}
+                          onChange={(e) => setEditingPatient({ ...editingPatient, family_heart_disease: e.target.checked })}
+                          className="h-4 w-4 text-primary-600 border-gray-300 rounded"
+                        />
+                        <label htmlFor="family_heart_disease" className="text-sm text-gray-700">Family Heart Disease</label>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="covid_vaccinated"
+                          type="checkbox"
+                          checked={Boolean(editingPatient.covid_vaccinated)}
+                          onChange={(e) => setEditingPatient({ ...editingPatient, covid_vaccinated: e.target.checked })}
+                          className="h-4 w-4 text-primary-600 border-gray-300 rounded"
+                        />
+                        <label htmlFor="covid_vaccinated" className="text-sm text-gray-700">COVID Vaccinated</label>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Other Medical History</label>
+                        <InputField
+                          label=""
+                          type="text"
+                          value={editingPatient.other_medical_history}
+                          onChange={(e) => setEditingPatient({ ...editingPatient, other_medical_history: e.target.value })}
+                          placeholder="Any other relevant medical history"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   <Flex gap={3} className="mt-6">
                     <Button

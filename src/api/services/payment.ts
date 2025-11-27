@@ -75,12 +75,38 @@ export class PaymentService {
         params.append('status', filters.status);
       }
 
-      const response = await apiClient.get<PaginatedResponse<InvoiceResponse>>(
+      const response = await apiClient.get<any>(
         `${API_ENDPOINTS.PAYMENTS.LIST_INVOICES}?${params.toString()}`
       );
 
+      // Handle the response structure: { message: { invoices: [...], total_count: N } }
       if (response.data) {
-        return response.data;
+        const responseData = response.data;
+        
+        // Check if data has invoices array (Frappe's actual structure)
+        if (responseData.invoices && Array.isArray(responseData.invoices)) {
+          return {
+            data: responseData.invoices,
+            total_count: responseData.total_count || responseData.invoices.length,
+            page_length: pagination.limit_page_length || 20,
+            start: pagination.limit_start || 0,
+          };
+        }
+        
+        // Fallback to standard paginated structure
+        if (responseData.data && Array.isArray(responseData.data)) {
+          return responseData as PaginatedResponse<InvoiceResponse>;
+        }
+        
+        // If data is directly an array
+        if (Array.isArray(responseData)) {
+          return {
+            data: responseData,
+            total_count: responseData.length,
+            page_length: pagination.limit_page_length || 20,
+            start: pagination.limit_start || 0,
+          };
+        }
       }
 
       throw new Error(response.message || 'Failed to fetch invoices');

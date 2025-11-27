@@ -146,12 +146,27 @@ const PrescriptionPage: React.FC = () => {
 
   const isLoading = patientLoading || prescriptionsLoading || invoicesLoading || paymentSummaryLoading;
 
+  // Parse medical_history JSON from patient (if present)
+  const medicalHistory = React.useMemo(() => {
+    const raw = (patient as any)?.medical_history;
+    if (!patient || !raw) return null;
+    try {
+      return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (err) {
+      console.warn('Failed to parse medical_history for patient', err);
+      return null;
+    }
+  }, [patient]);
+
   // Local state for UI interactions
   const [expandedPrescriptions, setExpandedPrescriptions] = useState<Set<string>>(new Set());
   const [editablePrescriptions, setEditablePrescriptions] = useState<Set<string>>(new Set());
   const [editedPrescriptionData, setEditedPrescriptionData] = useState<Record<string, any>>({});
   const [detailedPrescriptions, setDetailedPrescriptions] = useState<Record<string, any>>({});
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
+  const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
+  const [invoiceDetails, setInvoiceDetails] = useState<Record<string, any>>({});
+  const [loadingInvoiceDetails, setLoadingInvoiceDetails] = useState<Set<string>>(new Set());
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
@@ -618,6 +633,42 @@ const PrescriptionPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
+  const toggleInvoiceExpansion = async (invoiceId: string) => {
+    const newExpanded = new Set(expandedInvoices);
+    
+    if (newExpanded.has(invoiceId)) {
+      newExpanded.delete(invoiceId);
+      setExpandedInvoices(newExpanded);
+    } else {
+      newExpanded.add(invoiceId);
+      setExpandedInvoices(newExpanded);
+      
+      // Fetch invoice details if not already loaded
+      if (!invoiceDetails[invoiceId]) {
+        setLoadingInvoiceDetails(new Set(loadingInvoiceDetails).add(invoiceId));
+        
+        try {
+          const { paymentService } = await import('../api/services');
+          const details = await paymentService.getInvoice(invoiceId);
+          
+          setInvoiceDetails(prev => ({
+            ...prev,
+            [invoiceId]: details,
+          }));
+        } catch (error: any) {
+          console.error('Error fetching invoice details:', error);
+          toast.error('Failed to load payment history');
+        } finally {
+          setLoadingInvoiceDetails(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(invoiceId);
+            return newSet;
+          });
+        }
+      }
+    }
+  };
+
   const handleRecordPayment = async () => {
     if (!selectedInvoice) return;
     
@@ -636,7 +687,7 @@ const PrescriptionPage: React.FC = () => {
 
     try {
       await recordPayment({
-        invoice_id: selectedInvoice.invoice_id,
+        invoice_id: selectedInvoice.invoice_id || selectedInvoice.name,
         paid_amount: amount,
         mode_of_payment: paymentMode,
         payment_date: paymentDate,
@@ -659,6 +710,306 @@ const PrescriptionPage: React.FC = () => {
     } finally {
       setIsRecordingPayment(false);
     }
+  };
+
+  const handlePrintInvoice = async (invoice: any) => {
+    try {
+      toast.loading('Loading invoice details...');
+      
+      // Fetch full invoice details from API
+      const { paymentService } = await import('../api/services');
+      const fullInvoice = await paymentService.getInvoice(invoice.invoice_id || invoice.name);
+      
+      toast.dismiss();
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Please allow pop-ups to print invoice');
+        return;
+      }
+
+      // Use full invoice data with items
+      // Cast to any since API returns additional fields not in type definition
+      const fullInvoiceData = fullInvoice as any;
+      const invoicePatient = fullInvoiceData.patient || patient;
+
+      const invoiceHTML = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Invoice ${fullInvoice.invoice_id}</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; }
+              .invoice-container { max-width: 800px; margin: 0 auto; }
+              .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 40px; border-bottom: 3px solid #2563eb; padding-bottom: 20px; }
+              .company-info h1 { color: #2563eb; font-size: 28px; margin-bottom: 5px; }
+              .company-info p { color: #666; font-size: 14px; line-height: 1.6; }
+              .invoice-info { text-align: right; }
+              .invoice-info h2 { color: #2563eb; font-size: 24px; margin-bottom: 10px; }
+              .invoice-info p { font-size: 14px; color: #666; margin: 5px 0; }
+              .invoice-info .invoice-number { font-weight: bold; color: #333; font-size: 16px; }
+              .billing-section { display: flex; justify-content: space-between; margin-bottom: 40px; }
+              .billing-box { width: 48%; }
+              .billing-box h3 { color: #2563eb; font-size: 16px; margin-bottom: 10px; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; }
+              .billing-box p { font-size: 14px; line-height: 1.8; color: #555; }
+              .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+              .items-table thead { background: #f3f4f6; }
+              .items-table th { padding: 12px; text-align: left; font-size: 14px; color: #374151; border-bottom: 2px solid #e5e7eb; }
+              .items-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #e5e7eb; color: #555; }
+              .items-table tbody tr:hover { background: #f9fafb; }
+              .items-table .text-right { text-align: right; }
+              .totals { margin-left: auto; width: 300px; }
+              .totals-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; }
+              .totals-row.subtotal { border-top: 1px solid #e5e7eb; }
+              .totals-row.total { border-top: 2px solid #2563eb; margin-top: 10px; padding-top: 15px; font-size: 18px; font-weight: bold; color: #2563eb; }
+              .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+              .status-paid { background: #d1fae5; color: #065f46; }
+              .status-unpaid { background: #fee2e2; color: #991b1b; }
+              .status-partial { background: #fef3c7; color: #92400e; }
+              .footer { margin-top: 50px; padding-top: 20px; border-top: 2px solid #e5e7eb; text-align: center; color: #666; font-size: 12px; }
+              .notes { margin-top: 30px; padding: 15px; background: #f9fafb; border-left: 4px solid #2563eb; }
+              .notes h4 { color: #2563eb; margin-bottom: 8px; font-size: 14px; }
+              .notes p { font-size: 13px; color: #555; line-height: 1.6; }
+              @media print {
+                body { padding: 20px; }
+                .no-print { display: none; }
+              }
+              .print-button { background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-size: 14px; }
+              .print-button:hover { background: #1d4ed8; }
+            </style>
+          </head>
+          <body>
+            <div class="invoice-container">
+              <button class="print-button no-print" onclick="window.print()">🖨️ Print Invoice</button>
+              
+              <div class="header">
+                <div class="company-info">
+                  <h1>Dental Clinic</h1>
+                  <p>Professional Dental Care Services</p>
+                  <p>Email: info@dentalclinic.com</p>
+                  <p>Phone: +91 1234567890</p>
+                </div>
+                <div class="invoice-info">
+                  <h2>INVOICE</h2>
+                  <p class="invoice-number">${fullInvoice.invoice_id}</p>
+                  <p><strong>Date:</strong> ${new Date(fullInvoice.posting_date).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <p><strong>Due Date:</strong> ${new Date(fullInvoice.due_date).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <span class="status-badge ${fullInvoice.status === 'Paid' ? 'status-paid' : fullInvoice.status === 'Partially Paid' ? 'status-partial' : 'status-unpaid'}">
+                    ${fullInvoice.status}
+                  </span>
+                </div>
+              </div>
+
+              <div class="billing-section">
+                <div class="billing-box">
+                  <h3>Bill To:</h3>
+                  <p><strong>${invoicePatient?.patient_name || fullInvoiceData.patient?.patient_name || fullInvoice.patient_name || 'N/A'}</strong></p>
+                  <p>Patient ID: ${invoicePatient?.patient_id || fullInvoiceData.patient?.patient_id || fullInvoice.patient_id || 'N/A'}</p>
+                  <p>Phone: ${invoicePatient?.mobile || fullInvoiceData.patient?.mobile || patient?.mobile || 'N/A'}</p>
+                  ${invoicePatient?.email ? `<p>Email: ${invoicePatient.email}</p>` : ''}
+                </div>
+                <div class="billing-box">
+                  <h3>Payment Information:</h3>
+                  <p><strong>Total Amount:</strong> ₹${fullInvoice.grand_total.toLocaleString('en-IN')}</p>
+                  <p><strong>Amount Paid:</strong> ₹${((fullInvoiceData.paid_amount || (fullInvoice.grand_total - fullInvoice.outstanding_amount)) || 0).toLocaleString('en-IN')}</p>
+                  <p><strong>Balance Due:</strong> ₹${fullInvoice.outstanding_amount.toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th class="text-right">Quantity</th>
+                    <th class="text-right">Rate</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${fullInvoice.items && fullInvoice.items.length > 0 ? fullInvoice.items.map((item: any) => `
+                    <tr>
+                      <td>
+                        <strong>${item.item_name || item.description}</strong>
+                        ${item.description && item.description !== item.item_name ? `<br><small style="color: #888;">${item.description}</small>` : ''}
+                      </td>
+                      <td class="text-right">${item.qty}</td>
+                      <td class="text-right">₹${item.rate.toLocaleString('en-IN')}</td>
+                      <td class="text-right">₹${item.amount.toLocaleString('en-IN')}</td>
+                    </tr>
+                  `).join('') : '<tr><td colspan="4" style="text-align: center; color: #999;">No items available</td></tr>'}
+                </tbody>
+              </table>
+
+              <div class="totals">
+                <div class="totals-row subtotal">
+                  <span>Subtotal:</span>
+                  <span>₹${fullInvoice.grand_total.toLocaleString('en-IN')}</span>
+                </div>
+                <div class="totals-row total">
+                  <span>Total Amount:</span>
+                  <span>₹${fullInvoice.grand_total.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              ${fullInvoiceData.remarks && fullInvoiceData.remarks !== 'No Remarks' ? `
+                <div class="notes">
+                  <h4>Notes:</h4>
+                  <p>${fullInvoiceData.remarks}</p>
+                </div>
+              ` : ''}
+
+              <div class="footer">
+                <p>Thank you for your business!</p>
+                <p>This is a computer-generated invoice. No signature required.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      printWindow.document.write(invoiceHTML);
+      printWindow.document.close();
+    } catch (error: any) {
+      toast.dismiss();
+      console.error('Print invoice error:', error);
+      toast.error(error?.message || 'Failed to load invoice details');
+    }
+  };
+
+  const handlePrintReceipt = (payment: any, invoice: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Please allow pop-ups to print receipt');
+      return;
+    }
+
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Payment Receipt ${payment.payment_id}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; }
+            .receipt-container { max-width: 600px; margin: 0 auto; border: 2px solid #2563eb; border-radius: 8px; }
+            .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+            .header h1 { font-size: 24px; margin-bottom: 5px; }
+            .header p { font-size: 14px; opacity: 0.9; }
+            .content { padding: 30px; }
+            .receipt-title { text-align: center; margin-bottom: 30px; }
+            .receipt-title h2 { color: #2563eb; font-size: 22px; margin-bottom: 5px; }
+            .receipt-title p { color: #666; font-size: 14px; }
+            .info-section { margin-bottom: 25px; }
+            .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; }
+            .info-row:last-child { border-bottom: none; }
+            .info-label { color: #666; font-size: 14px; font-weight: 500; }
+            .info-value { color: #333; font-size: 14px; font-weight: 600; text-align: right; }
+            .amount-section { background: #f0f9ff; border: 2px solid #2563eb; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center; }
+            .amount-section .label { color: #2563eb; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+            .amount-section .amount { color: #2563eb; font-size: 36px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e5e7eb; }
+            .footer p { color: #666; font-size: 12px; line-height: 1.8; }
+            .signature-section { margin-top: 40px; padding-top: 20px; }
+            .signature-box { display: inline-block; border-top: 2px solid #333; padding-top: 10px; min-width: 200px; text-align: center; }
+            .signature-box p { font-size: 12px; color: #666; }
+            @media print {
+              body { padding: 20px; }
+              .no-print { display: none; }
+            }
+            .print-button { background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-size: 14px; display: block; margin-left: auto; margin-right: auto; }
+            .print-button:hover { background: #1d4ed8; }
+          </style>
+        </head>
+        <body>
+          <button class="print-button no-print" onclick="window.print()">🖨️ Print Receipt</button>
+          
+          <div class="receipt-container">
+            <div class="header">
+              <h1>Dental Clinic</h1>
+              <p>Professional Dental Care Services</p>
+              <p>Email: info@dentalclinic.com | Phone: +91 1234567890</p>
+            </div>
+
+            <div class="content">
+              <div class="receipt-title">
+                <h2>PAYMENT RECEIPT</h2>
+                <p>${payment.payment_id}</p>
+              </div>
+
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-label">Receipt Date:</span>
+                  <span class="info-value">${new Date(payment.posting_date).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Payment Mode:</span>
+                  <span class="info-value">${payment.mode_of_payment}</span>
+                </div>
+                ${payment.reference_no ? `
+                <div class="info-row">
+                  <span class="info-label">Reference No:</span>
+                  <span class="info-value">${payment.reference_no}</span>
+                </div>
+                ` : ''}
+                ${payment.reference_date ? `
+                <div class="info-row">
+                  <span class="info-label">Reference Date:</span>
+                  <span class="info-value">${new Date(payment.reference_date).toLocaleDateString('en-IN')}</span>
+                </div>
+                ` : ''}
+              </div>
+
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-label">Patient Name:</span>
+                  <span class="info-value">${invoice.patient?.patient_name || invoice.patient_name || patient?.patient_name || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Patient ID:</span>
+                  <span class="info-value">${invoice.patient?.patient_id || invoice.patient_id || patient?.patient_id || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Invoice Number:</span>
+                  <span class="info-value">${invoice.invoice_id || invoice.name}</span>
+                </div>
+              </div>
+
+              <div class="amount-section">
+                <div class="label">AMOUNT PAID</div>
+                <div class="amount">₹${payment.paid_amount.toLocaleString('en-IN')}</div>
+              </div>
+
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-label">Invoice Total:</span>
+                  <span class="info-value">₹${(invoice.grand_total || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Total Paid:</span>
+                  <span class="info-value">₹${(invoice.paid_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Balance Due:</span>
+                  <span class="info-value">₹${(invoice.outstanding_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p>Thank you for your payment!</p>
+                <p>This is a computer-generated receipt. No signature required.</p>
+                <p style="margin-top: 10px;">For any queries, please contact us at info@dentalclinic.com</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(receiptHTML);
+    printWindow.document.close();
   };
 
   return (
@@ -697,9 +1048,15 @@ const PrescriptionPage: React.FC = () => {
                   ) : patient ? (
                     <div className="text-center">
                       <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mx-auto mb-4">
-                        <span className="text-white font-bold text-2xl">
-                          {patient.patient_name?.split(' ')[0]?.[0]}{patient.patient_name?.split(' ')[1]?.[0]}
-                        </span>
+                        {patient.sex === 'Female' ? (
+                          <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                          </svg>
+                        ) : (
+                          <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                          </svg>
+                        )}
                       </div>
                       <h2 className="text-xl font-bold text-gray-800 mb-1">{patient.patient_name}</h2>
                       <p className="text-sm text-gray-500 mb-4">ID: {patient.patient_id}</p>
@@ -974,6 +1331,46 @@ const PrescriptionPage: React.FC = () => {
                     ) : null}
 
                     {/* Prescriptions */}
+                    {/* Show existing medical_history from patient record if available */}
+                    {medicalHistory && (
+                      <Card className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-bold text-gray-800">Existing Medical History</h3>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-semibold text-gray-600">Diabetic:</span>
+                            <p className="text-gray-900">{medicalHistory.diabetic ? 'Yes' : 'No'}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Blood Pressure:</span>
+                            <p className="text-gray-900">{medicalHistory.blood_pressure || '-'}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Cardiac History:</span>
+                            <p className="text-gray-900">{medicalHistory.cardiac_history ? 'Yes' : 'No'}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Allergies:</span>
+                            <p className="text-gray-900">{medicalHistory.allergies ? 'Yes' : 'No'}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Family Heart Disease:</span>
+                            <p className="text-gray-900">{medicalHistory.family_heart_disease ? 'Yes' : 'No'}</p>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">COVID Vaccinated:</span>
+                            <p className="text-gray-900">{medicalHistory.covid_vaccinated ? 'Yes' : 'No'}</p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <span className="font-semibold text-gray-600">Other:</span>
+                            <p className="text-gray-900">{medicalHistory.other || '-'}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+
                     <Card className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Prescriptions & Clinical Records</h3>
@@ -1234,7 +1631,7 @@ const PrescriptionPage: React.FC = () => {
                           <div key={invoice.invoice_id} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-3">
-                                <h4 className="text-sm font-bold text-gray-700">{invoice.invoice_id}</h4>
+                                <h4 className="text-sm font-bold text-gray-700">{invoice.invoice_id || invoice.name}</h4>
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                                   invoice.status === 'Paid' 
                                     ? 'bg-green-100 text-green-800'
@@ -1255,7 +1652,7 @@ const PrescriptionPage: React.FC = () => {
                                 <div className="text-xs text-gray-500">Total</div>
                               </div>
                               <div className="bg-green-50 rounded p-2">
-                                <div className="text-sm font-bold text-green-600">₹{(invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
+                                <div className="text-sm font-bold text-green-600">₹{(invoice.paid_amount || invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
                                 <div className="text-xs text-gray-500">Paid</div>
                               </div>
                               <div className="bg-red-50 rounded p-2">
@@ -1263,8 +1660,62 @@ const PrescriptionPage: React.FC = () => {
                                 <div className="text-xs text-gray-500">Pending</div>
                               </div>
                             </div>
-                            {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
-                              <div className="flex space-x-2 mt-3">
+                            
+                            {/* Payment History Section */}
+                            {expandedInvoices.has(invoice.invoice_id || invoice.name) && (
+                              <div className="mt-4 pt-4 border-t border-gray-200">
+                                {loadingInvoiceDetails.has(invoice.invoice_id || invoice.name) ? (
+                                  <div className="text-center py-4">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
+                                  </div>
+                                ) : invoiceDetails[invoice.invoice_id || invoice.name]?.payments?.length > 0 ? (
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-700 mb-2">Payment History</h5>
+                                    <div className="space-y-2">
+                                      {invoiceDetails[invoice.invoice_id || invoice.name].payments.map((payment: any, idx: number) => (
+                                        <div key={payment.payment_id || idx} className="bg-gray-50 rounded p-3 text-xs">
+                                          <div className="flex justify-between items-center mb-1">
+                                            <span className="font-semibold text-gray-700">{payment.payment_id}</span>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-gray-500">{new Date(payment.posting_date).toLocaleDateString()}</span>
+                                              <button
+                                                onClick={() => handlePrintReceipt(payment, invoiceDetails[invoice.invoice_id || invoice.name])}
+                                                className="text-primary-600 hover:text-primary-800 transition-colors"
+                                                title="Print Receipt"
+                                              >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                </svg>
+                                              </button>
+                                            </div>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-gray-600">{payment.mode_of_payment}</span>
+                                            <span className="font-bold text-green-600">₹{payment.paid_amount.toLocaleString()}</span>
+                                          </div>
+                                          {payment.reference_no && (
+                                            <div className="text-gray-500 mt-1">Ref: {payment.reference_no}</div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-2 text-xs text-gray-500">No payments recorded yet</div>
+                                )}
+                              </div>
+                            )}
+                            
+                            <div className="flex space-x-2 mt-3">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => toggleInvoiceExpansion(invoice.invoice_id || invoice.name)}
+                              >
+                                {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'View'} Payment History
+                              </Button>
+                              {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
                                 <Button
                                   size="sm"
                                   className="flex-1"
@@ -1272,8 +1723,19 @@ const PrescriptionPage: React.FC = () => {
                                 >
                                   Record Payment
                                 </Button>
-                              </div>
-                            )}
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex items-center gap-1"
+                                onClick={() => handlePrintInvoice(invoice)}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Print
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1316,9 +1778,15 @@ const PrescriptionPage: React.FC = () => {
             ) : patient ? (
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">
-                    {patient.patient_name?.split(' ')[0]?.[0]}{patient.patient_name?.split(' ')[1]?.[0]}
-                  </span>
+                  {patient.sex === 'Female' ? (
+                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h2 className="text-sm font-bold font-lato mb-1">
@@ -1601,6 +2069,46 @@ const PrescriptionPage: React.FC = () => {
                   )}
                 </div>
               ) : null}
+
+              {/* Existing Medical History from patient record - Mobile */}
+              {medicalHistory && (
+                <Card className="mb-6">
+                  <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
+                    Existing Medical History
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="font-semibold text-gray-600">Diabetic:</span>
+                      <p className="text-gray-900">{medicalHistory.diabetic ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-600">Blood Pressure:</span>
+                      <p className="text-gray-900">{medicalHistory.blood_pressure || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-600">Cardiac History:</span>
+                      <p className="text-gray-900">{medicalHistory.cardiac_history ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-600">Allergies:</span>
+                      <p className="text-gray-900">{medicalHistory.allergies ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-600">Family Heart Disease:</span>
+                      <p className="text-gray-900">{medicalHistory.family_heart_disease ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-600">COVID Vaccinated:</span>
+                      <p className="text-gray-900">{medicalHistory.covid_vaccinated ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-semibold text-gray-600">Other:</span>
+                      <p className="text-gray-900">{medicalHistory.other || '-'}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
 
               {/* Prescriptions Section */}
               <div className="flex items-center justify-between mb-3">
@@ -1968,11 +2476,11 @@ const PrescriptionPage: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {displayInvoices.map((invoice: any) => (
-                  <Card key={invoice.invoice_id}>
+                  <Card key={invoice.invoice_id || invoice.name}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <h5 className="text-sm font-bold text-gray-700 font-lato">
-                          {invoice.invoice_id}
+                          {invoice.invoice_id || invoice.name}
                         </h5>
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           invoice.status === 'Paid' 
@@ -2000,7 +2508,7 @@ const PrescriptionPage: React.FC = () => {
                           <div className="text-gray-500">Total</div>
                         </div>
                         <div className="text-center p-2 bg-green-50 rounded">
-                          <div className="font-bold text-green-600">₹{(invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
+                          <div className="font-bold text-green-600">₹{(invoice.paid_amount || invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
                           <div className="text-gray-500">Paid</div>
                         </div>
                         <div className="text-center p-2 bg-red-50 rounded">
@@ -2013,8 +2521,61 @@ const PrescriptionPage: React.FC = () => {
                         <strong>Due Date:</strong> {new Date(invoice.due_date).toLocaleDateString()}
                       </div>
 
-                      {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
-                        <div className="flex space-x-2 mt-3">
+                      {/* Payment History Section - Mobile */}
+                      {expandedInvoices.has(invoice.invoice_id || invoice.name) && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          {loadingInvoiceDetails.has(invoice.invoice_id || invoice.name) ? (
+                            <div className="text-center py-3">
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600 mx-auto"></div>
+                            </div>
+                          ) : invoiceDetails[invoice.invoice_id || invoice.name]?.payments?.length > 0 ? (
+                            <div>
+                              <h6 className="text-xs font-semibold text-gray-700 mb-2">Payment History</h6>
+                              <div className="space-y-2">
+                                {invoiceDetails[invoice.invoice_id || invoice.name].payments.map((payment: any, idx: number) => (
+                                  <div key={payment.payment_id || idx} className="bg-gray-50 rounded p-2 text-xs">
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="font-semibold text-gray-700">{payment.payment_id}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-gray-500">{new Date(payment.posting_date).toLocaleDateString()}</span>
+                                        <button
+                                          onClick={() => handlePrintReceipt(payment, invoiceDetails[invoice.invoice_id || invoice.name])}
+                                          className="text-primary-600 hover:text-primary-800 transition-colors"
+                                          title="Print Receipt"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-gray-600">{payment.mode_of_payment}</span>
+                                      <span className="font-bold text-green-600">₹{payment.paid_amount.toLocaleString()}</span>
+                                    </div>
+                                    {payment.reference_no && (
+                                      <div className="text-gray-500 mt-1">Ref: {payment.reference_no}</div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-2 text-xs text-gray-500">No payments recorded yet</div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex space-x-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => toggleInvoiceExpansion(invoice.invoice_id || invoice.name)}
+                        >
+                          {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'View'} History
+                        </Button>
+                        {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
                           <Button
                             size="sm"
                             variant="primary"
@@ -2023,18 +2584,19 @@ const PrescriptionPage: React.FC = () => {
                           >
                             Record Payment
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => {
-                              toast('Payment reminder feature coming soon');
-                            }}
-                          >
-                            Send Reminder
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex items-center justify-center gap-1"
+                          onClick={() => handlePrintInvoice(invoice)}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                          </svg>
+                          Print
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}

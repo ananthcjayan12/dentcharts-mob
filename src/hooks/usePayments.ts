@@ -126,8 +126,14 @@ export const useRecordPayment = () => {
         queryKey: queryKeys.payments.invoice(variables.invoice_id),
       });
       
+      // Invalidate all payment-related queries to ensure fresh data
       invalidateQueriesHelper.invalidatePayments();
       invalidateQueriesHelper.invalidateDashboard();
+      
+      // Force refetch of all invoice lists to ensure updated data
+      queryClient.refetchQueries({
+        queryKey: ['payments', 'invoices'],
+      });
       
       toast.success('Payment recorded successfully!');
     },
