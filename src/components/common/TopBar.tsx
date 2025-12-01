@@ -1,4 +1,6 @@
 import React from 'react';
+import ClinicSelector from './ClinicSelector';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TopBarProps {
   title: string;
@@ -6,6 +8,7 @@ interface TopBarProps {
   showMenu?: boolean;
   onMenuClick?: () => void;
   variant?: 'default' | 'gradient';
+  showClinicSelector?: boolean;
 }
 
 const TopBar: React.FC<TopBarProps> = ({ 
@@ -13,8 +16,12 @@ const TopBar: React.FC<TopBarProps> = ({
   onBack, 
   showMenu = false, 
   onMenuClick,
-  variant = 'default'
+  variant = 'default',
+  showClinicSelector = false
 }) => {
+  const { user } = useAuth();
+  const hasMultipleClinics = user?.clinics && user.clinics.length > 1;
+  
   const baseClasses = "flex items-center justify-between p-4 h-14 relative z-10";
   const variantClasses = variant === 'gradient' 
     ? "bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md" 
@@ -39,7 +46,9 @@ const TopBar: React.FC<TopBarProps> = ({
         {title}
       </h1>
       
-      {showMenu ? (
+      {showClinicSelector && hasMultipleClinics ? (
+        <ClinicSelector variant="modal" />
+      ) : showMenu ? (
         <button 
           onClick={onMenuClick} 
           className="p-2 -mr-2 rounded-full hover:bg-black/10 transition-colors duration-200 active:scale-95"

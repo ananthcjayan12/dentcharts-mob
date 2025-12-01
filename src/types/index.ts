@@ -9,6 +9,15 @@ export interface User {
   practitioner_id?: string;
   full_name?: string;
   mobile?: string;
+  clinics?: string[];  // List of accessible clinics
+  active_clinic?: string;  // Currently selected clinic
+  primary_clinic?: string;  // Primary/default clinic
+  clinic?: {
+    name: string;
+    description?: string;
+    logo?: string;
+    working_hours?: any[];
+  };
 }
 
 export interface Patient {
@@ -80,6 +89,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: Partial<User> & { password: string }) => Promise<void>;
   logout: () => void;
+  switchClinic: (clinic: string) => Promise<void>;
   isLoading: boolean;
 }
 

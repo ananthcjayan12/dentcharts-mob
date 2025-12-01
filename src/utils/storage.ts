@@ -8,6 +8,8 @@ export const STORAGE_KEYS = {
   USER_DATA: `${STORAGE_PREFIX}user_data`,
   REFRESH_TOKEN: `${STORAGE_PREFIX}refresh_token`,
   SESSION_EXPIRY: `${STORAGE_PREFIX}session_expiry`,
+  ACTIVE_CLINIC: `${STORAGE_PREFIX}active_clinic`,
+  USER_CLINICS: `${STORAGE_PREFIX}user_clinics`,
 } as const;
 
 // Token management
@@ -86,6 +88,7 @@ export const clearStoredUserData = (): void => {
 export const clearAllStoredData = (): void => {
   clearStoredToken();
   clearStoredUserData();
+  clearClinicData();
 };
 
 // Check if user is authenticated (has valid token)
@@ -126,3 +129,48 @@ export const setStoredRefreshToken = (refreshToken: string): void => {
     console.error('Error storing refresh token:', error);
   }
 };
+
+// Clinic management
+export const getActiveClinic = (): string | null => {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.ACTIVE_CLINIC);
+  } catch (error) {
+    console.error('Error getting active clinic:', error);
+    return null;
+  }
+};
+
+export const setActiveClinic = (clinic: string): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_CLINIC, clinic);
+  } catch (error) {
+    console.error('Error setting active clinic:', error);
+  }
+};
+
+export const getUserClinics = (): string[] => {
+  try {
+    const clinics = localStorage.getItem(STORAGE_KEYS.USER_CLINICS);
+    return clinics ? JSON.parse(clinics) : [];
+  } catch (error) {
+    console.error('Error getting user clinics:', error);
+    return [];
+  }
+};
+
+export const setUserClinics = (clinics: string[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.USER_CLINICS, JSON.stringify(clinics));
+  } catch (error) {
+    console.error('Error setting user clinics:', error);
+  }
+};
+
+export const clearClinicData = (): void => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_CLINIC);
+    localStorage.removeItem(STORAGE_KEYS.USER_CLINICS);
+  } catch (error) {
+    console.error('Error clearing clinic data:', error);
+  }
+};;

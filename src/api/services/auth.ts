@@ -6,7 +6,7 @@ import {
   PractitionerProfile,
   ApiResponse,
 } from '../types';
-import { setStoredToken, setStoredUserData, clearAllStoredData } from '../../utils/storage';
+import { setStoredToken, setStoredUserData, clearAllStoredData, setActiveClinic, setUserClinics } from '../../utils/storage';
 
 export class AuthService {
   /**
@@ -25,6 +25,9 @@ export class AuthService {
         const loginData: any = response.data;
         
         if (loginData.message === 'Logged In' && loginData.user) {
+          // Clear old user's data first to prevent clinic data from persisting
+          clearAllStoredData();
+          
           // Store session data
           const userData = {
             email: loginData.user.email || loginData.user.id,
@@ -32,9 +35,20 @@ export class AuthService {
             mobile: loginData.user.phone,
             practitioner_id: loginData.user.clinic?.practitioner_id || loginData.user.id,
             clinic: loginData.user.clinic,
+            clinics: loginData.user.clinics || [],
+            active_clinic: loginData.user.active_clinic,
+            primary_clinic: loginData.user.primary_clinic,
           };
           
           setStoredUserData(userData);
+          
+          // Store clinic data separately for easy access
+          if (loginData.user.clinics && loginData.user.clinics.length > 0) {
+            setUserClinics(loginData.user.clinics);
+          }
+          if (loginData.user.active_clinic) {
+            setActiveClinic(loginData.user.active_clinic);
+          }
           
           return {
             message: 'Logged In',
@@ -154,6 +168,37 @@ export class AuthService {
       return userData ? JSON.parse(userData) : null;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Switch active clinic for the current session
+   */
+  async switchClinic(clinic: string): Promise<{ active_clinic: string }> {
+    try {
+      const response = await apiClient.post<any>(
+        '/api/method/mob_clinic.mob_clinic.api.auth.switch_clinic',
+        { clinic }
+      );
+
+      if (response.data && response.data.active_clinic) {
+        // Update stored active clinic
+        setActiveClinic(response.data.active_clinic);
+        
+        // Update user data with new active clinic
+        const userData = this.getCurrentUser();
+        if (userData) {
+          userData.active_clinic = response.data.active_clinic;
+          setStoredUserData(userData);
+        }
+        
+        return response.data;
+      }
+
+      throw new Error('Failed to switch clinic');
+    } catch (error) {
+      console.error('Switch clinic error:', error);
+      throw error;
     }
   }
 }

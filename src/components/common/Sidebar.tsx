@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ClinicSelector from './ClinicSelector';
 
 interface SidebarProps {
   className?: string;
@@ -70,11 +71,17 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
   return (
     <div className={`hidden lg:flex lg:flex-col lg:w-20 bg-white border-r border-gray-200 fixed left-0 top-0 h-screen shadow-sm ${className}`} style={{ zIndex: 1000 }}>
       {/* Logo/Brand Section */}
-      <div className="flex items-center justify-center h-20 border-b border-gray-200">
-        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-600">
-          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-          </svg>
+      <div className="flex flex-col items-center border-b border-gray-200">
+        <div className="flex items-center justify-center h-20">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-600">
+            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+            </svg>
+          </div>
+        </div>
+        {/* Clinic Selector in expanded state on hover */}
+        <div className="absolute left-20 top-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+          <ClinicSelector className="ml-2" />
         </div>
       </div>
 

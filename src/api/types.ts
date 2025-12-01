@@ -42,6 +42,16 @@ export interface LoginResponse {
     full_name: string;
     mobile: string;
     practitioner_id: string;
+    clinic?: {
+      name: string;
+      description?: string;
+      logo?: string;
+      working_hours?: any[];
+      practitioner_id?: string;
+    };
+    clinics?: string[];
+    active_clinic?: string;
+    primary_clinic?: string;
   };
 }
 

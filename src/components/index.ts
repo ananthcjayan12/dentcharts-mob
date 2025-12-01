@@ -20,6 +20,7 @@ export { default as TopBar } from './common/TopBar';
 export { default as BottomNav } from './common/BottomNav';
 export { default as Sidebar } from './common/Sidebar';
 export { default as AppointmentActions } from './common/AppointmentActions';
+export { default as ClinicSelector } from './common/ClinicSelector';
 
 // Layout
 export { default as Layout } from './layout/Layout';

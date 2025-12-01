@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, AuthContextType } from '../types';
 import { useAuthActions } from '../hooks/useAuth';
-import { getStoredUserData } from '../utils/storage';
+import { getStoredUserData, getActiveClinic, getUserClinics } from '../utils/storage';
+import { authService } from '../api/services/auth';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -58,6 +60,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         phone: response.user.mobile,
         role: 'doctor',
         practitioner_id: response.user.practitioner_id,
+        clinic: response.user.clinic,
+        clinics: response.user.clinics || [],
+        active_clinic: response.user.active_clinic,
+        primary_clinic: response.user.primary_clinic,
       };
       
       setUser(userData);
@@ -94,11 +100,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const switchClinic = async (clinic: string) => {
+    try {
+      const response = await authService.switchClinic(clinic);
+      
+      if (response.active_clinic && user) {
+        // Update user with new active clinic
+        const updatedUser = {
+          ...user,
+          active_clinic: response.active_clinic,
+        };
+        setUser(updatedUser);
+        toast.success(`Switched to ${clinic}`);
+      }
+    } catch (error: any) {
+      console.error('Switch clinic error in context:', error);
+      toast.error(error?.message || 'Failed to switch clinic');
+      throw error;
+    }
+  };
+
   const contextValue: AuthContextType = {
     user,
     login,
     register,
     logout,
+    switchClinic,
     isLoading: !isInitialized || apiLoading,
   };
 
