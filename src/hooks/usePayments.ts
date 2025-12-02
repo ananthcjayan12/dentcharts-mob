@@ -144,6 +144,39 @@ export const useRecordPayment = () => {
 };
 
 /**
+ * Hook for deleting an invoice
+ */
+export const useDeleteInvoice = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: mutationKeys.payments.deleteInvoice(''),
+    mutationFn: (invoiceId: string) =>
+      paymentService.deleteInvoice(invoiceId),
+    onSuccess: (result, invoiceId) => {
+      // Invalidate the specific invoice
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.payments.invoice(invoiceId),
+      });
+      
+      // Invalidate all payment-related queries to ensure fresh data
+      invalidateQueriesHelper.invalidatePayments();
+      invalidateQueriesHelper.invalidateDashboard();
+      
+      // Force refetch of all invoice lists to ensure updated data
+      queryClient.refetchQueries({
+        queryKey: ['payments', 'invoices'],
+      });
+      
+      toast.success('Invoice deleted successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete invoice');
+    },
+  });
+};
+
+/**
  * Hook for sending payment reminder
  */
 export const useSendPaymentReminder = () => {
@@ -161,27 +194,31 @@ export const useSendPaymentReminder = () => {
 };
 
 /**
- * Hook for payment actions (create invoice, record payment, send reminder)
+ * Hook for payment actions (create invoice, record payment, delete invoice, send reminder)
  */
 export const usePaymentActions = () => {
   const createInvoice = useCreateInvoice();
   const recordPayment = useRecordPayment();
+  const deleteInvoice = useDeleteInvoice();
   const sendReminder = useSendPaymentReminder();
 
   return {
     // Actions
     createInvoice: createInvoice.mutateAsync,
     recordPayment: recordPayment.mutateAsync,
+    deleteInvoice: deleteInvoice.mutateAsync,
     sendReminder: sendReminder.mutateAsync,
 
     // Loading states
     isCreatingInvoice: createInvoice.isPending,
     isRecordingPayment: recordPayment.isPending,
+    isDeletingInvoice: deleteInvoice.isPending,
     isSendingReminder: sendReminder.isPending,
 
     // Error states
     createInvoiceError: createInvoice.error,
     recordPaymentError: recordPayment.error,
+    deleteInvoiceError: deleteInvoice.error,
     sendReminderError: sendReminder.error,
   };
 };

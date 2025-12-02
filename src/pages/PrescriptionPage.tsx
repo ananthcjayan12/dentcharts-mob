@@ -13,7 +13,7 @@ import Flex from '../components/layout/Flex';
 import DentalChart, { ToothData } from '../components/common/DentalChart';
 import { usePatient } from '../hooks/usePatients';
 import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
-import { usePatientInvoices, usePaymentSummary, useRecordPayment } from '../hooks/usePayments';
+import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoice } from '../hooks/usePayments';
 import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
 
@@ -143,6 +143,7 @@ const PrescriptionPage: React.FC = () => {
   const { mutate: createPrescription, isPending: isCreating } = useCreatePrescription();
   const { mutate: updatePrescription, isPending: isUpdating } = useUpdatePrescription();
   const { mutate: recordPayment, isPending: isPaymentProcessing } = useRecordPayment();
+  const deleteInvoiceMutation = useDeleteInvoice();
 
   const isLoading = patientLoading || prescriptionsLoading || invoicesLoading || paymentSummaryLoading;
 
@@ -709,6 +710,20 @@ const PrescriptionPage: React.FC = () => {
       toast.error(error?.message || 'Failed to record payment');
     } finally {
       setIsRecordingPayment(false);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    if (!window.confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteInvoiceMutation.mutateAsync(invoiceId);
+      toast.success('Invoice deleted successfully');
+    } catch (error: any) {
+      console.error('Delete invoice error:', error);
+      // Error toast is already shown by the mutation hook
     }
   };
 
@@ -1642,9 +1657,21 @@ const PrescriptionPage: React.FC = () => {
                                   {invoice.status || (invoice.pending > 0 ? 'Unpaid' : 'Paid')}
                                 </span>
                               </div>
-                              <span className="text-xs text-gray-500">
-                                {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500">
+                                  {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
+                                </span>
+                                <button
+                                  onClick={() => handleDeleteInvoice(invoice.invoice_id || invoice.name)}
+                                  className="text-red-500 hover:text-red-700 transition-colors p-1"
+                                  title="Delete Invoice"
+                                  disabled={deleteInvoiceMutation.isPending}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
                               <div className="bg-gray-50 rounded p-2">
@@ -2492,9 +2519,21 @@ const PrescriptionPage: React.FC = () => {
                           {invoice.status || (invoice.pending > 0 ? 'Unpaid' : 'Paid')}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500 font-lato">
-                        {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 font-lato">
+                          {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteInvoice(invoice.invoice_id || invoice.name)}
+                          className="text-red-500 hover:text-red-700 transition-colors p-1"
+                          title="Delete Invoice"
+                          disabled={deleteInvoiceMutation.isPending}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">

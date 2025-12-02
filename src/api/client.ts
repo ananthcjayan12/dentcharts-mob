@@ -362,6 +362,7 @@ export const API_ENDPOINTS = {
     GET_INVOICE: '/api/method/mob_clinic.mob_clinic.api.payment.get_invoice',
     LIST_INVOICES: '/api/method/mob_clinic.mob_clinic.api.payment.get_invoices',
     UPDATE_PAYMENT: '/api/method/mob_clinic.mob_clinic.api.payment.update_payment',
+    DELETE_INVOICE: '/api/method/mob_clinic.mob_clinic.api.payment.delete_invoice',
     PAYMENT_SUMMARY: '/api/method/mob_clinic.mob_clinic.api.payment.get_payment_summary',
     SEND_REMINDER: '/api/method/mob_clinic.mob_clinic.api.payment.send_payment_reminder',
   },

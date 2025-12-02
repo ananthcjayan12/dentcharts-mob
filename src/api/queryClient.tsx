@@ -155,6 +155,7 @@ export const mutationKeys = {
   payments: {
     createInvoice: () => ['payments', 'createInvoice'],
     recordPayment: (invoiceId: string) => ['payments', 'recordPayment', invoiceId],
+    deleteInvoice: (invoiceId: string) => ['payments', 'deleteInvoice', invoiceId],
     sendReminder: (invoiceId: string) => ['payments', 'sendReminder', invoiceId],
   },
   

@@ -138,6 +138,27 @@ export class PaymentService {
   }
 
   /**
+   * Delete an invoice
+   */
+  async deleteInvoice(invoiceId: string): Promise<ApiResponse> {
+    try {
+      const response = await apiClient.post<ApiResponse>(
+        API_ENDPOINTS.PAYMENTS.DELETE_INVOICE,
+        { invoice_id: invoiceId }
+      );
+
+      if (response.message === 'Invoice deleted successfully' || response.message?.includes('deleted')) {
+        return response;
+      }
+
+      throw new Error(response.message || 'Failed to delete invoice');
+    } catch (error) {
+      console.error('Delete invoice error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get payment summary for a patient
    */
   async getPaymentSummary(patientId: string): Promise<PaymentSummary> {
