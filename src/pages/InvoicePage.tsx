@@ -125,7 +125,7 @@ const InvoicePage: React.FC = () => {
     }
 
     const invoiceRequest = {
-      patient_id: selectedPatient.name, // Use 'name' which is the actual patient ID
+      patient_id: selectedPatient.patient_id || selectedPatient.name, // Use patient_id if available, fallback to name (which might be the ID)
       items: invoiceItems.map(({ id, qty, rate, ...rest }) => ({
         ...rest,
         qty: Number(qty) || 0,

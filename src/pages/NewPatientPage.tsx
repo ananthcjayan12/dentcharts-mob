@@ -18,6 +18,7 @@ const NewPatientPage: React.FC = () => {
     email: '',
     address: '',
     occupation: '',
+    registration_date: new Date().toISOString().split('T')[0],
     // Additional fields for UI (not sent to API)
     diabetic: false,
     bloodPressure: 'Normal' as 'Normal' | 'High' | 'Low' | 'Moderate High',
@@ -113,6 +114,7 @@ const NewPatientPage: React.FC = () => {
       age: formData.age ? parseInt(formData.age) : undefined,
       address: formData.address.trim() || undefined,
       occupation: formData.occupation.trim() || undefined,
+      registration_date: formData.registration_date || undefined,
       medical_history: JSON.stringify({
         diabetic: formData.diabetic,
         blood_pressure: formData.bloodPressure,
@@ -240,6 +242,16 @@ const NewPatientPage: React.FC = () => {
                       type="date"
                       value={formData.dob}
                       onChange={(e) => handleInputChange('dob', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    />
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Registration Date</label>
+                    <input
+                      type="date"
+                      value={formData.registration_date}
+                      onChange={(e) => handleInputChange('registration_date', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     />
                   </div>

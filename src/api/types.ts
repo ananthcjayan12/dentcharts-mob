@@ -90,10 +90,12 @@ export interface CreatePatientRequest {
   age?: number;
   address?: string;
   occupation?: string;
+  registration_date?: string;
   medical_history?: string; // JSON string containing medical history data
 }
 
 export interface PatientResponse {
+  registration_date: string | number | Date;
   name: string; // Patient ID/name from Frappe
   patient_id?: string; // Alias for name
   patient_name: string;

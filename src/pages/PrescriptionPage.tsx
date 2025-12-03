@@ -1073,7 +1073,7 @@ const PrescriptionPage: React.FC = () => {
                           </svg>
                         )}
                       </div>
-                      <h2 className="text-xl font-bold text-gray-800 mb-1">{patient.patient_name}</h2>
+                      <h2 className="text-xl font-bold text-gray-800 mb-1">{patient.name}</h2>
                       <p className="text-sm text-gray-500 mb-4">ID: {patient.patient_id}</p>
                       
                       <div className="space-y-3 text-left border-t pt-4">
@@ -1818,7 +1818,7 @@ const PrescriptionPage: React.FC = () => {
                 <div className="flex-1">
                   <h2 className="text-sm font-bold font-lato mb-1">
                     History for<br />
-                    {patient.patient_name}
+                    {patient.name}
                   </h2>
                   <div className="text-xs font-lato space-y-1">
                     <div className="flex justify-between">
@@ -2651,7 +2651,7 @@ const PrescriptionPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={() => navigate('/invoice')}
+                    onClick={() => navigate('/invoice', { state: { patient } })}
                     className="flex flex-col items-center justify-center py-4 h-auto"
                   >
                     <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

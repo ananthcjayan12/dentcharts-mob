@@ -75,7 +75,7 @@ const PatientsPage: React.FC = () => {
   const handleEditPatient = (patient: any, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent navigation when clicking edit
     setEditingPatient({
-      patient_id: patient.name,
+      patient_id: patient.patient_id || patient.name,
       first_name: patient.first_name || '',
       last_name: patient.last_name || '',
       email: patient.email || '',
@@ -105,7 +105,7 @@ const PatientsPage: React.FC = () => {
 
     setEditingPatient((prev: any) => ({
       ...prev,
-      patient_id: p.name,
+      patient_id: p.patient_id || p.name,
       first_name: p.first_name || p.patient_name?.split(' ')?.[0] || prev.first_name || '',
       last_name: p.last_name || prev.last_name || '',
       email: p.email || prev.email || '',
@@ -249,7 +249,7 @@ const PatientsPage: React.FC = () => {
               </Stack>
             </Stack>
           </Card>
-
+                  
           {/* Patient Table */}
           <Stack spacing={3}>
             <Flex align="center" justify="between">
@@ -355,20 +355,21 @@ const PatientsPage: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
                       {filteredPatients.map((patient) => (
+                        console.log('Rendering patient:', patient),
                         <tr 
-                          key={patient.name}
+                          key={patient.patient_id || patient.name}
                           className="hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() => handlePatientClick(patient.name)}
+                          onClick={() => handlePatientClick(patient.patient_id || patient.name)}
                         >
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center gap-3">
                               <Avatar 
                                 size="sm"
-                                name={patient.patient_name || patient.patient_id || patient.name || 'Unknown'}
+                                name={patient.name || patient.patient_name || patient.patient_id || 'Unknown'}
                                 className="bg-gradient-to-br from-primary-500 to-primary-600 text-white flex-shrink-0"
                               />
                               <Typography variant="body2" weight="semibold" className="text-gray-900 text-sm">
-                                {patient.patient_name || patient.patient_id || patient.name || 'Unknown Patient'}
+                                {patient.patient_name || patient.name || patient.patient_id || 'Unknown Patient'}
                               </Typography>
                             </div>
                           </td>
@@ -384,7 +385,7 @@ const PatientsPage: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <Typography variant="body2" className="text-gray-600 text-sm">
-                              {patient.dob ? new Date(patient.dob).toLocaleDateString() : '-'}
+                              {patient.dob ? new Date(patient.registration_date).toLocaleDateString() : '-'}
                             </Typography>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
@@ -423,7 +424,7 @@ const PatientsPage: React.FC = () => {
                                 </svg>
                               </button>
                               <button
-                                onClick={(e) => handleDeletePatient(patient.name, e)}
+                                onClick={(e) => handleDeletePatient(patient.patient_id || patient.name, e)}
                                 className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                 title="Delete Patient"
                                 disabled={isUpdating || isDeleting}
@@ -435,7 +436,7 @@ const PatientsPage: React.FC = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePatientClick(patient.name);
+                                  handlePatientClick(patient.patient_id || patient.name);
                                 }}
                                 className="p-1.5 text-gray-600 hover:bg-gray-50 rounded transition-colors"
                                 title="View Details"
@@ -458,23 +459,23 @@ const PatientsPage: React.FC = () => {
                   <Stack spacing={2} className="p-3">
                     {filteredPatients.map((patient) => (
                       <Card 
-                        key={patient.name}
+                        key={patient.patient_id || patient.name}
                         padding="md"
                         hoverable
                         className="cursor-pointer bg-white border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all"
-                        onClick={() => handlePatientClick(patient.name)}
+                        onClick={() => handlePatientClick(patient.patient_id || patient.name)}
                       >
                         <Flex align="start" gap={3}>
                           <Avatar 
                             size="md" 
-                            name={patient.patient_name || patient.patient_id || patient.name || 'Unknown'}
+                            name={patient.name || patient.patient_name || patient.patient_id || 'Unknown'}
                             className="bg-gradient-to-br from-primary-500 to-primary-600 text-white flex-shrink-0"
                           />
                           
                           <Stack spacing={2} className="flex-1 min-w-0">
                             <div>
                               <Typography variant="body1" weight="semibold" className="text-gray-900 text-sm">
-                                {patient.patient_name || patient.patient_id || patient.name || 'Unknown Patient'}
+                                {patient.patient_name || patient.name || patient.patient_id || 'Unknown Patient'}
                               </Typography>
                               <Flex align="center" gap={2} className="mt-1">
                                 {patient.sex && (
@@ -544,7 +545,7 @@ const PatientsPage: React.FC = () => {
                                   </svg>
                                 </button>
                                 <button
-                                  onClick={(e) => handleDeletePatient(patient.name, e)}
+                                  onClick={(e) => handleDeletePatient(patient.patient_id || patient.name, e)}
                                   className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                   title="Delete Patient"
                                   disabled={isUpdating || isDeleting}

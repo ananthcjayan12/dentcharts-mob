@@ -32,6 +32,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
     navigate('/invoice', {
       state: {
         patient: {
+          patient_id: appointment.patient || appointment.patient_id,
           name: appointment.patient || appointment.patient_id,
           patient_name: appointment.patient_name,
           mobile: appointment.patient_mobile,
