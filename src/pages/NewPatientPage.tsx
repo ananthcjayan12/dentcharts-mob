@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
 import { useCreatePatient } from '../hooks/usePatients';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 
 const NewPatientPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -43,7 +44,7 @@ const NewPatientPage: React.FC = () => {
         navigate('/appointments');
         break;
       case 'new-appointment':
-        navigate('/appointments/new');
+        navigate('/appointments/new', { state: { backgroundLocation: location } });
         break;
       case 'profile':
         navigate('/profile');
@@ -134,9 +135,9 @@ const NewPatientPage: React.FC = () => {
         if (selectedAppointmentDate || addToQueue) {
           const patientId = response.patient_id;
           if (addToQueue) {
-            navigate(`/appointments/new?patientId=${patientId}&type=today`);
+            navigate(`/appointments/new?patientId=${patientId}&type=today`, { state: { backgroundLocation: location } });
           } else if (selectedAppointmentDate) {
-            navigate(`/appointments/new?patientId=${patientId}&date=${selectedAppointmentDate}`);
+            navigate(`/appointments/new?patientId=${patientId}&date=${selectedAppointmentDate}`, { state: { backgroundLocation: location } });
           }
         } else {
           navigate('/patients');

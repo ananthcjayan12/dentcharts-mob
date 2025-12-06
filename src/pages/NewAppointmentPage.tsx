@@ -201,7 +201,7 @@ const NewAppointmentPage: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-none sm:rounded-xl w-full sm:max-w-2xl min-h-screen sm:min-h-0 sm:my-8 shadow-2xl">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">

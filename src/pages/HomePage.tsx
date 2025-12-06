@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Container, Grid, Stack, Flex, Card, Button, Typography, Badge, Avatar, Divider, InputField, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
@@ -10,6 +10,7 @@ import { Appointment } from '../types';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
 
@@ -72,7 +73,7 @@ const HomePage: React.FC = () => {
         navigate('/appointments');
         break;
       case 'new-appointment':
-        navigate('/appointments/new');
+        navigate('/appointments/new', { state: { backgroundLocation: location } });
         break;
       default:
         break;
@@ -233,7 +234,7 @@ const HomePage: React.FC = () => {
                 padding="lg"
                 hoverable
                 className="text-center cursor-pointer bg-white shadow-sm" 
-                onClick={() => navigate('/appointments/new')}
+                onClick={() => navigate('/appointments/new', { state: { backgroundLocation: location } })}
               >
                 <Stack spacing={3} align="center">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-100 flex items-center justify-center">
@@ -486,7 +487,7 @@ const HomePage: React.FC = () => {
                     Start by creating a new appointment for your patients
                   </Typography>
                 </Stack>
-                <Button onClick={() => navigate('/appointments/new')} size="md">
+                <Button onClick={() => navigate('/appointments/new', { state: { backgroundLocation: location } })} size="md">
                   Create Appointment
                 </Button>
               </Stack>

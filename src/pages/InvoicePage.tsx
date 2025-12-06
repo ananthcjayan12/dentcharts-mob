@@ -35,6 +35,9 @@ const InvoicePage: React.FC = () => {
     notes: ''
   });
   const [applyGST, setApplyGST] = useState(false);
+  
+  // Get appointment ID from location state or query params
+  const appointmentId = location.state?.appointmentId || new URLSearchParams(location.search).get('appointment_id');
 
   // API hooks
   const { data: patients, isLoading: patientsLoading } = usePatients();
@@ -55,7 +58,7 @@ const InvoicePage: React.FC = () => {
         navigate('/appointments');
         break;
       case 'new-appointment':
-        navigate('/appointments/new');
+        navigate('/appointments/new', { state: { backgroundLocation: location } });
         break;
       case 'profile':
         navigate('/profile');
@@ -126,6 +129,7 @@ const InvoicePage: React.FC = () => {
 
     const invoiceRequest = {
       patient_id: selectedPatient.patient_id || selectedPatient.name, // Use patient_id if available, fallback to name (which might be the ID)
+      appointment_id: appointmentId,
       items: invoiceItems.map(({ id, qty, rate, ...rest }) => ({
         ...rest,
         qty: Number(qty) || 0,

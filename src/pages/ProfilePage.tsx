@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import MobileContainer from '../components/layout/MobileContainer';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   
@@ -33,7 +34,7 @@ const ProfilePage: React.FC = () => {
         navigate('/appointments');
         break;
       case 'new-appointment':
-        navigate('/appointments/new');
+        navigate('/appointments/new', { state: { backgroundLocation: location } });
         break;
       default:
         break;

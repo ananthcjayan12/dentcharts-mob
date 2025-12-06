@@ -364,7 +364,8 @@ export const API_ENDPOINTS = {
     UPDATE_PAYMENT: '/api/method/mob_clinic.mob_clinic.api.payment.update_payment',
     DELETE_INVOICE: '/api/method/mob_clinic.mob_clinic.api.payment.delete_invoice',
     PAYMENT_SUMMARY: '/api/method/mob_clinic.mob_clinic.api.payment.get_payment_summary',
-    SEND_REMINDER: '/api/method/mob_clinic.mob_clinic.api.payment.send_payment_reminder',
+     PAY_PENDING: '/api/method/mob_clinic.mob_clinic.api.payment.pay_patient_pending_invoices',
+     SEND_REMINDER: '/api/method/mob_clinic.mob_clinic.api.payment.send_payment_reminder',
   },
 
   // File Upload & Management

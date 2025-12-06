@@ -179,6 +179,36 @@ export class PaymentService {
   }
 
   /**
+   * Pay pending invoices for a patient (FIFO allocation across invoices)
+   */
+  async payPatientPendingInvoices(
+    patientId: string,
+    amount: number,
+    mode_of_payment: string,
+    payment_date?: string,
+    reference_no?: string,
+    reference_date?: string
+  ): Promise<{ payments: any[]; remaining_amount: number } > {
+    try {
+      const payload = {
+        patient_id: patientId,
+        amount,
+        mode_of_payment,
+        payment_date,
+        reference_no,
+        reference_date,
+      };
+
+      const response = await apiClient.post<any>(API_ENDPOINTS.PAYMENTS.PAY_PENDING, payload);
+      if (response.data) return response.data as { payments: any[]; remaining_amount: number };
+      throw new Error(response.message || 'Failed to process pending payments');
+    } catch (error) {
+      console.error('Pay pending invoices error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Send payment reminder to patient
    */
   async sendPaymentReminder(reminderData: SendPaymentReminderRequest): Promise<ApiResponse> {

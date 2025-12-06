@@ -245,6 +245,7 @@ export interface Investigation {
 
 export interface CreatePrescriptionRequest {
   patient_id: string;
+  appointment_id?: string;
   chief_complaint: string;
   symptoms: string;
   diagnosis: string;
@@ -317,6 +318,7 @@ export interface InvoiceItem {
 
 export interface CreateInvoiceRequest {
   patient_id: string;
+  appointment_id?: string;
   items: InvoiceItem[];
   posting_date: string;
   due_date: string;

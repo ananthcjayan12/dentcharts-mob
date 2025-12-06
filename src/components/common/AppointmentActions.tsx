@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDeleteInvoice } from '../../hooks/usePayments';
 import { AppointmentResponse } from '../../api/types';
 import Button from './Button';
 import toast from 'react-hot-toast';
@@ -26,6 +27,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
   const navigate = useNavigate();
   const appointmentId = appointment.name || appointment.appointment_id || '';
   const status = appointment.status;
+  const deleteInvoiceMutation = useDeleteInvoice();
 
   const handleCreateInvoice = () => {
     // Navigate to invoice page with appointment and patient data
@@ -138,10 +140,22 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
             </Button>
             <Button
               variant="outline"
-              onClick={handleMakePayment}
+              onClick={async () => {
+                const invId = appointment.invoice_id;
+                if (!invId) {
+                  toast.error('No invoice to delete');
+                  return;
+                }
+                if (!window.confirm('Delete this invoice? This action cannot be undone.')) return;
+                try {
+                  await deleteInvoiceMutation.mutateAsync(invId);
+                } catch (err) {
+                  // handled by hook
+                }
+              }}
               className="text-xs sm:text-sm px-3 py-1.5"
             >
-              Edit Invoice
+              Delete Invoice
             </Button>
           </>
         ) : (

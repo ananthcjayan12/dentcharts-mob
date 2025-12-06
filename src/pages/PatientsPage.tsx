@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Container, Grid, Stack, Flex, Card, Button, InputField, Typography, Badge, Avatar, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 
 const PatientsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'male' | 'female'>('all');
@@ -33,7 +34,7 @@ const PatientsPage: React.FC = () => {
         navigate('/appointments');
         break;
       case 'new-appointment':
-        navigate('/appointments/new');
+        navigate('/appointments/new', { state: { backgroundLocation: location } });
         break;
       case 'profile':
         navigate('/profile');

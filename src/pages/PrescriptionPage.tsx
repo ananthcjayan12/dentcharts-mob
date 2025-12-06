@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components';
 import MobileContainer from '../components/layout/MobileContainer';
 import TopBar from '../components/common/TopBar';
@@ -91,10 +91,14 @@ const compressImage = async (
 
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { patientId: rawPatientId } = useParams<{ patientId: string }>();
   
   // Decode the patientId from URL (e.g., "Ananth.C%20Jayan" -> "Ananth.C Jayan")
   const patientId = rawPatientId ? decodeURIComponent(rawPatientId) : undefined;
+  
+  // Get appointment ID from location state or query params
+  const appointmentId = location.state?.appointmentId || new URLSearchParams(location.search).get('appointmentId');
   
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart'>('medical');
@@ -177,7 +181,23 @@ const PrescriptionPage: React.FC = () => {
       setIsLoadingFiles(true);
       try {
         const files = await fileUploadService.getPatientFiles(patientId);
-        setPatientFiles(files);
+        
+        // If we have an appointment ID, also fetch files linked to the appointment
+        if (appointmentId) {
+          try {
+            const appointmentFiles = await fileUploadService.listFiles({
+              reference_doctype: 'Patient Appointment',
+              reference_name: appointmentId,
+              limit: 100
+            });
+            setPatientFiles([...files, ...appointmentFiles]);
+          } catch (e) {
+            console.warn('Failed to fetch appointment files', e);
+            setPatientFiles(files);
+          }
+        } else {
+          setPatientFiles(files);
+        }
       } catch (error) {
         console.error('Error fetching patient files:', error);
         toast.error('Failed to load patient files');
@@ -187,7 +207,7 @@ const PrescriptionPage: React.FC = () => {
     };
 
     fetchPatientFiles();
-  }, [patientId]);
+  }, [patientId, appointmentId]);
 
   // Filter files based on selected category
   const filteredFiles = React.useMemo(() => {
@@ -216,7 +236,7 @@ const PrescriptionPage: React.FC = () => {
         navigate('/appointments');
         break;
       case 'new-appointment':
-        navigate('/appointments/new');
+        navigate('/appointments/new', { state: { backgroundLocation: location } });
         break;
       default:
         break;
@@ -411,7 +431,7 @@ const PrescriptionPage: React.FC = () => {
 
   const handleNewAppointment = () => {
     // Navigate to new appointment page with patient ID pre-filled
-    navigate(`/appointments/new?patientId=${patientId}`);
+    navigate(`/appointments/new?patientId=${patientId}`, { state: { backgroundLocation: location } });
   };
 
   const handleCreatePrescription = async () => {
@@ -434,6 +454,7 @@ const PrescriptionPage: React.FC = () => {
     try {
       const prescriptionData: any = {
         patient_id: patientId,
+        appointment_id: appointmentId,
         chief_complaint: newPrescription.chief_complaint,
         symptoms: newPrescription.symptoms,
         diagnosis: newPrescription.diagnosis,
@@ -471,7 +492,21 @@ const PrescriptionPage: React.FC = () => {
       
       // Refresh patient files list
       const files = await fileUploadService.getPatientFiles(patientId || '');
-      setPatientFiles(files);
+      
+      if (appointmentId) {
+        try {
+          const appointmentFiles = await fileUploadService.listFiles({
+            reference_doctype: 'Patient Appointment',
+            reference_name: appointmentId,
+            limit: 100
+          });
+          setPatientFiles([...files, ...appointmentFiles]);
+        } catch (e) {
+          setPatientFiles(files);
+        }
+      } else {
+        setPatientFiles(files);
+      }
     } catch (error: any) {
       console.error('Delete file error:', error);
       toast.error(error?.message || 'Failed to delete file');
@@ -600,8 +635,8 @@ const PrescriptionPage: React.FC = () => {
         fileUploadService.uploadFile(file, {
           file_category: fileCategory,
           description: uploadNotes || `${fileCategory} uploaded on ${uploadDate}`,
-          reference_doctype: 'Patient',
-          reference_name: patientId || '',
+          reference_doctype: appointmentId ? 'Patient Appointment' : 'Patient',
+          reference_name: appointmentId || patientId || '',
           is_private: true,
         })
       );
@@ -613,7 +648,21 @@ const PrescriptionPage: React.FC = () => {
       
       // Refresh patient files list
       const files = await fileUploadService.getPatientFiles(patientId || '');
-      setPatientFiles(files);
+      
+      if (appointmentId) {
+        try {
+          const appointmentFiles = await fileUploadService.listFiles({
+            reference_doctype: 'Patient Appointment',
+            reference_name: appointmentId,
+            limit: 100
+          });
+          setPatientFiles([...files, ...appointmentFiles]);
+        } catch (e) {
+          setPatientFiles(files);
+        }
+      } else {
+        setPatientFiles(files);
+      }
       
       // Reset state
       setSelectedFiles([]);
@@ -1163,7 +1212,7 @@ const PrescriptionPage: React.FC = () => {
                       size="sm" 
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => navigate('/invoice', { state: { patient } })}
+                      onClick={() => navigate('/invoice', { state: { patient, appointmentId } })}
                       leftIcon={
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1879,7 +1928,7 @@ const PrescriptionPage: React.FC = () => {
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setCurrentSection('medical')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-bold font-lato transition-colors ${
+              className={`flex-1 py-2 px-3 rounded-md text-xs sm:text-sm font-bold font-lato transition-colors ${
                 currentSection === 'medical'
                   ? 'bg-white text-primary-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-800'
@@ -1889,7 +1938,7 @@ const PrescriptionPage: React.FC = () => {
             </button>
             <button
               onClick={() => setCurrentSection('payments')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-bold font-lato transition-colors ${
+              className={`flex-1 py-2 px-3 rounded-md text-xs sm:text-sm font-bold font-lato transition-colors ${
                 currentSection === 'payments'
                   ? 'bg-white text-primary-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-800'
@@ -2140,16 +2189,17 @@ const PrescriptionPage: React.FC = () => {
               {/* Prescriptions Section */}
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-bold text-gray-700 font-lato">
-                  Prescriptions & Clinical Records
+                  Prescriptions & Records
                 </h4>
                 <button
                   onClick={() => setShowNewPrescriptionModal(true)}
-                  className="px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1"
+                  className="px-2.5 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Create
+                  <span className="hidden xs:inline">Create</span>
+                  <span className="xs:hidden">New</span>
                 </button>
               </div>
 
@@ -2174,7 +2224,7 @@ const PrescriptionPage: React.FC = () => {
                 </Card>
               ) : (
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {prescriptions?.map((prescription) => {
                   // Use detailed data if available, otherwise use list data
                   const recordId = prescription.name || prescription.record_id;
@@ -2183,27 +2233,27 @@ const PrescriptionPage: React.FC = () => {
                   const isLoadingDetail = loadingDetails.has(recordId);
                   
                   return (
-                <Card key={recordId} className="relative">
+                <Card key={recordId} className="relative p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-bold text-gray-600 font-lato">
-                      {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
+                    <h4 className="text-xs sm:text-sm font-bold text-gray-600 font-lato">
+                      {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                     </h4>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-1.5">
                       <button 
                         onClick={() => handleDeletePrescription(recordId)}
-                        className="text-red-500 hover:text-red-700 p-1"
+                        className="text-red-500 hover:text-red-700 active:text-red-800 p-1"
                         title="Delete prescription"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                       <button 
                         onClick={() => toggleEdit(recordId)}
-                        className="text-blue-500 hover:text-blue-700 p-1"
+                        className="text-blue-500 hover:text-blue-700 active:text-blue-800 p-1"
                         title="Edit prescription"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
@@ -2213,13 +2263,13 @@ const PrescriptionPage: React.FC = () => {
                         disabled={isLoadingDetail}
                       >
                         {isLoadingDetail ? (
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
                         ) : (
                           <svg 
-                            className={`w-4 h-4 ${expandedPrescriptions.has(recordId) ? 'rotate-180' : ''}`}
+                            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${expandedPrescriptions.has(recordId) ? 'rotate-180' : ''}`}
                             fill="none" 
                             stroke="currentColor" 
                             viewBox="0 0 24 24"
@@ -2232,9 +2282,9 @@ const PrescriptionPage: React.FC = () => {
                   </div>
 
                   {expandedPrescriptions.has(recordId) && detailedData && (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {/* Investigations Section */}
-                      <div className="pt-4 border-t border-gray-100">
+                      <div className="pt-3 border-t border-gray-100">
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
                           INVESTIGATIONS
                         </h5>
@@ -2266,7 +2316,7 @@ const PrescriptionPage: React.FC = () => {
                       </div>
 
                       {/* Medications Section */}
-                      <div className="pt-4 border-t border-gray-100">
+                      <div className="pt-3 border-t border-gray-100">
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
                           MEDICATIONS
                         </h5>
@@ -2304,11 +2354,11 @@ const PrescriptionPage: React.FC = () => {
                       </div>
 
                       {/* Notes Section */}
-                      <div className="pt-4 border-t border-gray-100">
+                      <div className="pt-3 border-t border-gray-100">
                         <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
                           CLINICAL DETAILS
                         </h5>
-                        <div className="space-y-3 text-sm font-montserrat">
+                        <div className="space-y-2.5 text-xs sm:text-sm font-montserrat">
                           <div>
                             <span className="font-semibold text-gray-700">Chief Complaint:</span>
                             {editablePrescriptions.has(recordId) ? (
@@ -2382,24 +2432,14 @@ const PrescriptionPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Document Preview */}
-                      <div className="pt-4 border-t border-gray-100">
-                        <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
-                          ATTACHED DOCUMENTS
-                        </h5>
-                        <div className="bg-gray-200 h-32 rounded-lg flex items-center justify-center">
-                          <span className="text-gray-500 text-sm">Document Preview</span>
-                        </div>
-                      </div>
-
-                                            {/* Action Buttons for Edit Mode */}
+                      {/* Action Buttons for Edit Mode */}
                       {editablePrescriptions.has(recordId) && (
-                        <div className="flex space-x-2 pt-4 border-t border-gray-100">
+                        <div className="flex gap-2 pt-3 border-t border-gray-100">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => toggleEdit(recordId)}
-                            className="text-xs"
+                            className="flex-1 text-xs"
                           >
                             Cancel
                           </Button>
@@ -2407,9 +2447,9 @@ const PrescriptionPage: React.FC = () => {
                             size="sm"
                             onClick={() => handleSavePrescription(recordId)}
                             disabled={isUpdating}
-                            className="text-xs"
+                            className="flex-1 text-xs"
                           >
-                            {isUpdating ? 'Saving...' : 'Save Changes'}
+                            {isUpdating ? 'Saving...' : 'Save'}
                           </Button>
                         </div>
                       )}
@@ -2501,15 +2541,15 @@ const PrescriptionPage: React.FC = () => {
                   <p className="text-gray-500">No payment history available</p>
                 </Card>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {displayInvoices.map((invoice: any) => (
-                  <Card key={invoice.invoice_id || invoice.name}>
+                  <Card key={invoice.invoice_id || invoice.name} className="p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <h5 className="text-sm font-bold text-gray-700 font-lato">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <h5 className="text-xs sm:text-sm font-bold text-gray-700 font-lato truncate">
                           {invoice.invoice_id || invoice.name}
                         </h5>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 ${
                           invoice.status === 'Paid' 
                             ? 'bg-green-100 text-green-800'
                             : invoice.status === 'Partially Paid'
@@ -2519,17 +2559,17 @@ const PrescriptionPage: React.FC = () => {
                           {invoice.status || (invoice.pending > 0 ? 'Unpaid' : 'Paid')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 font-lato">
-                          {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-xs text-gray-500 font-lato hidden sm:inline">
+                          {new Date(invoice.posting_date || invoice.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                         </span>
                         <button
                           onClick={() => handleDeleteInvoice(invoice.invoice_id || invoice.name)}
-                          className="text-red-500 hover:text-red-700 transition-colors p-1"
+                          className="text-red-500 hover:text-red-700 active:text-red-800 transition-colors p-1"
                           title="Delete Invoice"
                           disabled={deleteInvoiceMutation.isPending}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
@@ -2537,27 +2577,27 @@ const PrescriptionPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="text-sm text-gray-600 font-montserrat">
+                      <div className="text-xs sm:text-sm text-gray-600 font-montserrat truncate">
                         <strong>Patient:</strong> {invoice.patient_name || patient?.patient_name}
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-center p-2 bg-gray-50 rounded">
-                          <div className="font-bold text-gray-700">₹{(invoice.grand_total || invoice.amount || 0).toLocaleString()}</div>
-                          <div className="text-gray-500">Total</div>
+                      <div className="grid grid-cols-3 gap-1.5 text-xs">
+                        <div className="text-center p-1.5 bg-gray-50 rounded">
+                          <div className="font-bold text-gray-700 text-xs">₹{(invoice.grand_total || invoice.amount || 0).toLocaleString()}</div>
+                          <div className="text-gray-500 text-[10px]">Total</div>
                         </div>
-                        <div className="text-center p-2 bg-green-50 rounded">
-                          <div className="font-bold text-green-600">₹{(invoice.paid_amount || invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
-                          <div className="text-gray-500">Paid</div>
+                        <div className="text-center p-1.5 bg-green-50 rounded">
+                          <div className="font-bold text-green-600 text-xs">₹{(invoice.paid_amount || invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
+                          <div className="text-gray-500 text-[10px]">Paid</div>
                         </div>
-                        <div className="text-center p-2 bg-red-50 rounded">
-                          <div className="font-bold text-red-600">₹{(invoice.pending || invoice.outstanding_amount || 0).toLocaleString()}</div>
-                          <div className="text-gray-500">Pending</div>
+                        <div className="text-center p-1.5 bg-red-50 rounded">
+                          <div className="font-bold text-red-600 text-xs">₹{(invoice.pending || invoice.outstanding_amount || 0).toLocaleString()}</div>
+                          <div className="text-gray-500 text-[10px]">Due</div>
                         </div>
                       </div>
 
                       <div className="text-xs text-gray-600 font-montserrat">
-                        <strong>Due Date:</strong> {new Date(invoice.due_date).toLocaleDateString()}
+                        <strong>Due:</strong> {new Date(invoice.due_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
 
                       {/* Payment History Section - Mobile */}
@@ -2605,35 +2645,36 @@ const PrescriptionPage: React.FC = () => {
                         </div>
                       )}
 
-                      <div className="flex space-x-2 mt-3">
+                      <div className="flex flex-wrap gap-1.5 mt-3">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1"
+                          className="flex-1 min-w-[80px] text-xs"
                           onClick={() => toggleInvoiceExpansion(invoice.invoice_id || invoice.name)}
                         >
-                          {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'View'} History
+                          {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'View'}
                         </Button>
                         {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
                           <Button
                             size="sm"
                             variant="primary"
-                            className="flex-1"
+                            className="flex-1 min-w-[80px] text-xs"
                             onClick={() => handleOpenPaymentModal(invoice)}
                           >
-                            Record Payment
+                            <span className="hidden xs:inline">Record Payment</span>
+                            <span className="xs:hidden">Pay</span>
                           </Button>
                         )}
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex items-center justify-center gap-1"
+                          className="flex items-center justify-center gap-1 px-2 text-xs"
                           onClick={() => handlePrintInvoice(invoice)}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                           </svg>
-                          Print
+                          <span className="hidden sm:inline">Print</span>
                         </Button>
                       </div>
                     </div>
