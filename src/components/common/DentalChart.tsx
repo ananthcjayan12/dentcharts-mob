@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
+import CreateProcedureModal, { SelectedItem } from './CreateProcedureModal';
 import { useDentalChart, useDentalChartActions, useDentalChartSummary } from '../../hooks/useDentalChart';
 import { ConditionInput, ProcedureInput } from '../../api/services/dentalChart';
+import { Procedure } from '../../api/services/procedures';
 
 // Tooth numbering systems
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -167,6 +169,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   
   // Modal states
   const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingToothNumber, setEditingToothNumber] = useState<number | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; toothNum: number } | null>(null);
@@ -369,6 +372,62 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     closeModal();
   };
 
+  const handleSaveTreatment = async (items: SelectedItem[]) => {
+    try {
+      // Separate items with conditions from items without
+      const itemsWithConditions = items.filter(item => item.condition);
+      const itemsWithProcedures = items.filter(item => item.procedure.code !== 'condition-only');
+      
+      // Step 1: Add all conditions first (sequentially to avoid race conditions)
+      for (const item of itemsWithConditions) {
+        try {
+          await actions.addCondition(item.teeth, {
+            type: item.condition as any,
+            notes: '',
+            date: new Date().toISOString().split('T')[0],
+          });
+          console.log('Condition added successfully, waiting for backend...');
+          // Longer delay to ensure backend fully processes the condition
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (error) {
+          console.error('Error adding condition:', error);
+          // Continue with other conditions
+        }
+      }
+
+      // Step 2: After ALL conditions are done, wait a bit more, then add procedures
+      if (itemsWithConditions.length > 0) {
+        console.log('All conditions added, waiting before adding procedures...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Step 3: Now add all procedures (sequentially) - skip condition-only items
+      for (const item of itemsWithProcedures) {
+        try {
+          await actions.addProcedure(item.teeth, {
+            name: item.procedure.name,
+            status: 'planned',
+            notes: '',
+            date: new Date().toISOString().split('T')[0],
+            cost: item.cost || item.procedure.cost,
+          });
+          console.log('Procedure added successfully, waiting for backend...');
+          // Delay to ensure backend fully processes the procedure
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (error) {
+          console.error('Error adding procedure:', error);
+          // Continue with other procedures
+        }
+      }
+      
+      console.log('All treatments saved successfully');
+    } catch (error) {
+      console.error('Error in handleSaveTreatment:', error);
+    } finally {
+      setIsCreateModalOpen(false);
+    }
+  };
+
   const closeModal = () => {
     setModalMode(null);
     setEditingItemId(null);
@@ -541,17 +600,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             <div className="flex gap-2">
               <Button
                 size="sm"
-                onClick={openAddConditionModal}
-                className="bg-red-600 hover:bg-red-700"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-primary-600 hover:bg-primary-700"
               >
-                + Add Condition
-              </Button>
-              <Button
-                size="sm"
-                onClick={openAddProcedureModal}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                + Add Procedure
+                + Add Treatment
               </Button>
               <button
                 onClick={() => setSelectedTeeth(new Set())}
@@ -781,23 +833,16 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                 className="cursor-pointer hover:bg-blue-100 transition-colors rounded p-1 -m-1"
                                 onClick={() => openEditProcedureModal(parseInt(toothNum), procedure.name)}
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <div className="text-sm font-semibold text-gray-800">{procedure.procedure_name}</div>
-                                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getProcedureStatusColor(procedure.status)}`}>
-                                        {procedure.status}
-                                      </span>
-                                    </div>
-                                    {procedure.notes && (
-                                      <div className="text-xs text-gray-600 mt-0.5">{procedure.notes}</div>
-                                    )}
-                                    <div className="text-xs text-gray-500 mt-1">Date: {procedure.date}</div>
-                                  </div>
-                                  <svg className="w-4 h-4 text-gray-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="text-sm font-semibold text-gray-800">{procedure.procedure_name}</div>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getProcedureStatusColor(procedure.status)}`}>
+                                    {procedure.status}
+                                  </span>
                                 </div>
+                                {procedure.notes && (
+                                  <div className="text-xs text-gray-600 mt-0.5">{procedure.notes}</div>
+                                )}
+                                <div className="text-xs text-gray-500 mt-1">Date: {procedure.date}</div>
                               </div>
                               
                               {procedure.timeline && procedure.timeline.length > 1 && (
@@ -927,16 +972,15 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                     onClick={() => openEditProcedureModal(item.toothNum, item.item.name)}
                                   >
                                     <div className="flex items-center justify-between mb-1">
-                                      <span className="text-sm font-bold text-gray-800">
-                                        {(item.item as ToothProcedure).name}
-                                      </span>
+                                      <div className="text-sm font-semibold text-gray-800">{(item.item as ToothProcedure).procedure_name}</div>
                                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getProcedureStatusColor((item.item as ToothProcedure).status)}`}>
                                         {(item.item as ToothProcedure).status}
                                       </span>
                                     </div>
                                     {item.item.notes && (
-                                      <p className="text-xs text-gray-600 mt-1">{item.item.notes}</p>
+                                      <div className="text-xs text-gray-600 mt-0.5">{item.item.notes}</div>
                                     )}
+                                    <div className="text-xs text-gray-500 mt-1">Date: {(item.item as ToothProcedure).date}</div>
                                   </div>
                                   
                                   {(item.item as ToothProcedure).timeline && (item.item as ToothProcedure).timeline.length > 1 && (
@@ -1519,7 +1563,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                             </div>
                             
                             <div className="flex-1 pt-2">
-                              <div className="flex items-center gap-2 mb-3">
+                              <div className="flex itemscenter gap-2 mb-3">
                                 <h4 className="text-base font-bold text-gray-800">
                                   {new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                 </h4>
@@ -1598,113 +1642,6 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                 })()}
               </div>
 
-              {/* By Tooth View */}
-              <div id="summary-by-tooth" style={{ display: 'none' }} className="space-y-4">
-                <div className="max-h-[500px] overflow-y-auto pr-2">
-                  {Object.entries(teethData)
-                    .sort(([a], [b]) => parseInt(a) - parseInt(b))
-                    .map(([toothNum, data]) => (
-                      <div key={toothNum} className="mb-4 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-5 hover:shadow-lg transition-all">
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <span className="text-2xl font-bold text-white">{toothNum}</span>
-                          </div>
-                          
-                          <div className="flex-1">
-                            <h4 className="text-lg font-bold text-gray-800">Tooth #{toothNum}</h4>
-                            <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold ${
-                              data.status === 'healthy' ? 'bg-gray-200 text-gray-700' :
-                              data.status === 'has-condition' ? 'bg-yellow-200 text-yellow-900' :
-                              data.status === 'in-treatment' ? 'bg-cyan-200 text-cyan-900' :
-                              'bg-green-200 text-green-900'
-                            }`}>
-                              {data.status.replace('-', ' ').toUpperCase()}
-                            </span>
-                          </div>
-                          
-                          <div className="text-right">
-                            <div className="text-sm text-gray-600">
-                              <span className="font-bold text-red-700">{data.conditions.length}</span> condition{data.conditions.length !== 1 ? 's' : ''}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              <span className="font-bold text-blue-700">{data.procedures.length}</span> procedure{data.procedures.length !== 1 ? 's' : ''}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Conditions */}
-                          {data.conditions.length > 0 && (
-                            <div>
-                              <h5 className="text-xs font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                                CONDITIONS
-                              </h5>
-                              <div className="space-y-2">
-                                {data.conditions.map((condition) => (
-                                  <div key={condition.name} className="bg-white border border-red-200 rounded-lg p-3 shadow-sm">
-                                    <div className="flex items-start gap-2 mb-2">
-                                      <span className="text-xl">{getConditionIcon(condition.type)}</span>
-                                      <div className="flex-1">
-                                        <div className="text-sm font-bold text-gray-800">{getConditionLabel(condition.type)}</div>
-                                        <div className="text-xs text-gray-500 mt-0.5">
-                                          Added: {new Date(condition.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {condition.notes && (
-                                      <p className="text-xs text-gray-600 bg-gray-50 rounded p-2 mt-2">{condition.notes}</p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Procedures */}
-                          {data.procedures.length > 0 && (
-                            <div>
-                              <h5 className="text-xs font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                PROCEDURES
-                              </h5>
-                              <div className="space-y-2">
-                                {data.procedures.map((procedure) => (
-                                  <div key={procedure.procedure_name} className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <div className="text-sm font-bold text-gray-800">{procedure.procedure_name}</div>
-                                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${getProcedureStatusColor(procedure.status)}`}>
-                                        {procedure.status.toUpperCase()}
-                                      </span>
-                                    </div>
-                                    <div className="text-xs text-gray-500 mb-2">
-                                      Date: {new Date(procedure.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                    </div>
-                                    {procedure.notes && (
-                                      <p className="text-xs text-gray-600 bg-gray-50 rounded p-2 mb-2">{procedure.notes}</p>
-                                    )}
-                                    {procedure.timeline && procedure.timeline.length > 1 && (
-                                      <button
-                                        onClick={() => setShowTimeline({ procedureId: procedure.name, toothNum: parseInt(toothNum) })}
-                                        className="w-full px-2 py-1.5 text-xs font-bold text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-600 rounded transition-colors flex items-center justify-center gap-1"
-                                      >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        View Timeline ({procedure.timeline.length} updates)
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
               {/* Actions */}
               <div className="flex gap-3 pt-6 border-t border-gray-200">
                 <Button
@@ -1728,6 +1665,12 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           </div>
         </div>
       )}
+      <CreateProcedureModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        selectedTeeth={Array.from(selectedTeeth)}
+        onSave={handleSaveTreatment}
+      />
     </div>
   );
 };

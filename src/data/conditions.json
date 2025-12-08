@@ -1,0 +1,17 @@
+[
+  { "code": "COND-001", "type": "cavity", "label": "Cavity", "icon": "🦷", "color": "text-red-600", "severity": ["mild", "moderate", "severe"], "description": "Tooth decay or dental caries" },
+  { "code": "COND-002", "type": "crown", "label": "Crown Required", "icon": "👑", "color": "text-yellow-600", "severity": null, "description": "Tooth requires crown restoration" },
+  { "code": "COND-003", "type": "bridge", "label": "Bridge Required", "icon": "🌉", "color": "text-blue-600", "severity": null, "description": "Missing tooth requiring bridge" },
+  { "code": "COND-004", "type": "implant", "label": "Implant Required", "icon": "🔩", "color": "text-gray-600", "severity": null, "description": "Missing tooth requiring implant" },
+  { "code": "COND-005", "type": "root-canal", "label": "Root Canal Needed", "icon": "🩺", "color": "text-purple-600", "severity": ["mild", "moderate", "severe"], "description": "Tooth infection requiring root canal treatment" },
+  { "code": "COND-006", "type": "filling", "label": "Filling Required", "icon": "⚪", "color": "text-green-600", "severity": ["small", "medium", "large"], "description": "Tooth requires filling restoration" },
+  { "code": "COND-007", "type": "extraction", "label": "Extraction Recommended", "icon": "❌", "color": "text-red-700", "severity": null, "description": "Tooth requires removal" },
+  { "code": "COND-008", "type": "fracture", "label": "Fractured Tooth", "icon": "⚡", "color": "text-orange-600", "severity": ["minor", "moderate", "severe"], "description": "Broken or cracked tooth" },
+  { "code": "COND-009", "type": "abscess", "label": "Abscess", "icon": "🔴", "color": "text-red-500", "severity": ["acute", "chronic"], "description": "Tooth or gum infection with pus" },
+  { "code": "COND-010", "type": "gum-disease", "label": "Gum Disease", "icon": "🩸", "color": "text-pink-600", "severity": ["gingivitis", "periodontitis"], "description": "Inflammation or infection of gums" },
+  { "code": "COND-011", "type": "sensitivity", "label": "Tooth Sensitivity", "icon": "❄️", "color": "text-cyan-600", "severity": ["mild", "moderate", "severe"], "description": "Pain or discomfort from hot/cold" },
+  { "code": "COND-012", "type": "impacted", "label": "Impacted Tooth", "icon": "⛔", "color": "text-indigo-600", "severity": null, "description": "Tooth unable to erupt properly" },
+  { "code": "COND-013", "type": "discoloration", "label": "Discoloration", "icon": "🎨", "color": "text-amber-600", "severity": ["mild", "moderate", "severe"], "description": "Tooth staining or color change" },
+  { "code": "COND-014", "type": "mobility", "label": "Mobile Tooth", "icon": "↔️", "color": "text-orange-500", "severity": ["grade-1", "grade-2", "grade-3"], "description": "Loose tooth with movement" },
+  { "code": "COND-015", "type": "other", "label": "Other Condition", "icon": "📝", "color": "text-gray-500", "severity": null, "description": "Other dental conditions" }
+]

@@ -1,0 +1,32 @@
+item_code,procedure_name,description,rate
+CON001,General Consultation,Basic checkup and diagnosis with treatment plan,300
+CON002,Specialist Consultation,Consultation with Endodontist/Orthodontist/Surgeon,500
+RAD001,IOPA X-Ray,Intra-oral periapical radiograph (Digital),150
+RAD002,OPG (Referral Review),Review and analysis of panoramic x-ray,200
+PRV001,Scaling & Polishing (Basic),Ultrasonic cleaning for stain and calculus removal,600
+PRV002,Deep Scaling / Curettage,Gum treatment for periodontitis (Per Quadrant),900
+RES001,GIC Filling (Small),Glass Ionomer Cement filling for minor cavities,500
+RES002,Composite Filling (Anterior),Tooth-colored aesthetic filling for front teeth,1000
+RES003,Composite Filling (Posterior),Tooth-colored durable filling for back teeth,800
+RES004,Temporary Filling,Sedative dressing for pain relief,200
+END001,Anterior RCT,Root canal treatment for front teeth (Incisors/Canines),2500
+END002,Premolar RCT,Root canal treatment for premolars,2500
+END003,Molar RCT,Root canal treatment for back teeth (Molars),2500
+END004,Re-RCT,Retreatment of previously failed root canal,3000
+PRO001,Metal Crown,Standard full metal crown (Co-Cr),3000
+PRO002,PFM Crown (Standard),Porcelain Fused to Metal crown,2500
+PRO003,PFM Crown (Premium),Tilite/DMLS Ceramic crown,3500
+PRO004,Zirconia Crown (Basic),Metal-free aesthetic crown (Standard Warranty),5000
+PRO005,Zirconia Crown (Premium),High translucency aesthetic crown (Extended Warranty),6500
+SUR001,Simple Extraction,Removal of mobile or loose tooth (Non-surgical),500
+SUR002,Firm Extraction,Removal of firm tooth requiring elevation,800
+SUR003,Surgical Extraction,Complicated removal requiring bone guttering/sutures,1200
+SUR004,Impaction Surgery (Wisdom),Surgical removal of impacted wisdom tooth,3000
+PED001,Pediatric Extraction,Removal of deciduous (milk) tooth,200
+PED002,Fluoride Application,Topical fluoride application for cavity prevention,1000
+ORT001,Metal Braces Kit,Traditional metal brackets orthodontic treatment (Full),20000
+ORT002,Ceramic Braces Kit,Tooth-colored brackets orthodontic treatment (Full),45000
+ORT003,Clear Aligners (Basic),Invisible aligners for minor corrections,80000
+COS001,Teeth Whitening (Office),Chemical bleaching procedure for instant whitening,6000
+COS002,Jewelry / Skyce,Crystal attachment on tooth surface,1500
+OP001,Checkup X Ray,Intra-oral periapical radiograph (Digital) and Consultaion,100

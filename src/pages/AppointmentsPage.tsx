@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar, Button, AppointmentActions, ActionDropdown, Portal } from '../components';
+import Autocomplete from '../components/common/Autocomplete';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import { 
@@ -1672,7 +1673,33 @@ const AppointmentsPage: React.FC = () => {
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <input placeholder="Description" value={item.description} onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)} className="p-2 border border-gray-300 rounded" />
+                        <div>
+                          <Autocomplete
+                            value={item.description || item.item_code}
+                            placeholder="Search procedure by name or code"
+                            fetchSuggestions={(q) => import('../api/services/procedures').then(m => m.proceduresService.list(q))}
+                            onSelect={(proc: any | null) => {
+                              if (!proc) {
+                                updateInvoiceItem(item.id, 'description', '');
+                                updateInvoiceItem(item.id, 'item_code', '');
+                                updateInvoiceItem(item.id, 'rate', '');
+                                return;
+                              }
+                              updateInvoiceItem(item.id, 'item_code', proc.code || '');
+                              updateInvoiceItem(item.id, 'description', proc.name || '');
+                              updateInvoiceItem(item.id, 'rate', proc.cost || 0);
+                            }}
+                            renderSuggestion={(proc: any) => (
+                              <div className="flex justify-between items-center">
+                                <div className="truncate">
+                                  <div className="font-medium text-sm">{proc.name}</div>
+                                  <div className="text-xs text-gray-500">{proc.code}</div>
+                                </div>
+                                <div className="text-sm text-gray-700">₹{proc.cost}</div>
+                              </div>
+                            )}
+                          />
+                        </div>
                         <input placeholder="Qty" type="number" value={item.qty} onChange={(e) => updateInvoiceItem(item.id, 'qty', Number(e.target.value))} className="p-2 border border-gray-300 rounded" />
                         <input placeholder="Rate" type="number" value={item.rate} onChange={(e) => updateInvoiceItem(item.id, 'rate', e.target.value)} className="p-2 border border-gray-300 rounded" />
                       </div>

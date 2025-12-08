@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MobileContainer from '../components/layout/MobileContainer';
 import { Sidebar } from '../components';
+import Autocomplete from '../components/common/Autocomplete';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
@@ -282,13 +283,27 @@ const InvoicePage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Item Code *</label>
-                        <input
-                          type="text"
-                          placeholder="Enter item code"
-                          value={item.item_code}
-                          onChange={(e) => updateInvoiceItem(item.id, 'item_code', e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Procedure *</label>
+                        {/* Autocomplete will set item_code, description and rate on selection */}
+                        <Autocomplete
+                          value={item.description || item.item_code}
+                          placeholder="Search procedure by name or code"
+                          fetchSuggestions={(q) => import('../api/services/procedures').then(m => m.proceduresService.list(q))}
+                          onSelect={(proc: any | null) => {
+                            if (!proc) return updateInvoiceItem(item.id, 'description', '');
+                            updateInvoiceItem(item.id, 'item_code', proc.code || '');
+                            updateInvoiceItem(item.id, 'description', proc.name || '');
+                            updateInvoiceItem(item.id, 'rate', proc.cost || 0);
+                          }}
+                          renderSuggestion={(proc: any) => (
+                            <div className="flex justify-between items-center">
+                              <div className="truncate">
+                                <div className="font-medium text-sm">{proc.name}</div>
+                                <div className="text-xs text-gray-500">{proc.code}</div>
+                              </div>
+                              <div className="text-sm text-gray-700">₹{proc.cost}</div>
+                            </div>
+                          )}
                         />
                       </div>
                       <div>
