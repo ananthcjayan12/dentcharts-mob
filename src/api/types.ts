@@ -193,7 +193,7 @@ export interface AppointmentResponse {
   booked_via_app?: number;
   can_reschedule?: boolean;
   can_cancel?: boolean;
-  
+
   // Status flow tracking fields
   check_in_time?: string;
   start_time?: string;
@@ -326,15 +326,19 @@ export interface CreateInvoiceRequest {
 }
 
 export interface InvoiceResponse {
-  invoice_id: string;
-  patient_id: string;
+  name: string; // Frappe ID
+  invoice_id?: string; // Alias
+  patient: string; // Frappe Patient ID
+  patient_id?: string; // Alias
   patient_name: string;
   posting_date: string;
   due_date: string;
   grand_total: number;
   outstanding_amount: number;
-  status: 'Paid' | 'Unpaid' | 'Partially Paid' | 'Overdue';
-  items: InvoiceItem[];
+  paid_amount: number;
+  is_overdue: boolean;
+  status: string; // 'Paid' | 'Unpaid' | 'Partially Paid' | 'Overdue' logic often dynamic in backend
+  items?: InvoiceItem[];
 }
 
 export interface UpdatePaymentRequest {

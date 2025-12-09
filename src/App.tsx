@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import LandingPage from './pages/LandingPage';
+import RootRedirect from './pages/RootRedirect';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
@@ -11,8 +11,11 @@ import NewAppointmentPage from './pages/NewAppointmentPage';
 import PatientsPage from './pages/PatientsPage';
 import NewPatientPage from './pages/NewPatientPage';
 import InvoicePage from './pages/InvoicePage';
+import InvoicesPage from './pages/InvoicesPage';
+import SettingsPage from './pages/SettingsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryProvider } from './api/queryClient';
+import { ClinicProvider } from './contexts/ClinicContext';
 import ToastProvider from './components/providers/ToastProvider';
 
 const AppRoutes = () => {
@@ -23,7 +26,7 @@ const AppRoutes = () => {
   return (
     <>
       <Routes location={background}>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/home" element={<HomePage />} />
@@ -34,6 +37,8 @@ const AppRoutes = () => {
         <Route path="/patients" element={<PatientsPage />} />
         <Route path="/patients/new" element={<NewPatientPage />} />
         <Route path="/invoice" element={<InvoicePage />} />
+        <Route path="/invoices" element={<InvoicesPage />} />
+        <Route path="/settings/*" element={<SettingsPage />} />
       </Routes>
 
       {state?.backgroundLocation && (
@@ -48,16 +53,18 @@ const AppRoutes = () => {
 function App() {
   return (
     <QueryProvider>
-        <ToastProvider>
-          <AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <ClinicProvider>
             <Router>
               <div className="App">
                 <AppRoutes />
               </div>
             </Router>
-          </AuthProvider>
-        </ToastProvider>
-      </QueryProvider>
+          </ClinicProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </QueryProvider>
   );
 }
 

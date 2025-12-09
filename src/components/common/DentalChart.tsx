@@ -107,7 +107,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   const [chartType, setChartType] = useState<'adult' | 'pediatric' | 'mixed'>('adult');
   const [selectedTeeth, setSelectedTeeth] = useState<Set<number>>(new Set());
   const [viewMode, setViewMode] = useState<'by-tooth' | 'by-date'>('by-tooth');
-  
+
   // Initialize teeth data from API or props
   const [teethData, setTeethData] = useState<Record<number, ToothData>>({});
 
@@ -116,10 +116,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     if (dentalChartData?.teeth) {
       // Convert API response to component format
       const convertedTeeth: Record<number, ToothData> = {};
-      
+
       Object.entries(dentalChartData.teeth).forEach(([toothNum, toothData]: [string, any]) => {
         const toothNumber = parseInt(toothNum, 10);
-        
+
         convertedTeeth[toothNumber] = {
           number: toothNumber,
           status: toothData.status || 'healthy',
@@ -157,7 +157,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           })),
         };
       });
-      
+
       setTeethData(convertedTeeth);
       if (dentalChartData.chart_type) {
         setChartType(dentalChartData.chart_type);
@@ -166,7 +166,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
       setTeethData(data);
     }
   }, [dentalChartData, data]);
-  
+
   // Modal states
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -175,11 +175,11 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; toothNum: number } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showTimeline, setShowTimeline] = useState<{ procedureId: string; toothNum: number } | null>(null);
-  
+
   // Form states
   const [conditionType, setConditionType] = useState<ToothCondition['type']>('cavity');
   const [conditionNotes, setConditionNotes] = useState('');
-  
+
   const [procedureName, setProcedureName] = useState('Cleaning');
   const [procedureStatus, setProcedureStatus] = useState<ToothProcedure['status']>('planned');
   const [procedureNotes, setProcedureNotes] = useState('');
@@ -198,7 +198,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   const getStatusColor = (toothNum: number): string => {
     const toothData = teethData[toothNum];
     if (!toothData) return 'bg-white border-gray-300 hover:border-primary-400';
-    
+
     switch (toothData.status) {
       case 'has-condition':
         return 'bg-yellow-50 border-yellow-400 hover:border-yellow-500';
@@ -259,12 +259,12 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   const handleToothRightClick = (toothNumber: number, event: React.MouseEvent) => {
     if (readOnly) return;
     event.preventDefault();
-    
+
     // Add to selection if not already selected
     if (!selectedTeeth.has(toothNumber)) {
       setSelectedTeeth(new Set([toothNumber]));
     }
-    
+
     // Show context menu
     setContextMenu({
       x: event.clientX,
@@ -314,10 +314,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   };
 
   const handleSaveCondition = async () => {
-    const teethToUpdate = modalMode === 'edit-condition' && editingToothNumber 
+    const teethToUpdate = modalMode === 'edit-condition' && editingToothNumber
       ? [editingToothNumber]
       : Array.from(selectedTeeth);
-    
+
     if (teethToUpdate.length === 0) return;
 
     const conditionInput: ConditionInput = {
@@ -338,10 +338,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   };
 
   const handleSaveProcedure = async () => {
-    const teethToUpdate = modalMode === 'edit-procedure' && editingToothNumber 
+    const teethToUpdate = modalMode === 'edit-procedure' && editingToothNumber
       ? [editingToothNumber]
       : Array.from(selectedTeeth);
-    
+
     if (teethToUpdate.length === 0) return;
 
     const procedureInput: ProcedureInput = {
@@ -377,7 +377,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
       // Separate items with conditions from items without
       const itemsWithConditions = items.filter(item => item.condition);
       const itemsWithProcedures = items.filter(item => item.procedure.code !== 'condition-only');
-      
+
       // Step 1: Add all conditions first (sequentially to avoid race conditions)
       for (const item of itemsWithConditions) {
         try {
@@ -400,12 +400,12 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
         console.log('All conditions added, waiting before adding procedures...');
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      
+
       // Step 3: Now add all procedures (sequentially) - skip condition-only items
       for (const item of itemsWithProcedures) {
         try {
           await actions.addProcedure(item.teeth, {
-            name: item.procedure.name,
+            name: item.procedure.procedure_name,
             status: 'planned',
             notes: '',
             date: new Date().toISOString().split('T')[0],
@@ -419,7 +419,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           // Continue with other procedures
         }
       }
-      
+
       console.log('All treatments saved successfully');
     } catch (error) {
       console.error('Error in handleSaveTreatment:', error);
@@ -442,7 +442,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
 
   const handleContextMenuAction = (action: 'condition' | 'procedure') => {
     if (!contextMenu) return;
-    
+
     if (action === 'condition') {
       openAddConditionModal();
     } else {
@@ -519,46 +519,43 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           </div>
         </div>
       )}
-      
+
       {/* Chart Type Selector */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setChartType('adult')}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${
-              chartType === 'adult'
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'adult'
                 ? 'bg-primary-600 text-white shadow-md'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
             </svg>
             Adult
           </button>
           <button
             onClick={() => setChartType('pediatric')}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${
-              chartType === 'pediatric'
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'pediatric'
                 ? 'bg-primary-600 text-white shadow-md'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
             </svg>
             Pediatric
           </button>
           <button
             onClick={() => setChartType('mixed')}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${
-              chartType === 'mixed'
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'mixed'
                 ? 'bg-primary-600 text-white shadow-md'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
             </svg>
             Mixed
           </button>
@@ -649,24 +646,22 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             <div className="flex items-center bg-white rounded-lg shadow-sm p-1">
               <button
                 onClick={() => setViewMode('by-tooth')}
-                className={`px-4 py-2 rounded-md font-semibold text-sm transition-all flex items-center gap-2 ${
-                  viewMode === 'by-tooth'
+                className={`px-4 py-2 rounded-md font-semibold text-sm transition-all flex items-center gap-2 ${viewMode === 'by-tooth'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
                 </svg>
                 By Tooth
               </button>
               <button
                 onClick={() => setViewMode('by-date')}
-                className={`px-4 py-2 rounded-md font-semibold text-sm transition-all flex items-center gap-2 ${
-                  viewMode === 'by-date'
+                className={`px-4 py-2 rounded-md font-semibold text-sm transition-all flex items-center gap-2 ${viewMode === 'by-date'
                     ? 'bg-purple-600 text-white shadow-md'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -676,8 +671,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-2 font-medium">
-            {viewMode === 'by-tooth' 
-              ? '📋 Viewing treatments organized by tooth number' 
+            {viewMode === 'by-tooth'
+              ? '📋 Viewing treatments organized by tooth number'
               : '📅 Viewing treatments in chronological order'}
           </p>
         </Card>
@@ -700,9 +695,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     key={toothNumber}
                     onClick={(e) => handleToothClick(toothNumber, e)}
                     onContextMenu={(e) => handleToothRightClick(toothNumber, e)}
-                    className={`relative w-12 h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${
-                      isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
-                    }`}
+                    className={`relative w-12 h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
+                      }`}
                     disabled={readOnly}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -738,9 +732,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     key={toothNumber}
                     onClick={(e) => handleToothClick(toothNumber, e)}
                     onContextMenu={(e) => handleToothRightClick(toothNumber, e)}
-                    className={`relative w-12 h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${
-                      isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
-                    }`}
+                    className={`relative w-12 h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
+                      }`}
                     disabled={readOnly}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -777,12 +770,11 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   <Card key={toothNum} className="p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <h4 className="text-base font-bold text-gray-800">Tooth {toothNum}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        data.status === 'healthy' ? 'bg-gray-100 text-gray-700' :
-                        data.status === 'has-condition' ? 'bg-yellow-100 text-yellow-800' :
-                        data.status === 'in-treatment' ? 'bg-cyan-100 text-cyan-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${data.status === 'healthy' ? 'bg-gray-100 text-gray-700' :
+                          data.status === 'has-condition' ? 'bg-yellow-100 text-yellow-800' :
+                            data.status === 'in-treatment' ? 'bg-cyan-100 text-cyan-800' :
+                              'bg-green-100 text-green-800'
+                        }`}>
                         {data.status.replace('-', ' ')}
                       </span>
                     </div>
@@ -793,7 +785,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                         <h5 className="text-xs font-bold text-gray-600 mb-2">CONDITIONS</h5>
                         <div className="space-y-2">
                           {data.conditions.map((condition) => (
-                            <div 
+                            <div
                               key={condition.name}
                               className="bg-red-50 border border-red-200 rounded-lg p-2 cursor-pointer hover:bg-red-100 transition-colors"
                               onClick={() => openEditConditionModal(parseInt(toothNum), condition.name)}
@@ -825,11 +817,11 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                         <h5 className="text-xs font-bold text-gray-600 mb-2">PROCEDURES</h5>
                         <div className="space-y-2">
                           {data.procedures.map((procedure) => (
-                            <div 
+                            <div
                               key={procedure.procedure_name}
                               className="bg-blue-50 border border-blue-200 rounded-lg p-2"
                             >
-                              <div 
+                              <div
                                 className="cursor-pointer hover:bg-blue-100 transition-colors rounded p-1 -m-1"
                                 onClick={() => openEditProcedureModal(parseInt(toothNum), procedure.name)}
                               >
@@ -844,7 +836,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                 )}
                                 <div className="text-xs text-gray-500 mt-1">Date: {procedure.date}</div>
                               </div>
-                              
+
                               {procedure.timeline && procedure.timeline.length > 1 && (
                                 <button
                                   onClick={(e) => {
@@ -879,9 +871,9 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   toothNum: number;
                   item: ToothCondition | ToothProcedure;
                 };
-                
+
                 const allItems: DateItem[] = [];
-                
+
                 Object.entries(teethData)
                   .filter(([toothNum]) => selectedTeeth.size === 0 || selectedTeeth.has(parseInt(toothNum)))
                   .forEach(([toothNum, data]) => {
@@ -894,7 +886,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                         item: condition,
                       });
                     });
-                    
+
                     data.procedures.forEach(procedure => {
                       allItems.push({
                         date: procedure.date,
@@ -905,10 +897,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                       });
                     });
                   });
-                
+
                 // Sort by date (most recent first)
                 allItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-                
+
                 // Group by date
                 const groupedByDate: Record<string, DateItem[]> = {};
                 allItems.forEach(item => {
@@ -917,7 +909,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   }
                   groupedByDate[item.date].push(item);
                 });
-                
+
                 return Object.entries(groupedByDate).map(([date, items]) => (
                   <div key={date}>
                     <div className="flex items-center gap-3 mb-3">
@@ -937,7 +929,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                         {items.length} item{items.length > 1 ? 's' : ''}
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 ml-0 lg:ml-24">
                       {items.map((item, idx) => (
                         <Card key={idx} className="p-4 hover:shadow-md transition-shadow">
@@ -945,7 +937,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                             <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center border-2 border-blue-200">
                               <span className="text-lg font-bold text-blue-700">{item.toothNum}</span>
                             </div>
-                            
+
                             <div className="flex-1">
                               {item.type === 'condition' ? (
                                 <div
@@ -982,7 +974,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                     )}
                                     <div className="text-xs text-gray-500 mt-1">Date: {(item.item as ToothProcedure).date}</div>
                                   </div>
-                                  
+
                                   {(item.item as ToothProcedure).timeline && (item.item as ToothProcedure).timeline.length > 1 && (
                                     <button
                                       onClick={(e) => {
@@ -1041,11 +1033,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     <button
                       key={option.value}
                       onClick={() => setConditionType(option.value)}
-                      className={`p-3 rounded-lg border-2 transition-all text-left ${
-                        conditionType === option.value
+                      className={`p-3 rounded-lg border-2 transition-all text-left ${conditionType === option.value
                           ? 'border-primary-500 bg-primary-50 shadow-md'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{option.icon}</span>
@@ -1154,11 +1145,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setProcedureStatus('planned')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      procedureStatus === 'planned'
+                    className={`p-3 rounded-lg border-2 transition-all ${procedureStatus === 'planned'
                         ? 'border-blue-500 bg-blue-50 shadow-md'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
+                      }`}
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">📋</div>
@@ -1167,11 +1157,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   </button>
                   <button
                     onClick={() => setProcedureStatus('in-progress')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      procedureStatus === 'in-progress'
+                    className={`p-3 rounded-lg border-2 transition-all ${procedureStatus === 'in-progress'
                         ? 'border-yellow-500 bg-yellow-50 shadow-md'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
+                      }`}
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">⚙️</div>
@@ -1180,11 +1169,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   </button>
                   <button
                     onClick={() => setProcedureStatus('completed')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      procedureStatus === 'completed'
+                    className={`p-3 rounded-lg border-2 transition-all ${procedureStatus === 'completed'
                         ? 'border-green-500 bg-green-50 shadow-md'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
+                      }`}
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">✅</div>
@@ -1248,11 +1236,11 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b">
-              {selectedTeeth.size > 1 
-                ? `${selectedTeeth.size} teeth selected` 
+              {selectedTeeth.size > 1
+                ? `${selectedTeeth.size} teeth selected`
                 : `Tooth ${contextMenu.toothNum}`}
             </div>
-            
+
             <button
               onClick={() => handleContextMenuAction('condition')}
               className="w-full px-4 py-2.5 text-left text-sm hover:bg-red-50 transition-colors flex items-center gap-3 text-gray-700"
@@ -1260,7 +1248,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
               <span className="text-xl">🦷</span>
               <span className="font-medium">Add Condition</span>
             </button>
-            
+
             <button
               onClick={() => handleContextMenuAction('procedure')}
               className="w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 transition-colors flex items-center gap-3 text-gray-700"
@@ -1290,7 +1278,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     ))}
                   </div>
                 )}
-                
+
                 {teethData[contextMenu.toothNum].procedures.length > 0 && (
                   <div className="px-3 py-1">
                     <div className="text-xs font-semibold text-gray-500 mb-1">Procedures</div>
@@ -1334,7 +1322,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
               {(() => {
                 const tooth = teethData[showTimeline.toothNum];
                 const procedure = tooth?.procedures.find(p => p.name === showTimeline.procedureId);
-                
+
                 if (!procedure) return null;
 
                 return (
@@ -1354,23 +1342,21 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
 
                     <div className="relative">
                       <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                      
+
                       <div className="space-y-6">
                         {procedure.timeline.map((entry, index) => (
                           <div key={index} className="relative pl-10">
-                            <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 border-white ${
-                              entry.status === 'planned' ? 'bg-blue-500' :
-                              entry.status === 'in-progress' ? 'bg-yellow-500' :
-                              'bg-green-500'
-                            }`}></div>
-                            
+                            <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 border-white ${entry.status === 'planned' ? 'bg-blue-500' :
+                                entry.status === 'in-progress' ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                              }`}></div>
+
                             <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                               <div className="flex items-center justify-between mb-1">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                  entry.status === 'planned' ? 'bg-blue-100 text-blue-800' :
-                                  entry.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-green-100 text-green-800'
-                                }`}>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${entry.status === 'planned' ? 'bg-blue-100 text-blue-800' :
+                                    entry.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-green-100 text-green-800'
+                                  }`}>
                                   {entry.status}
                                 </span>
                                 <span className="text-xs text-gray-500">{formatTimeAgo(entry.timestamp)}</span>
@@ -1508,9 +1494,9 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     toothNum: number;
                     item: ToothCondition | ToothProcedure;
                   };
-                  
+
                   const allItems: DateItem[] = [];
-                  
+
                   Object.entries(teethData).forEach(([toothNum, data]) => {
                     data.conditions.forEach(condition => {
                       allItems.push({
@@ -1521,7 +1507,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                         item: condition,
                       });
                     });
-                    
+
                     data.procedures.forEach(procedure => {
                       allItems.push({
                         date: procedure.date,
@@ -1532,9 +1518,9 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                       });
                     });
                   });
-                  
+
                   allItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-                  
+
                   const groupedByDate: Record<string, DateItem[]> = {};
                   allItems.forEach(item => {
                     if (!groupedByDate[item.date]) {
@@ -1542,11 +1528,11 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     }
                     groupedByDate[item.date].push(item);
                   });
-                  
+
                   return (
                     <div className="relative max-h-[500px] overflow-y-auto pr-2">
                       <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-300 via-blue-300 to-purple-300"></div>
-                      
+
                       {Object.entries(groupedByDate).map(([date, items]) => (
                         <div key={date} className="relative mb-6 last:mb-0">
                           <div className="flex items-start gap-4 mb-3">
@@ -1561,7 +1547,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                 {new Date(date).getFullYear()}
                               </div>
                             </div>
-                            
+
                             <div className="flex-1 pt-2">
                               <div className="flex itemscenter gap-2 mb-3">
                                 <h4 className="text-base font-bold text-gray-800">
@@ -1571,7 +1557,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                   {items.length} item{items.length > 1 ? 's' : ''}
                                 </span>
                               </div>
-                              
+
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {items.map((item, idx) => (
                                   <div key={idx} className="bg-white border-2 border-gray-100 rounded-xl p-4 hover:shadow-lg hover:border-purple-200 transition-all">
@@ -1579,7 +1565,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                       <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
                                         <span className="text-xl font-bold text-white">{item.toothNum}</span>
                                       </div>
-                                      
+
                                       <div className="flex-1 min-w-0">
                                         {item.type === 'condition' ? (
                                           <>

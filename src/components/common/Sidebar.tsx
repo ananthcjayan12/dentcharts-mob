@@ -42,14 +42,14 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
       label: 'Patients'
     },
     {
-      id: 'invoice',
+      id: 'invoices',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
         </svg>
       ),
-      path: '/invoice',
-      label: 'Invoice'
+      path: '/invoices',
+      label: 'Invoices'
     },
     {
       id: 'settings',
@@ -102,7 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
             title={item.label}
           >
             {item.icon}
-            
+
             {/* Active Indicator */}
             {isActive(item.path) && (
               <div className="absolute -left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary-600 rounded-r-full" />
@@ -134,7 +134,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
-          
+
           {/* Tooltip */}
           <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-xl pointer-events-none z-50">
             Profile

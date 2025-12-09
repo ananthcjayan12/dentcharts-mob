@@ -5,12 +5,13 @@ import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Si
 import Autocomplete from '../components/common/Autocomplete';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
-import { 
-  useAppointments, 
-  useUpdateAppointment, 
-  useCancelAppointment, 
-  useDeleteAppointment, 
-  useAddToTodaysQueue, 
+import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
+import {
+  useAppointments,
+  useUpdateAppointment,
+  useCancelAppointment,
+  useDeleteAppointment,
+  useAddToTodaysQueue,
   useAvailableSlots,
   useCheckInAppointment,
   useStartVisit,
@@ -21,8 +22,10 @@ import { useCreateInvoice, useRecordPayment, usePaymentSummary, useDeleteInvoice
 import { paymentService } from '../api/services';
 import { usePractitioners } from '../hooks/usePractitioners';
 import { usePatients, usePatientsWithSearch } from '../hooks/usePatients';
+import { useClinic } from '../contexts/ClinicContext';
 import { Appointment } from '../types';
 import toast from 'react-hot-toast';
+import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 
 const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,8 +42,45 @@ const AppointmentsPage: React.FC = () => {
   const [selectedPatientForQueue, setSelectedPatientForQueue] = useState<string>('');
   const [patientSearch, setPatientSearch] = useState('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const { profile } = useClinic();
+
+  const handleViewInvoice = async (invoiceId: string) => {
+    try {
+      toast.loading('Loading invoice details...');
+
+      // Fetch full invoice details from API
+      const fullInvoice = await paymentService.getInvoice(invoiceId);
+
+      toast.dismiss();
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Please allow pop-ups to view invoice');
+        return;
+      }
+
+      // Generate HTML using the shared utility
+      const invoiceSettings = (profile?.invoice_settings || {}) as any;
+      const templateId = invoiceSettings.template_id || 'standard';
+
+      // Need to dynamically import or have it imported at top. 
+      // For now, assume it's imported. I will add the import in a separate tool call if needed or include it here if the tool supports multiple edits (it doesn't support adding import AND replacing function easily in one go if they are far apart).
+      // Actually, I can rely on the fact that I will add the import next.
+
+      // We need to cast fullInvoice to any because the utility expects a specific shape but our service returns a slightly different one or generic
+      const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId);
+
+      printWindow.document.write(invoiceHTML);
+      printWindow.document.close();
+    } catch (error: any) {
+      toast.dismiss();
+      console.error('View invoice error:', error);
+      toast.error(error?.message || 'Failed to load invoice details');
+    }
+  };
+
   const [overrideQueueTime, setOverrideQueueTime] = useState('');
-  
+
   // Main list search and context menu
   const [searchTerm, setSearchTerm] = useState('');
   const [contextMenu, setContextMenu] = useState<{ visible: boolean; x: number; y: number; appointment: any | null }>({
@@ -63,7 +103,7 @@ const AppointmentsPage: React.FC = () => {
   const { mutate: cancelAppointment, isPending: isCancelling } = useCancelAppointment();
   const { mutate: deleteAppointment, isPending: isDeleting } = useDeleteAppointment();
   const { mutate: addToQueue, isPending: isAddingToQueue } = useAddToTodaysQueue();
-  
+
   // New status-based action hooks
   const { mutate: checkInAppointment } = useCheckInAppointment();
   const { mutate: startVisit } = useStartVisit();
@@ -178,7 +218,7 @@ const AppointmentsPage: React.FC = () => {
 
   const handleDeleteAppointment = async (appointmentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!window.confirm('Are you sure you want to delete this appointment? This action cannot be undone.')) {
       return;
     }
@@ -334,7 +374,7 @@ const AppointmentsPage: React.FC = () => {
     setInvoiceItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
-  const handleCreateInvoiceSubmit = () => {
+  const handleCreateInvoiceSubmit = (data: any) => {
     if (!invoiceModalAppointment) {
       toast.error('No appointment selected');
       return;
@@ -346,7 +386,9 @@ const AppointmentsPage: React.FC = () => {
       return;
     }
 
-    if (invoiceItems.some(it => !it.description || !it.rate || Number(it.rate) <= 0)) {
+    // Validate items from the passed data
+    const items = data.items || [];
+    if (items.some((it: any) => !it.description || !it.rate || Number(it.rate) <= 0)) {
       toast.error('Please fill item description and rate');
       return;
     }
@@ -354,16 +396,19 @@ const AppointmentsPage: React.FC = () => {
     const invoiceRequest: any = {
       patient_id: patientIdentifier,
       appointment_id: invoiceModalAppointment.name || invoiceModalAppointment.appointment_id,
-      items: invoiceItems.map(({ id, ...rest }) => ({ ...rest, qty: Number(rest.qty) || 1, rate: Number(rest.rate) || 0 })),
-      posting_date: invoiceDataState.date,
-      due_date: invoiceDataState.dueDate,
-      remarks: invoiceDataState.notes || undefined,
+      items: items.map(({ id, ...rest }: any) => ({ ...rest, qty: Number(rest.qty) || 1, rate: Number(rest.rate) || 0 })),
+      posting_date: data.date,
+      due_date: data.dueDate,
+      remarks: data.notes || undefined,
+      discount_amount: data.discount_amount || 0,
+      tax_amount: data.tax_amount || 0,
     };
 
     createInvoice(invoiceRequest, {
       onSuccess: () => {
         setShowCreateInvoiceModal(false);
         setInvoiceModalAppointment(null);
+        toast.success('Invoice created successfully');
       }
     });
   };
@@ -502,16 +547,16 @@ const AppointmentsPage: React.FC = () => {
   const { data: patientsData } = usePatientsWithSearch(patientSearch, { limit_page_length: 20 });
   const patientsList = patientsData?.data || [];
 
-  
+
 
   // Real API data with pagination and filters
-  const { 
-    data: appointmentsData, 
-    isLoading: appointmentsLoading 
+  const {
+    data: appointmentsData,
+    isLoading: appointmentsLoading
   } = useAppointments(
-    { 
-      limit_page_length: itemsPerPage, 
-      limit_start: (currentPage - 1) * itemsPerPage 
+    {
+      limit_page_length: itemsPerPage,
+      limit_start: (currentPage - 1) * itemsPerPage
     },
     appointmentFilters
   );
@@ -621,7 +666,7 @@ const AppointmentsPage: React.FC = () => {
 
   const renderQueueSection = (title: string, items: any[], headerColorClass: string = 'bg-gray-100') => {
     if (items.length === 0) return null;
-    
+
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
         <div className={`px-4 py-3 ${headerColorClass} border-b border-gray-200 flex justify-between items-center`}>
@@ -630,19 +675,19 @@ const AppointmentsPage: React.FC = () => {
             {title === 'Visit Completed' && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-600">Google reviews</span>
-                <button 
+                <button
                   className="relative inline-flex h-6 w-11 items-center rounded-full bg-blue-600"
                   role="switch"
                   aria-checked="true"
                 >
-                  <span className="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition"/>
+                  <span className="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition" />
                 </button>
               </div>
             )}
             <span className="text-sm font-bold text-gray-900">{items.length} Patients</span>
           </div>
         </div>
-        
+
         {/* Desktop View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
@@ -659,8 +704,8 @@ const AppointmentsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {items.map((appointment) => (
-                <tr 
-                  key={appointment.name || appointment.appointment_id} 
+                <tr
+                  key={appointment.name || appointment.appointment_id}
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => handleAppointmentClick(appointment)}
                   onContextMenu={(e) => handleContextMenu(e, appointment)}
@@ -683,7 +728,7 @@ const AppointmentsPage: React.FC = () => {
                         </button>
                       }
                     >
-                      {['Scheduled','Confirmed','To Be Invoiced','Pending Payment','Files To Be Uploaded','Completed','Cancelled','Waiting','In Progress','Open'].map(s => (
+                      {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
                         <button
                           key={s}
                           onClick={(e) => {
@@ -722,12 +767,12 @@ const AppointmentsPage: React.FC = () => {
         {/* Mobile View */}
         <div className="md:hidden divide-y divide-gray-100">
           {items.map((appointment) => (
-            <div 
+            <div
               key={appointment.name || appointment.appointment_id}
               className="p-3 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
               onClick={() => handleAppointmentClick(appointment)}
             >
-                <div className="flex justify-between items-start mb-2">
+              <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0 mr-2">
                   <h4 className="font-semibold text-gray-900 text-sm truncate">{appointment.patient_name}</h4>
                   <p className="text-xs text-gray-500 truncate">{appointment.appointment_type || 'General Consultation'}</p>
@@ -746,7 +791,7 @@ const AppointmentsPage: React.FC = () => {
                     </button>
                   }
                 >
-                  {['Scheduled','Confirmed','To Be Invoiced','Pending Payment','Files To Be Uploaded','Completed','Cancelled','Waiting','In Progress','Open'].map(s => (
+                  {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
                     <button
                       key={s}
                       onClick={(e) => {
@@ -767,7 +812,7 @@ const AppointmentsPage: React.FC = () => {
                   ))}
                 </ActionDropdown>
               </div>
-              
+
               <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
                 <div className="flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -813,8 +858,8 @@ const AppointmentsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {items.map((appointment) => (
-                <tr 
-                  key={appointment.name || appointment.appointment_id} 
+                <tr
+                  key={appointment.name || appointment.appointment_id}
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => handleAppointmentClick(appointment)}
                   onContextMenu={(e) => handleContextMenu(e, appointment)}
@@ -837,7 +882,7 @@ const AppointmentsPage: React.FC = () => {
                         </button>
                       }
                     >
-                      {['Scheduled','Confirmed','To Be Invoiced','Pending Payment','Files To Be Uploaded','Completed','Cancelled','Waiting','In Progress','Open'].map(s => (
+                      {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
                         <button
                           key={s}
                           onClick={(e) => {
@@ -876,12 +921,12 @@ const AppointmentsPage: React.FC = () => {
         {/* Mobile View */}
         <div className="md:hidden divide-y divide-gray-100">
           {items.map((appointment) => (
-            <div 
+            <div
               key={appointment.name || appointment.appointment_id}
               className="p-3 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
               onClick={() => handleAppointmentClick(appointment)}
             >
-                <div className="flex justify-between items-start mb-2">
+              <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0 mr-2">
                   <h4 className="font-semibold text-gray-900 text-sm truncate">{appointment.patient_name}</h4>
                   <p className="text-xs text-gray-500 truncate">{appointment.appointment_type || 'General Consultation'}</p>
@@ -900,7 +945,7 @@ const AppointmentsPage: React.FC = () => {
                     </button>
                   }
                 >
-                  {['Scheduled','Confirmed','To Be Invoiced','Pending Payment','Files To Be Uploaded','Completed','Cancelled','Waiting','In Progress','Open'].map(s => (
+                  {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
                     <button
                       key={s}
                       onClick={(e) => {
@@ -921,7 +966,7 @@ const AppointmentsPage: React.FC = () => {
                   ))}
                 </ActionDropdown>
               </div>
-              
+
               <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
                 <div className="flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -994,12 +1039,12 @@ const AppointmentsPage: React.FC = () => {
                     >
                       <span className="hidden sm:inline">View Invoice</span>
                       <span className="sm:hidden">View</span>
-                      <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clipRule="evenodd"/></svg>
+                      <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
                     </button>
                   }
                 >
                   <button
-                    onClick={(e) => { e.stopPropagation(); setOpenActionMenu(null); navigate(`/invoices/${invoiceId}`); }}
+                    onClick={(e) => { e.stopPropagation(); setOpenActionMenu(null); handleViewInvoice(invoiceId); }}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                   >
                     View Invoice
@@ -1053,7 +1098,7 @@ const AppointmentsPage: React.FC = () => {
                   >
                     <span className="hidden sm:inline">View Invoice</span>
                     <span className="sm:hidden">View</span>
-                    <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clipRule="evenodd"/></svg>
+                    <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
                   </button>
                 }
               >
@@ -1102,7 +1147,7 @@ const AppointmentsPage: React.FC = () => {
                   >
                     <span className="hidden sm:inline">View Invoice</span>
                     <span className="sm:hidden">View</span>
-                    <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clipRule="evenodd"/></svg>
+                    <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
                   </button>
                 }
               >
@@ -1135,7 +1180,7 @@ const AppointmentsPage: React.FC = () => {
         {/* Fallback to existing status-based actions for other statuses */}
         {status === 'waiting' && (
           <>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); handleStartVisit(id); }}
               className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 rounded hover:bg-green-100 border border-green-200 flex items-center gap-1"
             >
@@ -1143,7 +1188,7 @@ const AppointmentsPage: React.FC = () => {
               <span className="hidden sm:inline">Start Visit</span>
               <span className="sm:hidden">Start</span>
             </button>
-            <button 
+            <button
               onClick={(e) => handleCancelAppointment(id, appointment, e)}
               className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100 border border-red-200 flex items-center gap-1"
             >
@@ -1156,7 +1201,7 @@ const AppointmentsPage: React.FC = () => {
 
         {status === 'in progress' && (
           <>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); handleCompleteVisit(id); }}
               className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 rounded hover:bg-green-100 border border-green-200 flex items-center gap-1"
             >
@@ -1164,7 +1209,7 @@ const AppointmentsPage: React.FC = () => {
               <span className="hidden sm:inline">Complete Visit</span>
               <span className="sm:hidden">Complete</span>
             </button>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); openCreateInvoiceModal(appointment); }}
               className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 border border-blue-200 flex items-center gap-1"
             >
@@ -1176,14 +1221,14 @@ const AppointmentsPage: React.FC = () => {
 
         {(status === 'scheduled' || status === 'confirmed' || status === 'open') && (
           <>
-            <button 
+            <button
               onClick={(e) => { e.stopPropagation(); handleCheckIn(id); }}
               className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 rounded hover:bg-green-100 border border-green-200 flex items-center gap-1"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
               Check in
             </button>
-            <button 
+            <button
               onClick={(e) => handleCancelAppointment(id, appointment, e)}
               className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100 border border-red-200 flex items-center gap-1"
             >
@@ -1203,7 +1248,7 @@ const AppointmentsPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:pl-20">
-        <TopBar 
+        <TopBar
           title="Clinic Que - Today"
           onBack={() => navigate('/home')}
           showMenu
@@ -1215,98 +1260,95 @@ const AppointmentsPage: React.FC = () => {
             <Stack spacing={6}>
               {/* Header Controls */}
               <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                 <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center flex-1 w-full xl:w-auto">
-                    {/* Toggle Switch */}
-                    <div className="flex items-center bg-gray-100 rounded-full p-1">
-                      <button
-                        onClick={() => setShowTodaysOnly(false)}
-                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${!showTodaysOnly ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                      >
-                        All Appointments
-                      </button>
-                      <button
-                        onClick={() => setShowTodaysOnly(true)}
-                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${showTodaysOnly ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                      >
-                        Today's Queue
-                      </button>
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative flex-1 min-w-[200px]">
-                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                       </div>
-                       <input 
-                          type="text" 
-                          placeholder="Search by patient name..." 
-                          className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 rounded-full leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-xs sm:text-sm"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                       />
-                    </div>
-
-                    {/* Filter Toggle Button */}
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center flex-1 w-full xl:w-auto">
+                  {/* Toggle Switch */}
+                  <div className="flex items-center bg-gray-100 rounded-full p-1">
                     <button
-                      onClick={() => setShowFilters(!showFilters)}
-                      className={`p-2 rounded-full border ${showFilters ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}
+                      onClick={() => setShowTodaysOnly(false)}
+                      className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${!showTodaysOnly ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                      All Appointments
                     </button>
-                    
-                    {/* Filter Chips - Horizontal Scroll on Mobile */}
-                    <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-                       <button 
-                          onClick={() => setQueueFilter(queueFilter === 'booking' ? 'all' : 'booking')}
-                          className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                             queueFilter === 'booking' ? 'bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                       >
-                          <span className="mr-1.5">📅</span>
-                          <span className="hidden sm:inline mr-1">Booking</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-xs ${queueFilter === 'booking' ? 'bg-white text-blue-500' : 'bg-blue-100 text-blue-800'}`}>
-                             {counts.booking}
-                          </span>
-                       </button>
-                       
-                       <button 
-                          onClick={() => setQueueFilter(queueFilter === 'waiting' ? 'all' : 'waiting')}
-                          className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                             queueFilter === 'waiting' ? 'bg-yellow-500 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                       >
-                          <span className="mr-1.5">👥</span>
-                          <span className="hidden sm:inline mr-1">Waiting</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-xs ${queueFilter === 'waiting' ? 'bg-white text-yellow-500' : 'bg-yellow-100 text-yellow-800'}`}>
-                             {counts.waiting}
-                          </span>
-                       </button>
-                       
-                       <button 
-                          onClick={() => setQueueFilter(queueFilter === 'completed' ? 'all' : 'completed')}
-                          className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                             queueFilter === 'completed' ? 'bg-green-500 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                       >
-                          <span className="mr-1.5">💼</span>
-                          <span className="hidden sm:inline mr-1">Completed</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-xs ${queueFilter === 'completed' ? 'bg-white text-green-500' : 'bg-green-100 text-green-800'}`}>
-                             {counts.completed}
-                          </span>
-                       </button>
+                    <button
+                      onClick={() => setShowTodaysOnly(true)}
+                      className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${showTodaysOnly ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Today's Queue
+                    </button>
+                  </div>
+
+                  {/* Search */}
+                  <div className="relative flex-1 min-w-[200px]">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
                     </div>
-                 </div>
-                 
-                 {/* Add Button */}
-                 <button
-                    onClick={() => navigate('/appointments/new', { state: { backgroundLocation: location } })}
-                    className="w-full sm:w-auto px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium flex items-center justify-center gap-2 whitespace-nowrap text-sm"
-                 >
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                    Add Patients
-                 </button>
+                    <input
+                      type="text"
+                      placeholder="Search by patient name..."
+                      className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 rounded-full leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-xs sm:text-sm"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Filter Toggle Button */}
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`p-2 rounded-full border ${showFilters ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                  </button>
+
+                  {/* Filter Chips - Horizontal Scroll on Mobile */}
+                  <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <button
+                      onClick={() => setQueueFilter(queueFilter === 'booking' ? 'all' : 'booking')}
+                      className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 ${queueFilter === 'booking' ? 'bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                      <span className="mr-1.5">📅</span>
+                      <span className="hidden sm:inline mr-1">Booking</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-xs ${queueFilter === 'booking' ? 'bg-white text-blue-500' : 'bg-blue-100 text-blue-800'}`}>
+                        {counts.booking}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => setQueueFilter(queueFilter === 'waiting' ? 'all' : 'waiting')}
+                      className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 ${queueFilter === 'waiting' ? 'bg-yellow-500 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                      <span className="mr-1.5">👥</span>
+                      <span className="hidden sm:inline mr-1">Waiting</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-xs ${queueFilter === 'waiting' ? 'bg-white text-yellow-500' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {counts.waiting}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => setQueueFilter(queueFilter === 'completed' ? 'all' : 'completed')}
+                      className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 ${queueFilter === 'completed' ? 'bg-green-500 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                      <span className="mr-1.5">💼</span>
+                      <span className="hidden sm:inline mr-1">Completed</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-xs ${queueFilter === 'completed' ? 'bg-white text-green-500' : 'bg-green-100 text-green-800'}`}>
+                        {counts.completed}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Add Button */}
+                <button
+                  onClick={() => navigate('/appointments/new', { state: { backgroundLocation: location } })}
+                  className="w-full sm:w-auto px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium flex items-center justify-center gap-2 whitespace-nowrap text-sm"
+                >
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  Add Patients
+                </button>
               </div>
 
               {/* Filters Section */}
@@ -1457,7 +1499,7 @@ const AppointmentsPage: React.FC = () => {
                     >
                       Cancel
                     </button>
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); handleUpdateAppointment(); }}
                       className="flex-1"
                       disabled={isUpdating}
@@ -1510,25 +1552,25 @@ const AppointmentsPage: React.FC = () => {
                       placeholder="Search patient by name or ID"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
-                    
+
                     {showPatientDropdown && patientSearch && (
                       <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {patientsList.map(patient => (
-                            <button
-                              type="button"
-                              key={patient.name}
-                              className="w-full text-left px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedPatientForQueue(patient.name);
-                                setPatientSearch(patient.patient_name);
-                                setShowPatientDropdown(false);
-                              }}
-                            >
-                              <div className="font-medium text-gray-900">{patient.patient_name}</div>
-                              <div className="text-xs text-gray-500">{patient.name} • {patient.mobile}</div>
-                            </button>
-                          ))}
+                          <button
+                            type="button"
+                            key={patient.name}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPatientForQueue(patient.name);
+                              setPatientSearch(patient.patient_name);
+                              setShowPatientDropdown(false);
+                            }}
+                          >
+                            <div className="font-medium text-gray-900">{patient.patient_name}</div>
+                            <div className="text-xs text-gray-500">{patient.name} • {patient.mobile}</div>
+                          </button>
+                        ))}
                         {patientsList.length === 0 && (
                           <div className="px-4 py-2 text-sm text-gray-500">No patients found</div>
                         )}
@@ -1599,7 +1641,7 @@ const AppointmentsPage: React.FC = () => {
                             }}
                           >
                             <div className="flex items-center gap-3">
-                              <Avatar 
+                              <Avatar
                                 size="sm"
                                 name={patient.patient_name}
                                 className="bg-gradient-to-br from-primary-500 to-primary-600 text-white flex-shrink-0"
@@ -1638,91 +1680,16 @@ const AppointmentsPage: React.FC = () => {
             </div>
           </div>
         )}
-        {/* Create Invoice Modal (overlay) */}
-        {showCreateInvoiceModal && invoiceModalAppointment && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Create Invoice for {invoiceModalAppointment.patient_name || invoiceModalAppointment.patient}</h3>
-                <button onClick={() => setShowCreateInvoiceModal(false)} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+        {/* Create Invoice Modal */}
+        <CreateInvoiceModal
+          isOpen={showCreateInvoiceModal}
+          onClose={() => setShowCreateInvoiceModal(false)}
+          appointment={invoiceModalAppointment}
+          completedProcedures={[]} // TODO: Pass actual completed procedures from appointment
+          onSubmit={handleCreateInvoiceSubmit}
+          isCreating={isCreatingInvoice}
+        />
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
-                    <input type="date" value={invoiceDataState.date} onChange={(e) => setInvoiceDataState(prev => ({ ...prev, date: e.target.value }))} className="w-full p-2 border border-gray-300 rounded" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Due Date</label>
-                    <input type="date" value={invoiceDataState.dueDate} onChange={(e) => setInvoiceDataState(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full p-2 border border-gray-300 rounded" />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {invoiceItems.map((item) => (
-                    <div key={item.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="text-sm font-bold">Item</span>
-                        {invoiceItems.length > 1 && (
-                          <button onClick={() => removeInvoiceItem(item.id)} className="text-red-500">Remove</button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <Autocomplete
-                            value={item.description || item.item_code}
-                            placeholder="Search procedure by name or code"
-                            fetchSuggestions={(q) => import('../api/services/procedures').then(m => m.proceduresService.list(q))}
-                            onSelect={(proc: any | null) => {
-                              if (!proc) {
-                                updateInvoiceItem(item.id, 'description', '');
-                                updateInvoiceItem(item.id, 'item_code', '');
-                                updateInvoiceItem(item.id, 'rate', '');
-                                return;
-                              }
-                              updateInvoiceItem(item.id, 'item_code', proc.code || '');
-                              updateInvoiceItem(item.id, 'description', proc.name || '');
-                              updateInvoiceItem(item.id, 'rate', proc.cost || 0);
-                            }}
-                            renderSuggestion={(proc: any) => (
-                              <div className="flex justify-between items-center">
-                                <div className="truncate">
-                                  <div className="font-medium text-sm">{proc.name}</div>
-                                  <div className="text-xs text-gray-500">{proc.code}</div>
-                                </div>
-                                <div className="text-sm text-gray-700">₹{proc.cost}</div>
-                              </div>
-                            )}
-                          />
-                        </div>
-                        <input placeholder="Qty" type="number" value={item.qty} onChange={(e) => updateInvoiceItem(item.id, 'qty', Number(e.target.value))} className="p-2 border border-gray-300 rounded" />
-                        <input placeholder="Rate" type="number" value={item.rate} onChange={(e) => updateInvoiceItem(item.id, 'rate', e.target.value)} className="p-2 border border-gray-300 rounded" />
-                      </div>
-                    </div>
-                  ))}
-                  <div>
-                    <button onClick={addInvoiceItem} className="px-3 py-1 bg-blue-600 text-white rounded">Add Item</button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
-                  <textarea value={invoiceDataState.notes} onChange={(e) => setInvoiceDataState(prev => ({ ...prev, notes: e.target.value }))} className="w-full p-2 border border-gray-300 rounded" rows={3} />
-                </div>
-
-                <div className="flex items-center justify-end gap-3">
-                  <button onClick={() => setShowCreateInvoiceModal(false)} className="px-4 py-2 bg-gray-100 rounded">Cancel</button>
-                  <button onClick={handleCreateInvoiceSubmit} className="px-4 py-2 bg-blue-600 text-white rounded">{isCreatingInvoice ? 'Creating...' : 'Create Invoice'}</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Record Payment Modal */}
         {showPaymentModal && (
@@ -1784,7 +1751,7 @@ const AppointmentsPage: React.FC = () => {
       {/* Context Menu */}
       {contextMenu.visible && contextMenu.appointment && (
         <Portal>
-          <div 
+          <div
             className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(e) => e.stopPropagation()}

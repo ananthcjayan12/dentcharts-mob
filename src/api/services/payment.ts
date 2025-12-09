@@ -82,7 +82,7 @@ export class PaymentService {
       // Handle the response structure: { message: { invoices: [...], total_count: N } }
       if (response.data) {
         const responseData = response.data;
-        
+
         // Check if data has invoices array (Frappe's actual structure)
         if (responseData.invoices && Array.isArray(responseData.invoices)) {
           return {
@@ -92,12 +92,12 @@ export class PaymentService {
             start: pagination.limit_start || 0,
           };
         }
-        
+
         // Fallback to standard paginated structure
         if (responseData.data && Array.isArray(responseData.data)) {
           return responseData as PaginatedResponse<InvoiceResponse>;
         }
-        
+
         // If data is directly an array
         if (Array.isArray(responseData)) {
           return {
@@ -188,7 +188,7 @@ export class PaymentService {
     payment_date?: string,
     reference_no?: string,
     reference_date?: string
-  ): Promise<{ payments: any[]; remaining_amount: number } > {
+  ): Promise<{ payments: any[]; remaining_amount: number }> {
     try {
       const payload = {
         patient_id: patientId,
@@ -426,11 +426,11 @@ export class PaymentService {
   generateInvoiceSummary(invoice: InvoiceResponse): string {
     const itemCount = invoice.items?.length || 0;
     const total = this.formatCurrency(invoice.grand_total);
-    
-    if (itemCount === 1) {
+
+    if (itemCount === 1 && invoice.items && invoice.items.length > 0) {
       return `${invoice.items[0].description} - ${total}`;
     }
-    
+
     return `${itemCount} items - ${total}`;
   }
 }

@@ -41,7 +41,7 @@ class ApiClient {
       (config) => {
         // CRITICAL: Ensure withCredentials is set for every request
         config.withCredentials = true;
-        
+
         const token = getStoredToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
@@ -110,21 +110,21 @@ class ApiClient {
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.get(url, config);
     const responseData = response.data;
-    
+
     // Handle Frappe's nested response structure
     if (responseData.message && typeof responseData.message === 'object') {
       const messageObj = responseData.message;
-      
+
       // Check if this is a paginated response (has data array + pagination fields)
-      if (messageObj.data && Array.isArray(messageObj.data) && 
-          (messageObj.total_count !== undefined || messageObj.page_length !== undefined)) {
+      if (messageObj.data && Array.isArray(messageObj.data) &&
+        (messageObj.total_count !== undefined || messageObj.page_length !== undefined)) {
         // Return the entire message object as data (includes data, total_count, page_length, start)
         return {
           message: messageObj.message || 'Success',
           data: messageObj as T,
         };
       }
-      
+
       // Regular nested response with data field
       if (messageObj.data !== undefined) {
         return {
@@ -132,14 +132,14 @@ class ApiClient {
           data: messageObj.data,
         };
       }
-      
+
       // Message object is the data itself
       return {
         message: messageObj.message || 'Success',
         data: messageObj as T,
       };
     }
-    
+
     // Direct structure
     return {
       message: 'Success',
@@ -150,23 +150,23 @@ class ApiClient {
   // POST request
   async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     const response = await this.client.post(endpoint, data);
-    
+
     // Handle Frappe's nested response structure
     // Frappe returns: { message: { message: "...", data: {...} } }
     const responseData = response.data;
-    
+
     if (responseData.message && typeof responseData.message === 'object') {
       const messageObj = responseData.message;
-      
+
       // Check if this is a paginated response
-      if (messageObj.data && Array.isArray(messageObj.data) && 
-          (messageObj.total_count !== undefined || messageObj.page_length !== undefined)) {
+      if (messageObj.data && Array.isArray(messageObj.data) &&
+        (messageObj.total_count !== undefined || messageObj.page_length !== undefined)) {
         return {
           message: messageObj.message || 'Success',
           data: messageObj as T,
         };
       }
-      
+
       // Regular nested response with data field
       if (messageObj.data !== undefined) {
         return {
@@ -174,14 +174,14 @@ class ApiClient {
           data: messageObj.data,
         };
       }
-      
+
       // Message object is the data itself
       return {
         message: messageObj.message || 'Success',
         data: messageObj as T,
       };
     }
-    
+
     // Direct structure
     return {
       message: 'Success',
@@ -193,24 +193,24 @@ class ApiClient {
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.put(url, data, config);
     const responseData = response.data;
-    
+
     // Handle Frappe's nested response structure
     if (responseData.message && typeof responseData.message === 'object') {
       const messageObj = responseData.message;
-      
+
       if (messageObj.data !== undefined) {
         return {
           message: messageObj.message || 'Success',
           data: messageObj.data,
         };
       }
-      
+
       return {
         message: messageObj.message || 'Success',
         data: messageObj as T,
       };
     }
-    
+
     return {
       message: 'Success',
       data: responseData,
@@ -221,24 +221,24 @@ class ApiClient {
   async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.patch(url, data, config);
     const responseData = response.data;
-    
+
     // Handle Frappe's nested response structure
     if (responseData.message && typeof responseData.message === 'object') {
       const messageObj = responseData.message;
-      
+
       if (messageObj.data !== undefined) {
         return {
           message: messageObj.message || 'Success',
           data: messageObj.data,
         };
       }
-      
+
       return {
         message: messageObj.message || 'Success',
         data: messageObj as T,
       };
     }
-    
+
     return {
       message: 'Success',
       data: responseData,
@@ -249,24 +249,24 @@ class ApiClient {
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.delete(url, config);
     const responseData = response.data;
-    
+
     // Handle Frappe's nested response structure
     if (responseData.message && typeof responseData.message === 'object') {
       const messageObj = responseData.message;
-      
+
       if (messageObj.data !== undefined) {
         return {
           message: messageObj.message || 'Success',
           data: messageObj.data,
         };
       }
-      
+
       return {
         message: messageObj.message || 'Success',
         data: messageObj as T,
       };
     }
-    
+
     return {
       message: 'Success',
       data: responseData,
@@ -285,9 +285,9 @@ class ApiClient {
       },
       onUploadProgress,
     });
-    
+
     const responseData = response.data;
-    
+
     // Handle Frappe's nested response structure
     if (responseData.message && typeof responseData.message === 'object') {
       return {
@@ -295,7 +295,7 @@ class ApiClient {
         data: responseData.message.data || responseData.message,
       };
     }
-    
+
     return {
       message: 'File uploaded successfully',
       data: responseData,
@@ -364,8 +364,8 @@ export const API_ENDPOINTS = {
     UPDATE_PAYMENT: '/api/method/mob_clinic.mob_clinic.api.payment.update_payment',
     DELETE_INVOICE: '/api/method/mob_clinic.mob_clinic.api.payment.delete_invoice',
     PAYMENT_SUMMARY: '/api/method/mob_clinic.mob_clinic.api.payment.get_payment_summary',
-     PAY_PENDING: '/api/method/mob_clinic.mob_clinic.api.payment.pay_patient_pending_invoices',
-     SEND_REMINDER: '/api/method/mob_clinic.mob_clinic.api.payment.send_payment_reminder',
+    PAY_PENDING: '/api/method/mob_clinic.mob_clinic.api.payment.pay_patient_pending_invoices',
+    SEND_REMINDER: '/api/method/mob_clinic.mob_clinic.api.payment.send_payment_reminder',
   },
 
   // File Upload & Management
@@ -396,6 +396,39 @@ export const API_ENDPOINTS = {
     GET_TREATMENT_PROGRESS: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_treatment_progress',
     GET_CHART_TYPES: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_chart_types',
     GET_TOOTH_STATUS_OPTIONS: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_tooth_status_options',
+  },
+  // Clinic Settings & Profile
+  CLINIC_PROFILE: {
+    GET: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.get_clinic_profile',
+    UPDATE_BASIC: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_basic_info',
+    UPDATE_ADDRESS: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_address',
+    UPDATE_BRANDING: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_branding',
+    UPDATE_INVOICE: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_invoice_settings',
+    UPDATE_NOTIFICATIONS: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_notification_templates',
+    UPDATE_SOCIAL: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_social_media',
+    UPDATE_ADDITIONAL: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_additional_settings',
+    UPLOAD_LOGO: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.upload_logo',
+    UPLOAD_DOCUMENT: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.upload_document',
+  },
+
+  // Procedures Management
+  PROCEDURES: {
+    GET: '/api/method/mob_clinic.mob_clinic.api.procedures.get_procedures',
+    CREATE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.procedures.create_custom_procedure',
+    UPDATE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.procedures.update_custom_procedure',
+    OVERRIDE_TEMPLATE: '/api/method/mob_clinic.mob_clinic.api.procedures.override_template_procedure',
+    DELETE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.procedures.delete_custom_procedure',
+    GET_CATEGORIES: '/api/method/mob_clinic.mob_clinic.api.procedures.get_procedure_categories',
+  },
+
+  // Conditions Management
+  CONDITIONS: {
+    GET: '/api/method/mob_clinic.mob_clinic.api.conditions.get_conditions',
+    CREATE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.conditions.create_custom_condition',
+    OVERRIDE_TEMPLATE: '/api/method/mob_clinic.mob_clinic.api.conditions.override_template_condition',
+    DELETE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.conditions.delete_custom_condition',
+    GET_CATEGORIES: '/api/method/mob_clinic.mob_clinic.api.conditions.get_condition_categories',
+    GET_TYPES: '/api/method/mob_clinic.mob_clinic.api.conditions.get_condition_types',
   },
 } as const;
 

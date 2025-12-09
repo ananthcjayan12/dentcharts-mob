@@ -11,20 +11,20 @@ interface InputFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 's
   fullWidth?: boolean;
 }
 
-const InputField: React.FC<InputFieldProps> = ({ 
-  label, 
-  error, 
+const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(({
+  label,
+  error,
   helperText,
   leftIcon,
-  rightIcon, 
-  className = '', 
+  rightIcon,
+  className = '',
   variant = 'outlined',
   size = 'md',
   fullWidth = true,
-  ...props 
-}) => {
+  ...props
+}, ref) => {
   const baseInputClasses = 'rounded-lg border transition-all duration-base focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-gray-100 disabled:cursor-not-allowed';
-  
+
   const sizeClasses = {
     sm: 'h-9 px-3 text-base', // Changed from text-sm to text-base to prevent mobile zoom
     md: 'h-10 px-4 text-base',
@@ -35,13 +35,13 @@ const InputField: React.FC<InputFieldProps> = ({
     outlined: 'border-gray-300 bg-white hover:border-gray-400 focus:border-primary-500 focus:ring-primary-500',
     filled: 'border-gray-200 bg-gray-50 hover:bg-gray-100 focus:bg-white focus:border-primary-500 focus:ring-primary-500'
   };
-  
-  const errorClasses = error 
-    ? 'border-danger-500 bg-danger-50 focus:ring-danger-500 focus:border-danger-500' 
+
+  const errorClasses = error
+    ? 'border-danger-500 bg-danger-50 focus:ring-danger-500 focus:border-danger-500'
     : '';
-  
+
   const widthClasses = fullWidth ? 'w-full' : '';
-  
+
   return (
     <div className={fullWidth ? 'w-full' : ''}>
       {label && (
@@ -56,6 +56,7 @@ const InputField: React.FC<InputFieldProps> = ({
           </div>
         )}
         <input
+          ref={ref}
           className={`
             ${baseInputClasses} 
             ${sizeClasses[size]} 
@@ -87,6 +88,8 @@ const InputField: React.FC<InputFieldProps> = ({
       )}
     </div>
   );
-};
+});
+
+InputField.displayName = 'InputField';
 
 export default InputField;

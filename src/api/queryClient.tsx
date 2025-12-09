@@ -6,10 +6,10 @@ import React from 'react';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Background refetch settings
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-      
+      // Background refetch settings - NO CACHING by default
+      staleTime: 0, // Data is immediately stale
+      gcTime: 0, // No garbage collection time (no cache)
+
       // Retry settings
       retry: (failureCount, error: any) => {
         // Don't retry on 4xx errors (client errors)
@@ -20,10 +20,10 @@ export const queryClient = new QueryClient({
         return failureCount < 3;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      
+
       // Refetch settings
       refetchOnWindowFocus: false,
-      refetchOnMount: true,
+      refetchOnMount: 'always', // Always refetch when component mounts
       refetchOnReconnect: true,
     },
     mutations: {
@@ -55,7 +55,7 @@ export const queryKeys = {
   auth: {
     profile: () => ['auth', 'profile'],
   },
-  
+
   // Patients
   patients: {
     all: () => ['patients'],
@@ -63,7 +63,7 @@ export const queryKeys = {
     detail: (id: string) => ['patients', 'detail', id],
     search: (term: string) => ['patients', 'search', term],
   },
-  
+
   // Appointments
   appointments: {
     all: () => ['appointments'],
@@ -74,7 +74,7 @@ export const queryKeys = {
     upcoming: (days?: number) => ['appointments', 'upcoming', days],
     patient: (patientId: string) => ['appointments', 'patient', patientId],
   },
-  
+
   // Prescriptions
   prescriptions: {
     all: () => ['prescriptions'],
@@ -83,7 +83,7 @@ export const queryKeys = {
     patient: (patientId: string) => ['prescriptions', 'patient', patientId],
     patientHistory: (patientId: string, params?: any) => ['prescriptions', 'history', patientId, params],
   },
-  
+
   // Payments
   payments: {
     all: () => ['payments'],
@@ -93,7 +93,7 @@ export const queryKeys = {
     unpaid: (patientId?: string) => ['payments', 'unpaid', patientId],
     overdue: (patientId?: string) => ['payments', 'overdue', patientId],
   },
-  
+
   // Files
   files: {
     all: () => ['files'],
@@ -103,21 +103,21 @@ export const queryKeys = {
     patient: (patientId: string, category?: string) => ['files', 'patient', patientId, category],
     prescription: (prescriptionId: string, category?: string) => ['files', 'prescription', prescriptionId, category],
   },
-  
+
   // Dental Chart
   dentalChart: {
     all: () => ['dentalChart'],
     byPatient: (patientId: string) => ['dentalChart', 'patient', patientId],
     summary: (patientId: string) => ['dentalChart', 'summary', patientId],
     progress: (patientId: string) => ['dentalChart', 'progress', patientId],
-    timeline: (patientId: string, toothNumber: number, procedureId: string) => 
+    timeline: (patientId: string, toothNumber: number, procedureId: string) =>
       ['dentalChart', 'timeline', patientId, toothNumber, procedureId],
     conditionTypes: ['dentalChart', 'conditionTypes'],
     procedureTypes: ['dentalChart', 'procedureTypes'],
     chartTypes: ['dentalChart', 'chartTypes'],
     statusOptions: ['dentalChart', 'statusOptions'],
   },
-  
+
   // Dashboard
   dashboard: {
     stats: () => ['dashboard', 'stats'],
@@ -132,38 +132,38 @@ export const mutationKeys = {
     logout: () => ['auth', 'logout'],
     updateProfile: () => ['auth', 'updateProfile'],
   },
-  
+
   patients: {
     create: () => ['patients', 'create'],
     update: (id: string) => ['patients', 'update', id],
     delete: (id: string) => ['patients', 'delete', id],
   },
-  
+
   appointments: {
     create: () => ['appointments', 'create'],
     update: (id: string) => ['appointments', 'update', id],
     cancel: (id: string) => ['appointments', 'cancel', id],
     delete: (id: string) => ['appointments', 'delete', id],
   },
-  
+
   prescriptions: {
     create: () => ['prescriptions', 'create'],
     update: (id: string) => ['prescriptions', 'update', id],
     share: (id: string) => ['prescriptions', 'share', id],
   },
-  
+
   payments: {
     createInvoice: () => ['payments', 'createInvoice'],
     recordPayment: (invoiceId: string) => ['payments', 'recordPayment', invoiceId],
     deleteInvoice: (invoiceId: string) => ['payments', 'deleteInvoice', invoiceId],
     sendReminder: (invoiceId: string) => ['payments', 'sendReminder', invoiceId],
   },
-  
+
   files: {
     upload: () => ['files', 'upload'],
     delete: (id: string) => ['files', 'delete', id],
   },
-  
+
   dentalChart: {
     save: () => ['dentalChart', 'save'],
     addCondition: () => ['dentalChart', 'addCondition'],
@@ -183,37 +183,37 @@ export const invalidateQueriesHelper = {
   invalidatePatients: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.patients.all() });
   },
-  
+
   // Invalidate all appointment-related queries
   invalidateAppointments: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all() });
   },
-  
+
   // Invalidate all prescription-related queries
   invalidatePrescriptions: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.all() });
   },
-  
+
   // Invalidate all payment-related queries
   invalidatePayments: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
   },
-  
+
   // Invalidate all file-related queries
   invalidateFiles: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.files.all() });
   },
-  
+
   // Invalidate all dental chart-related queries
   invalidateDentalCharts: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.dentalChart.all() });
   },
-  
+
   // Invalidate dashboard stats
   invalidateDashboard: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() });
   },
-  
+
   // Invalidate everything (use sparingly)
   invalidateAll: () => {
     queryClient.invalidateQueries();
