@@ -1107,7 +1107,7 @@ const AppointmentsPage: React.FC = () => {
                 }
               >
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${invoiceId}`); }}
+                  onClick={(e) => { e.stopPropagation(); handleViewInvoice(invoiceId); }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                 >
                   View Invoice
@@ -1156,7 +1156,7 @@ const AppointmentsPage: React.FC = () => {
                 }
               >
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${invoiceId}`); }}
+                  onClick={(e) => { e.stopPropagation(); handleViewInvoice(invoiceId); }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                 >
                   View Invoice
