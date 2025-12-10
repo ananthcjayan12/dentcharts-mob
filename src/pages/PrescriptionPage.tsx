@@ -19,6 +19,7 @@ import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription }
 import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoice } from '../hooks/usePayments';
 import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
+import ImageViewerModal from '../components/common/ImageViewerModal';
 
 // Get API base URL from environment variable (same as API client)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
@@ -117,7 +118,9 @@ const PrescriptionPage: React.FC = () => {
   const [patientFiles, setPatientFiles] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [selectedFileCategory, setSelectedFileCategory] = useState<string>('all');
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<Array<{ url: string; caption?: string }>>([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -515,6 +518,20 @@ const PrescriptionPage: React.FC = () => {
       console.error('Delete file error:', error);
       toast.error(error?.message || 'Failed to delete file');
     }
+  };
+
+  const handleOpenImageViewer = (clickedFileId: string) => {
+    const imageFiles = filteredFiles.filter((file: any) =>
+      fileUploadService.isImageFile(file.file_name)
+    );
+    const clickedIndex = imageFiles.findIndex((file: any) => file.file_id === clickedFileId);
+    const images = imageFiles.map((file: any) => ({
+      url: `${API_BASE_URL}${file.file_url}`,
+      caption: file.description || file.file_name
+    }));
+    setViewerImages(images);
+    setViewerInitialIndex(clickedIndex >= 0 ? clickedIndex : 0);
+    setImageViewerOpen(true);
   };
 
   const addMedication = () => {
@@ -1196,7 +1213,7 @@ const PrescriptionPage: React.FC = () => {
                                       {fileUploadService.isImageFile(file.file_name) ? (
                                         <div
                                           className="relative w-full h-40 bg-gray-100 overflow-hidden cursor-pointer"
-                                          onClick={() => setFullscreenImage(`${API_BASE_URL}${file.file_url}`)}
+                                          onClick={() => handleOpenImageViewer(file.file_id)}
                                         >
                                           <img
                                             src={`${API_BASE_URL}${file.file_url}`}
@@ -1895,7 +1912,7 @@ const PrescriptionPage: React.FC = () => {
                                       {fileUploadService.isImageFile(file.file_name) ? (
                                         <div
                                           className="relative w-full h-64 bg-gray-100 overflow-hidden cursor-pointer group"
-                                          onClick={() => setFullscreenImage(`${API_BASE_URL}${file.file_url}`)}
+                                          onClick={() => handleOpenImageViewer(file.file_id)}
                                         >
                                           <img
                                             src={`${API_BASE_URL}${file.file_url}`}
@@ -2871,36 +2888,13 @@ const PrescriptionPage: React.FC = () => {
               </div>
             )}
 
-            {/* Fullscreen Image Modal */}
-            {fullscreenImage && (
-              <div
-                className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
-                onClick={() => setFullscreenImage(null)}
-              >
-                {/* Close button */}
-                <button
-                  onClick={() => setFullscreenImage(null)}
-                  className="absolute top-4 right-4 z-10 p-2 bg-white/10 backdrop-blur-sm rounded-full hover:bg-white/20 transition-colors"
-                >
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-
-                {/* Image */}
-                <img
-                  src={fullscreenImage}
-                  alt="Fullscreen view"
-                  className="max-w-full max-h-full object-contain"
-                  onClick={(e) => e.stopPropagation()}
-                />
-
-                {/* Pinch to zoom hint */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full">
-                  <p className="text-white text-sm">Pinch to zoom • Tap to close</p>
-                </div>
-              </div>
-            )}
+            {/* Image Viewer Modal */}
+            <ImageViewerModal
+              isOpen={imageViewerOpen}
+              onClose={() => setImageViewerOpen(false)}
+              images={viewerImages}
+              initialIndex={viewerInitialIndex}
+            />
 
             {/* Create Prescription Modal */}
             {showNewPrescriptionModal && (
