@@ -26,6 +26,7 @@ import { useClinic } from '../contexts/ClinicContext';
 import { Appointment } from '../types';
 import toast from 'react-hot-toast';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
+import FileUploadModal from '../components/appointments/FileUploadModal';
 
 const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -43,6 +44,10 @@ const AppointmentsPage: React.FC = () => {
   const [patientSearch, setPatientSearch] = useState('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const { profile } = useClinic();
+
+  // File upload modal state
+  const [showFileUploadModal, setShowFileUploadModal] = useState(false);
+  const [fileUploadAppointment, setFileUploadAppointment] = useState<any>(null);
 
   const handleViewInvoice = async (invoiceId: string) => {
     try {
@@ -312,10 +317,9 @@ const AppointmentsPage: React.FC = () => {
     completeVisit(appointmentId);
   };
 
-  const handleUploadFiles = (appointmentId: string) => {
-    // Navigate to file upload page or open modal
-    toast('File upload feature - Coming soon!', { icon: 'ℹ️' });
-    // TODO: Implement file upload navigation
+  const handleUploadFiles = (appointmentId: string, appointment?: any) => {
+    setFileUploadAppointment(appointment || { name: appointmentId, patient_name: 'Patient' });
+    setShowFileUploadModal(true);
   };
 
   const handleToggleReview = (appointmentId: string, requested: boolean) => {
@@ -1080,7 +1084,7 @@ const AppointmentsPage: React.FC = () => {
         {status === 'files to be uploaded' && (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); handleUploadFiles(id); }}
+              onClick={(e) => { e.stopPropagation(); handleUploadFiles(id, appointment); }}
               className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 rounded hover:bg-green-100 border border-green-200 flex items-center gap-1"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
@@ -1131,7 +1135,7 @@ const AppointmentsPage: React.FC = () => {
         {status === 'completed' && (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); /* maybe open files viewer */ handleUploadFiles(id); }}
+              onClick={(e) => { e.stopPropagation(); handleUploadFiles(id, appointment); }}
               className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-50 rounded hover:bg-gray-100 border border-gray-200 flex items-center gap-1"
             >
               View Files
@@ -1788,6 +1792,19 @@ const AppointmentsPage: React.FC = () => {
             </button>
           </div>
         </Portal>
+      )}
+
+      {/* File Upload Modal */}
+      {showFileUploadModal && fileUploadAppointment && (
+        <FileUploadModal
+          isOpen={showFileUploadModal}
+          onClose={() => {
+            setShowFileUploadModal(false);
+            setFileUploadAppointment(null);
+          }}
+          appointmentId={fileUploadAppointment.name || fileUploadAppointment.appointment_id}
+          patientName={fileUploadAppointment.patient_name}
+        />
       )}
 
       <BottomNav activeTab="appointments" onTabChange={handleTabChange} />

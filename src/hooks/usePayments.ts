@@ -24,12 +24,13 @@ export const useCreateInvoice = () => {
     onSuccess: (result, variables) => {
       invalidateQueriesHelper.invalidatePayments();
       invalidateQueriesHelper.invalidateDashboard();
-      
+      invalidateQueriesHelper.invalidateAppointments(); // Invalidate appointments to update status
+
       // Invalidate patient-specific payment queries
       queryClient.invalidateQueries({
         queryKey: queryKeys.payments.summary(variables.patient_id),
       });
-      
+
       toast.success('Invoice created successfully!');
     },
     onError: (error: any) => {
@@ -125,16 +126,17 @@ export const useRecordPayment = () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.payments.invoice(variables.invoice_id),
       });
-      
+
       // Invalidate all payment-related queries to ensure fresh data
       invalidateQueriesHelper.invalidatePayments();
       invalidateQueriesHelper.invalidateDashboard();
-      
+      invalidateQueriesHelper.invalidateAppointments(); // Invalidate appointments to update status
+
       // Force refetch of all invoice lists to ensure updated data
       queryClient.refetchQueries({
         queryKey: ['payments', 'invoices'],
       });
-      
+
       toast.success('Payment recorded successfully!');
     },
     onError: (error: any) => {
@@ -158,16 +160,16 @@ export const useDeleteInvoice = () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.payments.invoice(invoiceId),
       });
-      
+
       // Invalidate all payment-related queries to ensure fresh data
       invalidateQueriesHelper.invalidatePayments();
       invalidateQueriesHelper.invalidateDashboard();
-      
+
       // Force refetch of all invoice lists to ensure updated data
       queryClient.refetchQueries({
         queryKey: ['payments', 'invoices'],
       });
-      
+
       toast.success('Invoice deleted successfully!');
     },
     onError: (error: any) => {
@@ -235,10 +237,10 @@ export const usePaymentStats = () => {
     queryFn: async () => {
       const unpaid = unpaidInvoices.data || [];
       const overdue = overdueInvoices.data || [];
-      
+
       const totalUnpaidAmount = unpaid.reduce((sum, invoice) => sum + invoice.outstanding_amount, 0);
       const totalOverdueAmount = overdue.reduce((sum, invoice) => sum + invoice.outstanding_amount, 0);
-      
+
       return {
         totalUnpaid: unpaid.length,
         totalOverdue: overdue.length,
@@ -268,19 +270,19 @@ export const usePaymentsDashboard = () => {
     recentInvoices: recentInvoices.data?.data || [],
     unpaidInvoices: unpaidInvoices.data || [],
     overdueInvoices: overdueInvoices.data || [],
-    
+
     // Stats
     totalUnpaid: stats.data?.totalUnpaid || 0,
     totalOverdue: stats.data?.totalOverdue || 0,
     unpaidAmount: stats.data?.unpaidAmount || 0,
     overdueAmount: stats.data?.overdueAmount || 0,
-    
+
     // Loading
     isLoading: recentInvoices.isLoading || unpaidInvoices.isLoading || overdueInvoices.isLoading,
-    
+
     // Error
     error: recentInvoices.error || unpaidInvoices.error || overdueInvoices.error,
-    
+
     // Refetch
     refetch: () => {
       recentInvoices.refetch();
@@ -306,16 +308,16 @@ export const usePatientPaymentsComplete = (patientId: string) => {
     paymentSummary: paymentSummary.data,
     unpaidInvoices: unpaidInvoices.data || [],
     overdueInvoices: overdueInvoices.data || [],
-    
+
     // Loading states
     isLoading: invoices.isLoading || paymentSummary.isLoading,
-    
+
     // Error states
     error: invoices.error || paymentSummary.error,
-    
+
     // Actions
     ...actions,
-    
+
     // Refetch
     refetch: () => {
       invoices.refetch();
@@ -353,23 +355,23 @@ export const usePaymentValidation = () => {
     },
     validatePayment: (data: UpdatePaymentRequest) => {
       const errors: string[] = [];
-      
+
       if (!data.invoice_id) {
         errors.push('Invoice ID is required');
       }
-      
+
       if (!data.paid_amount || data.paid_amount <= 0) {
         errors.push('Payment amount must be greater than 0');
       }
-      
+
       if (!data.mode_of_payment?.trim()) {
         errors.push('Payment mode is required');
       }
-      
+
       if (!data.payment_date) {
         errors.push('Payment date is required');
       }
-      
+
       return errors;
     },
   };
