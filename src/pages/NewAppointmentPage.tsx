@@ -72,16 +72,24 @@ const NewAppointmentPage: React.FC = () => {
     const typeParam = searchParams.get('type');
 
     // Load patient from URL params only once
-    if (rawPatientId && patients.length > 0 && !patientLoadedFromUrl.current) {
+    if (rawPatientId && !patientLoadedFromUrl.current) {
       const patientId = decodeURIComponent(rawPatientId);
-      const patient = patients.find(p =>
-        p.name === patientId || p.patient_id === patientId || p.patient_name === patientId
-      );
-      if (patient) {
-        setSelectedPatient(patient);
-        setShowPatientList(false);
-        setPatientSearchQuery(patient.patient_name || patient.name || '');
-        patientLoadedFromUrl.current = true;
+
+      // If we have patients loaded, try to find the patient
+      if (patients.length > 0) {
+        const patient = patients.find(p =>
+          p.name === patientId || p.patient_id === patientId || (p.patient_name || p.name || '').toLowerCase().includes(patientId.toLowerCase())
+        );
+        if (patient) {
+          setSelectedPatient(patient);
+          setShowPatientList(false);
+          setPatientSearchQuery(patient.patient_name || patient.name || '');
+          patientLoadedFromUrl.current = true;
+        }
+      } else if (!patientSearchQuery) {
+        // If no patients loaded yet and search not triggered, trigger a search for this patient ID
+        setPatientSearchQuery(patientId);
+        setShowPatientList(true);
       }
     }
 
@@ -91,7 +99,7 @@ const NewAppointmentPage: React.FC = () => {
       setFormData(prev => ({ ...prev, appointment_date: dateParam }));
       setAppointmentType('date');
     }
-  }, [searchParams, patients]);
+  }, [searchParams, patients, patientSearchQuery]);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -154,7 +162,7 @@ const NewAppointmentPage: React.FC = () => {
     }
 
     const appointmentData: any = {
-      patient_id: selectedPatient.name,
+      patient_id: selectedPatient.patient_id || selectedPatient.name,
       practitioner: selectedDoctor,
       appointment_date: appointmentType === 'today'
         ? new Date().toISOString().split('T')[0]
