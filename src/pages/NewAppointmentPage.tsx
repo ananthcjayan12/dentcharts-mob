@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
-import { usePatients } from '../hooks/usePatients';
+import { usePatientsWithSearch } from '../hooks/usePatients';
+import { useDebounce } from '../hooks/useDebounce';
 import { useCreateAppointment, useAvailableSlots, useAppointments } from '../hooks/useAppointments';
 import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
 import { usePractitioners } from '../hooks/usePractitioners';
@@ -25,11 +26,15 @@ const NewAppointmentPage: React.FC = () => {
     notes: ''
   });
 
+  // Track if we've already loaded patient from URL params to prevent infinite loop
+  const patientLoadedFromUrl = useRef(false);
+
   // API hooks
-  const { data: patientsData, isLoading: patientsLoading } = usePatients();
+  const debouncedSearchQuery = useDebounce(patientSearchQuery, 500);
+  const { data: patientsData, isLoading: patientsLoading } = usePatientsWithSearch(debouncedSearchQuery);
   const { data: practitionersData, isLoading: practitionersLoading } = usePractitioners();
   const { mutate: createAppointment, isPending: isCreating } = useCreateAppointment();
-  
+
   // Get available slots when date and doctor are selected or when adding to today's queue
   const slotsDate = appointmentType === 'today' ? new Date().toISOString().split('T')[0] : formData.appointment_date;
   // For 'today' we want slots even if practitioner is not yet selected so next-slot logic works
@@ -47,7 +52,7 @@ const NewAppointmentPage: React.FC = () => {
       practitioner: selectedDoctor,
     }
   );
-  
+
   const patients = patientsData?.data || [];
   const practitioners = practitionersData?.data || [];
   const slots = availableSlots || [];
@@ -66,15 +71,17 @@ const NewAppointmentPage: React.FC = () => {
     const dateParam = searchParams.get('date');
     const typeParam = searchParams.get('type');
 
-    if (rawPatientId && patients.length > 0) {
+    // Load patient from URL params only once
+    if (rawPatientId && patients.length > 0 && !patientLoadedFromUrl.current) {
       const patientId = decodeURIComponent(rawPatientId);
-      const patient = patients.find(p => 
+      const patient = patients.find(p =>
         p.name === patientId || p.patient_id === patientId || p.patient_name === patientId
       );
       if (patient) {
         setSelectedPatient(patient);
         setShowPatientList(false);
-        setPatientSearchQuery(patient.patient_name || '');
+        setPatientSearchQuery(patient.patient_name || patient.name || '');
+        patientLoadedFromUrl.current = true;
       }
     }
 
@@ -149,8 +156,8 @@ const NewAppointmentPage: React.FC = () => {
     const appointmentData: any = {
       patient_id: selectedPatient.name,
       practitioner: selectedDoctor,
-      appointment_date: appointmentType === 'today' 
-        ? new Date().toISOString().split('T')[0] 
+      appointment_date: appointmentType === 'today'
+        ? new Date().toISOString().split('T')[0]
         : formData.appointment_date,
       appointment_time: normalizedTime,
       duration: formData.duration,
@@ -238,7 +245,7 @@ const NewAppointmentPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            
+
             <button
               onClick={() => navigate('/patients/new')}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-success-600 text-white rounded-lg text-sm font-medium hover:bg-success-700 transition-colors"
@@ -272,18 +279,10 @@ const NewAppointmentPage: React.FC = () => {
                           Loading patients...
                         </td>
                       </tr>
-                    ) : patients.filter(p => 
-                        p.patient_name?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                        p.patient_id?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                        p.mobile?.includes(patientSearchQuery)
-                      ).length > 0 ? (
-                      patients.filter(p => 
-                        p.patient_name?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                        p.patient_id?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                        p.mobile?.includes(patientSearchQuery)
-                      ).slice(0, 5).map((patient) => (
+                    ) : patients.length > 0 ? (
+                      patients.slice(0, 5).map((patient) => (
                         <tr key={patient.patient_id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">{patient.patient_name}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{patient.patient_name || patient.name}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{patient.address?.split(',')[0] || 'N/A'}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{patient.mobile}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">
@@ -294,7 +293,7 @@ const NewAppointmentPage: React.FC = () => {
                               onClick={() => {
                                 setSelectedPatient(patient);
                                 setShowPatientList(false);
-                                setPatientSearchQuery(patient.patient_name);
+                                setPatientSearchQuery(patient.patient_name || patient.name);
                               }}
                               className="text-primary-600 hover:text-primary-700 font-medium text-sm"
                             >
@@ -331,22 +330,14 @@ const NewAppointmentPage: React.FC = () => {
                   <div className="px-4 py-8 text-center text-gray-500">
                     Loading patients...
                   </div>
-                ) : patients.filter(p => 
-                    p.patient_name?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                    p.patient_id?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                    p.mobile?.includes(patientSearchQuery)
-                  ).length > 0 ? (
+                ) : patients.length > 0 ? (
                   <div className="divide-y divide-gray-200">
-                    {patients.filter(p => 
-                      p.patient_name?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                      p.patient_id?.toLowerCase().includes(patientSearchQuery.toLowerCase()) ||
-                      p.mobile?.includes(patientSearchQuery)
-                    ).slice(0, 5).map((patient) => (
+                    {patients.slice(0, 5).map((patient) => (
                       <div key={patient.patient_id} className="p-4 hover:bg-gray-50">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
                             <h4 className="font-semibold text-gray-900 text-sm mb-1">
-                              {patient.patient_name}
+                              {patient.patient_name || patient.name}
                             </h4>
                             <div className="space-y-1 text-xs text-gray-600">
                               <p>📍 {patient.address?.split(',')[0] || 'N/A'}</p>
@@ -358,7 +349,7 @@ const NewAppointmentPage: React.FC = () => {
                             onClick={() => {
                               setSelectedPatient(patient);
                               setShowPatientList(false);
-                              setPatientSearchQuery(patient.patient_name);
+                              setPatientSearchQuery(patient.patient_name || patient.name);
                             }}
                             className="ml-3 px-3 py-1.5 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700"
                           >
@@ -400,11 +391,10 @@ const NewAppointmentPage: React.FC = () => {
                       <button
                         key={practitioner.name}
                         onClick={() => setSelectedDoctor(practitioner.name)}
-                        className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                          selectedDoctor === practitioner.name
-                            ? 'bg-primary-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                        className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${selectedDoctor === practitioner.name
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                       >
                         {practitioner.practitioner_name}
                       </button>
@@ -421,25 +411,23 @@ const NewAppointmentPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     onClick={() => setAppointmentType('date')}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 border rounded-lg transition-colors ${
-                      appointmentType === 'date'
-                        ? 'border-primary-600 bg-primary-50'
-                        : 'border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 border rounded-lg transition-colors ${appointmentType === 'date'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-gray-300 hover:bg-gray-50'
+                      }`}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <span className="text-xs sm:text-sm font-medium">Select Date</span>
                   </button>
-                  
+
                   <button
                     onClick={() => setAppointmentType('today')}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 border rounded-lg transition-colors ${
-                      appointmentType === 'today'
-                        ? 'border-primary-600 bg-primary-50'
-                        : 'border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 border rounded-lg transition-colors ${appointmentType === 'today'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-gray-300 hover:bg-gray-50'
+                      }`}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -465,29 +453,29 @@ const NewAppointmentPage: React.FC = () => {
                           <div className="text-sm text-gray-500">Loading available slots...</div>
                         ) : slots.length > 0 ? (
                           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                                {slots.map((slot) => {
-                                  const isSelectable = slot.available || (typeof slot.existing_appointments !== 'undefined' && slot.existing_appointments > 0);
-                                  return (
-                                  <button
-                                    key={slot.time}
-                                    onClick={() => handleInputChange('appointment_time', slot.time)}
-                                    disabled={!isSelectable}
-                                    className={`px-3 py-2 text-xs sm:text-sm rounded-lg font-medium transition-colors flex items-center justify-between gap-2 ${
-                                      formData.appointment_time === slot.time
-                                        ? 'bg-primary-600 text-white'
-                                        : isSelectable
-                                        ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            {slots.map((slot) => {
+                              const isSelectable = slot.available || (typeof slot.existing_appointments !== 'undefined' && slot.existing_appointments > 0);
+                              return (
+                                <button
+                                  key={slot.time}
+                                  onClick={() => handleInputChange('appointment_time', slot.time)}
+                                  disabled={!isSelectable}
+                                  className={`px-3 py-2 text-xs sm:text-sm rounded-lg font-medium transition-colors flex items-center justify-between gap-2 ${formData.appointment_time === slot.time
+                                    ? 'bg-primary-600 text-white'
+                                    : isSelectable
+                                      ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                     }`}
-                                  >
-                                    <span>{slot.time}</span>
-                                    {typeof slot.existing_appointments !== 'undefined' && slot.existing_appointments > 0 && (
-                                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                                        {slot.existing_appointments} bookings
-                                      </span>
-                                    )}
-                                  </button>
-                                )})}
+                                >
+                                  <span>{slot.time}</span>
+                                  {typeof slot.existing_appointments !== 'undefined' && slot.existing_appointments > 0 && (
+                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                                      {slot.existing_appointments} bookings
+                                    </span>
+                                  )}
+                                </button>
+                              )
+                            })}
                           </div>
                         ) : (
                           <div className="text-sm text-gray-500">No available slots for this date</div>
@@ -513,12 +501,11 @@ const NewAppointmentPage: React.FC = () => {
                               <div className="flex-1 text-gray-600 truncate">
                                 {apt.patient_name}
                               </div>
-                              <div className={`flex-shrink-0 px-2 py-1 rounded text-xs font-medium ${
-                                apt.status === 'Confirmed' ? 'bg-success-100 text-success-700' :
+                              <div className={`flex-shrink-0 px-2 py-1 rounded text-xs font-medium ${apt.status === 'Confirmed' ? 'bg-success-100 text-success-700' :
                                 apt.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' :
-                                apt.status === 'Completed' ? 'bg-gray-200 text-gray-700' :
-                                'bg-yellow-100 text-yellow-700'
-                              }`}>
+                                  apt.status === 'Completed' ? 'bg-gray-200 text-gray-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
                                 {apt.status}
                               </div>
                             </div>
