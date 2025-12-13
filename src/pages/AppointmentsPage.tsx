@@ -103,6 +103,7 @@ const AppointmentsPage: React.FC = () => {
   const [practitionerFilter, setPractitionerFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [procedureFilter, setProcedureFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const { mutate: updateAppointment, isPending: isUpdating } = useUpdateAppointment();
   const { mutate: cancelAppointment, isPending: isCancelling } = useCancelAppointment();
@@ -569,9 +570,17 @@ const AppointmentsPage: React.FC = () => {
   const totalCount = appointmentsData?.total_count || 0;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  // Sorted appointments based on sortConfig
+  // Sorted and filtered appointments based on sortConfig and procedureFilter
   const sortedAppointments = React.useMemo(() => {
     let sortableItems = [...appointments];
+
+    // Apply procedure filter (client-side since API may not support it)
+    if (procedureFilter && procedureFilter !== 'all') {
+      sortableItems = sortableItems.filter((apt: any) =>
+        (apt.chief_complaint || '').toLowerCase().includes(procedureFilter.toLowerCase())
+      );
+    }
+
     if (sortConfig !== null) {
       sortableItems.sort((a: any, b: any) => {
         let aValue = a[sortConfig.key];
@@ -593,7 +602,7 @@ const AppointmentsPage: React.FC = () => {
       });
     }
     return sortableItems;
-  }, [appointments, sortConfig]);
+  }, [appointments, sortConfig, procedureFilter]);
 
   // Queue View State
   const [queueFilter, setQueueFilter] = useState<'all' | 'booking' | 'waiting' | 'completed'>('all');
@@ -715,12 +724,12 @@ const AppointmentsPage: React.FC = () => {
                   onContextMenu={(e) => handleContextMenu(e, appointment)}
                 >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{appointment.patient_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.appointment_type || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.location || 'Thrissur'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || appointment.appointment_type || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.patient_mobile || '-'}</td>
                   <td className="px-4 py-3 text-center">
                     <ActionDropdown
-                      isOpen={openActionMenu === `status-${appointment.name || appointment.appointment_id}`}
-                      onToggle={() => setOpenActionMenu(openActionMenu === `status-${appointment.name || appointment.appointment_id}` ? null : `status-${appointment.name || appointment.appointment_id}`)}
+                      isOpen={openActionMenu === `queue-desk-status-${appointment.name || appointment.appointment_id}`}
+                      onToggle={() => setOpenActionMenu(openActionMenu === `queue-desk-status-${appointment.name || appointment.appointment_id}` ? null : `queue-desk-status-${appointment.name || appointment.appointment_id}`)}
                       onClose={() => setOpenActionMenu(null)}
                       align="left"
                       trigger={
@@ -759,7 +768,7 @@ const AppointmentsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    {new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.practitioner_name || 'Dr Avinash'}</td>
                 </tr>
@@ -779,11 +788,11 @@ const AppointmentsPage: React.FC = () => {
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0 mr-2">
                   <h4 className="font-semibold text-gray-900 text-sm truncate">{appointment.patient_name}</h4>
-                  <p className="text-xs text-gray-500 truncate">{appointment.appointment_type || 'General Consultation'}</p>
+                  <p className="text-xs text-gray-500 truncate">{appointment.chief_complaint || appointment.appointment_type || 'General Consultation'}</p>
                 </div>
                 <ActionDropdown
-                  isOpen={openActionMenu === `status-${appointment.name || appointment.appointment_id}`}
-                  onToggle={() => setOpenActionMenu(openActionMenu === `status-${appointment.name || appointment.appointment_id}` ? null : `status-${appointment.name || appointment.appointment_id}`)}
+                  isOpen={openActionMenu === `queue-mobile-status-${appointment.name || appointment.appointment_id}`}
+                  onToggle={() => setOpenActionMenu(openActionMenu === `queue-mobile-status-${appointment.name || appointment.appointment_id}` ? null : `queue-mobile-status-${appointment.name || appointment.appointment_id}`)}
                   onClose={() => setOpenActionMenu(null)}
                   align="right"
                   trigger={
@@ -820,7 +829,7 @@ const AppointmentsPage: React.FC = () => {
               <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
                 <div className="flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <span>{new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                  <span>{new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -869,12 +878,12 @@ const AppointmentsPage: React.FC = () => {
                   onContextMenu={(e) => handleContextMenu(e, appointment)}
                 >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{appointment.patient_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.appointment_type || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.location || 'Thrissur'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || appointment.appointment_type || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.patient_mobile || '-'}</td>
                   <td className="px-4 py-3 text-center">
                     <ActionDropdown
-                      isOpen={openActionMenu === `status-${appointment.name || appointment.appointment_id}`}
-                      onToggle={() => setOpenActionMenu(openActionMenu === `status-${appointment.name || appointment.appointment_id}` ? null : `status-${appointment.name || appointment.appointment_id}`)}
+                      isOpen={openActionMenu === `all-desk-status-${appointment.name || appointment.appointment_id}`}
+                      onToggle={() => setOpenActionMenu(openActionMenu === `all-desk-status-${appointment.name || appointment.appointment_id}` ? null : `all-desk-status-${appointment.name || appointment.appointment_id}`)}
                       onClose={() => setOpenActionMenu(null)}
                       align="left"
                       trigger={
@@ -913,7 +922,7 @@ const AppointmentsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    {new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.practitioner_name || 'Dr Avinash'}</td>
                 </tr>
@@ -933,11 +942,11 @@ const AppointmentsPage: React.FC = () => {
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0 mr-2">
                   <h4 className="font-semibold text-gray-900 text-sm truncate">{appointment.patient_name}</h4>
-                  <p className="text-xs text-gray-500 truncate">{appointment.appointment_type || 'General Consultation'}</p>
+                  <p className="text-xs text-gray-500 truncate">{appointment.chief_complaint || appointment.appointment_type || 'General Consultation'}</p>
                 </div>
                 <ActionDropdown
-                  isOpen={openActionMenu === `status-${appointment.name || appointment.appointment_id}`}
-                  onToggle={() => setOpenActionMenu(openActionMenu === `status-${appointment.name || appointment.appointment_id}` ? null : `status-${appointment.name || appointment.appointment_id}`)}
+                  isOpen={openActionMenu === `all-mobile-status-${appointment.name || appointment.appointment_id}`}
+                  onToggle={() => setOpenActionMenu(openActionMenu === `all-mobile-status-${appointment.name || appointment.appointment_id}` ? null : `all-mobile-status-${appointment.name || appointment.appointment_id}`)}
                   onClose={() => setOpenActionMenu(null)}
                   align="right"
                   trigger={
@@ -974,7 +983,7 @@ const AppointmentsPage: React.FC = () => {
               <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
                 <div className="flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <span>{new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                  <span>{new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -1385,6 +1394,19 @@ const AppointmentsPage: React.FC = () => {
                     </select>
                   </div>
                   <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Procedure</label>
+                    <select
+                      value={procedureFilter}
+                      onChange={(e) => setProcedureFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="all">All Procedures</option>
+                      {['General Checkup', 'Tooth Pain', 'Cleaning', 'Root Canal', 'Extraction', 'Filling', 'Crown/Bridge', 'Orthodontics', 'Consultation', 'Follow-up'].map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">From Date</label>
                     <input
                       type="date"
@@ -1402,11 +1424,12 @@ const AppointmentsPage: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
-                  <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
+                  <div className="sm:col-span-2 lg:col-span-5 flex justify-end">
                     <button
                       onClick={() => {
                         setPractitionerFilter('all');
                         setStatusFilter('all');
+                        setProcedureFilter('all');
                         setDateFrom('');
                         setDateTo('');
                         setSearchTerm('');
@@ -1435,6 +1458,71 @@ const AppointmentsPage: React.FC = () => {
                 {(!showTodaysOnly ? sortedAppointments.length === 0 : appointments.length === 0) && !appointmentsLoading && (
                   <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                     <Typography variant="h6" className="text-gray-500">No appointments found</Typography>
+                  </div>
+                )}
+
+                {/* Pagination Controls - Only show for All Appointments view */}
+                {!showTodaysOnly && totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <div className="text-sm text-gray-600">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} appointments
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        First
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum: number;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => handlePageChange(pageNum)}
+                              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${currentPage === pageNum
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Last
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

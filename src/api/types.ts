@@ -166,6 +166,8 @@ export interface CreateAppointmentRequest {
   appointment_time: string;
   duration?: number;
   notes?: string;
+  chief_complaint?: string;
+  practitioner?: string;
 }
 
 export interface AppointmentResponse {

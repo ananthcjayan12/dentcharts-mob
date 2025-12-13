@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Container, Grid, Stack, Flex, Card, Button, Typography, Badge, Avatar, Divider, InputField, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import { useAppointmentsDashboard } from '../hooks/useAppointments';
-import { usePatientStats } from '../hooks/usePatients';
+import { usePatientStats, usePatientsForSelect } from '../hooks/usePatients';
 import { ChevronRightIcon, CalendarIcon, UserIcon, MagnifyingGlassIcon, PlusIcon, UserGroupIcon, ClockIcon, CurrencyDollarIcon, CalendarDaysIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 
 const HomePage: React.FC = () => {
@@ -13,6 +13,8 @@ const HomePage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   // Real API data
   const {
@@ -30,6 +32,11 @@ const HomePage: React.FC = () => {
     data: patientStats,
     isLoading: patientsLoading
   } = usePatientStats();
+
+  // Search functionality
+  const { data: searchResults, isLoading: isSearching } = usePatientsForSelect(
+    searchQuery.length >= 2 ? searchQuery : undefined
+  );
 
   const isLoading = appointmentsLoading || patientsLoading;
 
@@ -51,13 +58,36 @@ const HomePage: React.FC = () => {
   };
 
   const handleSearch = (query: string) => {
-    if (query.trim()) {
-      navigate(`/appointments?search=${encodeURIComponent(query)}`);
+    setSearchQuery(query);
+    setShowSearchResults(query.length >= 2);
+  };
+
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      setShowSearchResults(false);
+      navigate(`/patients?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
-  const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, loading }: any) => (
-    <Card className="h-full border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+  const handlePatientClick = (patientId: string) => {
+    setShowSearchResults(false);
+    setSearchQuery('');
+    navigate(`/prescriptions/${encodeURIComponent(patientId)}`);
+  };
+
+  // Filter appointments based on search query
+  const filteredTodaysAppointments = searchQuery.length >= 2
+    ? todaysAppointments.filter(apt =>
+      apt.patient_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      apt.patient?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : [];
+
+  const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, loading, onClick }: any) => (
+    <Card
+      className={`h-full border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary-100' : ''}`}
+      onClick={onClick}
+    >
       <Flex align="start" justify="between" className="mb-2">
         <div className={`p-3 rounded-xl ${colorClass} bg-opacity-10`}>
           <Icon className={`w-6 h-6 ${colorClass.replace('bg-', 'text-')}`} />
@@ -115,18 +145,87 @@ const HomePage: React.FC = () => {
             </Flex>
 
             {/* Quick Search */}
-            <Card className="border-0 shadow-sm ring-1 ring-gray-200">
+            <Card className="border-0 shadow-sm ring-1 ring-gray-200 relative">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   type="text"
+                  value={searchQuery}
                   className="block w-full pl-10 pr-3 py-3 border-none rounded-lg focus:ring-2 focus:ring-primary-500 focus:bg-white bg-gray-50 transition-colors text-sm"
                   placeholder="Search for patients, appointments, or treatments..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch(e.currentTarget.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  onKeyDown={handleSearchSubmit}
+                  onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+                  onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
                 />
               </div>
+              {/* Search Results Dropdown */}
+              {showSearchResults && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-80 overflow-y-auto">
+                  {isSearching ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-500 mx-auto"></div>
+                      <span className="text-sm mt-2">Searching...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Matching Appointments */}
+                      {filteredTodaysAppointments.length > 0 && (
+                        <div>
+                          <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Today's Appointments</div>
+                          {filteredTodaysAppointments.map((apt) => (
+                            <div
+                              key={apt.name || apt.appointment_id}
+                              className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              onClick={() => handlePatientClick(apt.patient || '')}
+                            >
+                              <div className="flex items-center gap-3">
+                                <CalendarDaysIcon className="w-5 h-5 text-blue-500" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{apt.patient_name}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(apt.appointment_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {apt.status}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Patient Search Results */}
+                      {searchResults && searchResults.length > 0 && (
+                        <div>
+                          <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">Patients</div>
+                          {searchResults.slice(0, 5).map((patient: any) => (
+                            <div
+                              key={patient.patient_id}
+                              className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              onClick={() => handlePatientClick(patient.patient_id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <UserIcon className="w-5 h-5 text-green-500" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{patient.name}</p>
+                                  <p className="text-xs text-gray-500">{patient.patient_id} • {patient.mobile}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* No Results */}
+                      {filteredTodaysAppointments.length === 0 && (!searchResults || searchResults.length === 0) && (
+                        <div className="p-4 text-center text-gray-500">
+                          <p className="text-sm">No results found</p>
+                          <p className="text-xs mt-1">Press Enter to search all patients</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </Card>
 
             {/* Stats Overview */}
@@ -138,6 +237,7 @@ const HomePage: React.FC = () => {
                 icon={CalendarDaysIcon}
                 colorClass="bg-blue-500"
                 loading={isLoading}
+                onClick={() => navigate('/appointments')}
               />
               <StatCard
                 title="Total Patients"
@@ -146,6 +246,7 @@ const HomePage: React.FC = () => {
                 icon={UserGroupIcon}
                 colorClass="bg-green-500"
                 loading={isLoading}
+                onClick={() => navigate('/patients')}
               />
               <StatCard
                 title="Upcoming"
@@ -154,14 +255,16 @@ const HomePage: React.FC = () => {
                 icon={ClockIcon}
                 colorClass="bg-purple-500"
                 loading={isLoading}
+                onClick={() => navigate('/appointments')}
               />
               <StatCard
                 title="Pending"
                 value={pendingCount}
                 subtitle="Action required"
-                icon={CurrencyDollarIcon} // Using generalized icon for now
+                icon={CurrencyDollarIcon}
                 colorClass="bg-orange-500"
                 loading={isLoading}
+                onClick={() => navigate('/appointments')}
               />
             </Grid>
 
@@ -194,10 +297,10 @@ const HomePage: React.FC = () => {
                   <Stack spacing={3}>
                     {todaysAppointments.map((apt) => (
                       <Card
-                        key={apt.appointment_id}
+                        key={apt.name || apt.appointment_id}
                         className="group hover:ring-2 hover:ring-primary-100 transition-all cursor-pointer border border-gray-100 shadow-sm"
                         onClick={() => {
-                          const pid = apt.patient_id || apt.patient_name;
+                          const pid = apt.patient || apt.patient_id || apt.patient_name;
                           if (pid) navigate(`/prescriptions/${encodeURIComponent(pid)}`);
                         }}
                       >
@@ -314,10 +417,10 @@ const HomePage: React.FC = () => {
                     <Card className="border border-gray-100 shadow-sm divide-y divide-gray-100">
                       {upcomingAppointments.slice(0, 3).map((apt, i) => (
                         <div
-                          key={apt.appointment_id}
+                          key={apt.name || apt.appointment_id}
                           className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors"
                           onClick={() => {
-                            const pid = apt.patient_id || apt.patient_name;
+                            const pid = apt.patient || apt.patient_id || apt.patient_name;
                             if (pid) navigate(`/prescriptions/${encodeURIComponent(pid)}`);
                           }}
                         >

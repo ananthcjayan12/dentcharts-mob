@@ -23,7 +23,8 @@ const NewAppointmentPage: React.FC = () => {
     appointment_date: new Date().toISOString().split('T')[0],
     appointment_time: '',
     duration: 30,
-    notes: ''
+    notes: '',
+    chief_complaint: ''
   });
 
   // Track if we've already loaded patient from URL params to prevent infinite loop
@@ -170,6 +171,7 @@ const NewAppointmentPage: React.FC = () => {
       appointment_time: normalizedTime,
       duration: formData.duration,
       notes: formData.notes || undefined,
+      chief_complaint: formData.chief_complaint || undefined,
     };
 
     // Debug log to inspect slots and payload when no time selected or unexpected behavior
@@ -411,6 +413,37 @@ const NewAppointmentPage: React.FC = () => {
                 ) : (
                   <div className="text-sm text-gray-500">No practitioners available</div>
                 )}
+              </div>
+
+              {/* Reason for Visit / Chief Complaint */}
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-3">Reason for Visit</h3>
+                <div className="space-y-3">
+                  {/* Quick suggestion chips */}
+                  <div className="flex flex-wrap gap-2">
+                    {['General Checkup', 'Tooth Pain', 'Cleaning', 'Root Canal', 'Extraction', 'Filling', 'Crown/Bridge', 'Orthodontics', 'Consultation', 'Follow-up'].map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => handleInputChange('chief_complaint', reason)}
+                        className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${formData.chief_complaint === reason
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Custom input */}
+                  <input
+                    type="text"
+                    value={formData.chief_complaint}
+                    onChange={(e) => handleInputChange('chief_complaint', e.target.value)}
+                    placeholder="Or type a custom reason..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
               </div>
 
               {/* Set Appointment */}

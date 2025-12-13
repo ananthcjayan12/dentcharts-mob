@@ -16,7 +16,8 @@ import Flex from '../components/layout/Flex';
 import DentalChart, { ToothData } from '../components/common/DentalChart';
 import { usePatient } from '../hooks/usePatients';
 import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
-import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoice } from '../hooks/usePayments';
+import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoice, useCreateInvoice } from '../hooks/usePayments';
+import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
 import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
 import ImageViewerModal from '../components/common/ImageViewerModal';
@@ -129,6 +130,7 @@ const PrescriptionPage: React.FC = () => {
   const [paymentReference, setPaymentReference] = useState('');
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [showNewPrescriptionModal, setShowNewPrescriptionModal] = useState(false);
+  const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const [newPrescription, setNewPrescription] = useState({
     chief_complaint: '',
     symptoms: '',
@@ -155,6 +157,7 @@ const PrescriptionPage: React.FC = () => {
   const { mutate: updatePrescription, isPending: isUpdating } = useUpdatePrescription();
   const { mutate: recordPayment, isPending: isPaymentProcessing } = useRecordPayment();
   const deleteInvoiceMutation = useDeleteInvoice();
+  const { mutate: createInvoice, isPending: isCreatingInvoice } = useCreateInvoice();
 
   const isLoading = patientLoading || prescriptionsLoading || invoicesLoading || paymentSummaryLoading;
 
@@ -187,7 +190,7 @@ const PrescriptionPage: React.FC = () => {
 
       setIsLoadingFiles(true);
       try {
-        const files = await fileUploadService.getPatientFiles(patientId);
+        const patientFilesList = await fileUploadService.getPatientFiles(patientId);
 
         // If we have an appointment ID, also fetch files linked to the appointment
         if (appointmentId) {
@@ -197,13 +200,24 @@ const PrescriptionPage: React.FC = () => {
               reference_name: appointmentId,
               limit: 100
             });
-            setPatientFiles([...files, ...appointmentFiles]);
+
+            // Merge and de-duplicate files by file_id
+            const allFiles = [...patientFilesList, ...appointmentFiles];
+            const uniqueFiles = allFiles.reduce((acc: any[], file: any) => {
+              const fileId = file.file_id || file.name;
+              if (!acc.find((f: any) => (f.file_id || f.name) === fileId)) {
+                acc.push(file);
+              }
+              return acc;
+            }, []);
+
+            setPatientFiles(uniqueFiles);
           } catch (e) {
             console.warn('Failed to fetch appointment files', e);
-            setPatientFiles(files);
+            setPatientFiles(patientFilesList);
           }
         } else {
-          setPatientFiles(files);
+          setPatientFiles(patientFilesList);
         }
       } catch (error) {
         console.error('Error fetching patient files:', error);
@@ -797,6 +811,38 @@ const PrescriptionPage: React.FC = () => {
     }
   };
 
+  const handleCreateInvoiceSubmit = (data: any) => {
+    if (!patientId) {
+      toast.error('No patient selected');
+      return;
+    }
+
+    // Validate items from the passed data
+    const items = data.items || [];
+    if (items.some((it: any) => !it.description || !it.rate || Number(it.rate) <= 0)) {
+      toast.error('Please fill item description and rate');
+      return;
+    }
+
+    const invoiceRequest: any = {
+      patient_id: patientId,
+      appointment_id: appointmentId || undefined,
+      items: items.map(({ id, ...rest }: any) => ({ ...rest, qty: Number(rest.qty) || 1, rate: Number(rest.rate) || 0 })),
+      posting_date: data.date,
+      due_date: data.dueDate,
+      remarks: data.notes || undefined,
+      discount_amount: data.discount_amount || 0,
+      tax_amount: data.tax_amount || 0,
+    };
+
+    createInvoice(invoiceRequest, {
+      onSuccess: () => {
+        setShowCreateInvoiceModal(false);
+        toast.success('Invoice created successfully');
+      }
+    });
+  };
+
   const handlePrintInvoice = async (invoice: any) => {
     try {
       toast.loading('Loading invoice details...');
@@ -1105,7 +1151,7 @@ const PrescriptionPage: React.FC = () => {
                           size="sm"
                           variant="outline"
                           className="w-full justify-start"
-                          onClick={() => navigate('/invoice', { state: { patient, appointmentId } })}
+                          onClick={() => setShowCreateInvoiceModal(true)}
                           leftIcon={
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2574,7 +2620,7 @@ const PrescriptionPage: React.FC = () => {
                         <Button
                           size="sm"
                           variant="primary"
-                          onClick={() => navigate('/invoice', { state: { patient } })}
+                          onClick={() => setShowCreateInvoiceModal(true)}
                           className="flex flex-col items-center justify-center py-4 h-auto"
                         >
                           <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3152,6 +3198,19 @@ const PrescriptionPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Create Invoice Modal */}
+            <CreateInvoiceModal
+              isOpen={showCreateInvoiceModal}
+              onClose={() => setShowCreateInvoiceModal(false)}
+              appointment={appointmentId ? {
+                name: appointmentId,
+                patient: patientId,
+                patient_name: patient?.patient_name || patient?.name
+              } : undefined}
+              onSubmit={handleCreateInvoiceSubmit}
+              isCreating={isCreatingInvoice}
+            />
 
             {/* Fixed Bottom Navigation */}
             <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
