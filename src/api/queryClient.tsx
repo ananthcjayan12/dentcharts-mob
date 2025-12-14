@@ -120,7 +120,8 @@ export const queryKeys = {
 
   // Dashboard
   dashboard: {
-    stats: () => ['dashboard', 'stats'],
+    stats: (params?: any) => ['dashboard', 'stats', params],
+    collection: (params?: any) => ['dashboard', 'collection', params],
   },
 } as const;
 

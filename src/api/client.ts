@@ -430,6 +430,12 @@ export const API_ENDPOINTS = {
     GET_CATEGORIES: '/api/method/mob_clinic.mob_clinic.api.conditions.get_condition_categories',
     GET_TYPES: '/api/method/mob_clinic.mob_clinic.api.conditions.get_condition_types',
   },
+
+  // Dashboard Management
+  DASHBOARD: {
+    GET_STATS: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_financial_stats',
+    GET_COLLECTION: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_collection_summary',
+  },
 } as const;
 
 export default apiClient;

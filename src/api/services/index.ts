@@ -8,6 +8,7 @@ export { paymentService } from './payment';
 export { fileUploadService } from './fileUpload';
 export { dentalChartService } from './dentalChart';
 export { practitionerService } from './practitioner';
+export { dashboardService } from './dashboard';
 
 // Re-export types for convenience
 export * from '../types';
