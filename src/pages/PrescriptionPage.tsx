@@ -23,6 +23,7 @@ import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import ImageViewerModal from '../components/common/ImageViewerModal';
+import EditPatientModal from '../components/patients/EditPatientModal';
 
 // Get API base URL from environment variable (same as API client)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
@@ -40,6 +41,7 @@ const PrescriptionPage: React.FC = () => {
   const appointmentId = location.state?.appointmentId || new URLSearchParams(location.search).get('appointmentId');
 
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart'>('medical');
   const [dentalChartData, setDentalChartData] = useState<Record<number, ToothData>>({});
   const [showUpload, setShowUpload] = useState(false);
@@ -1132,11 +1134,11 @@ const PrescriptionPage: React.FC = () => {
 
                           {/* Edit Profile Button */}
                           <button
-                            onClick={() => navigate(`/patients/${patientId}/edit`)}
+                            onClick={() => setShowEditProfileModal(true)}
                             className="mt-4 w-full py-2 px-4 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
                             Edit Profile
                           </button>
@@ -1493,6 +1495,11 @@ const PrescriptionPage: React.FC = () => {
                             <div className="mb-4">
                               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Conditions</span>
                               <div className="flex flex-wrap gap-2 mt-2">
+                                {medicalHistory.nrmh && (
+                                  <span className="px-2 lg:px-3 py-1 bg-yellow-50 text-yellow-700 font-semibold text-xs rounded-full border border-yellow-200">
+                                    NRMH (No Relevant Medical History)
+                                  </span>
+                                )}
                                 {medicalHistory.diabetic && (
                                   <span className="px-2 lg:px-3 py-1 bg-red-50 text-red-700 font-semibold text-xs rounded-full border border-red-100">
                                     Diabetic
@@ -1513,7 +1520,7 @@ const PrescriptionPage: React.FC = () => {
                                     Family Heart Disease
                                   </span>
                                 )}
-                                {!medicalHistory.diabetic && !medicalHistory.cardiac_history && !medicalHistory.allergies && !medicalHistory.family_heart_disease && (
+                                {!medicalHistory.nrmh && !medicalHistory.diabetic && !medicalHistory.cardiac_history && !medicalHistory.allergies && !medicalHistory.family_heart_disease && (
                                   <span className="px-2 lg:px-3 py-1 bg-green-50 text-green-700 font-medium text-xs rounded-full border border-green-100">
                                     No significant conditions
                                   </span>
@@ -2618,6 +2625,15 @@ const PrescriptionPage: React.FC = () => {
                       </button>
                     </div>
                     <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                      <label className="flex items-center gap-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                        <input
+                          type="checkbox"
+                          checked={editableMedicalHistory.nrmh || false}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, nrmh: e.target.checked })}
+                          className="w-5 h-5 text-primary-600"
+                        />
+                        <span className="text-sm font-medium">No Relevant Medical History (NRMH)</span>
+                      </label>
                       <label className="flex items-center gap-3">
                         <input
                           type="checkbox"
@@ -2734,6 +2750,14 @@ const PrescriptionPage: React.FC = () => {
 
 
       </div >
+      {/* Edit Patient Modal */}
+      {patient && (
+        <EditPatientModal
+          isOpen={showEditProfileModal}
+          onClose={() => setShowEditProfileModal(false)}
+          patient={patient}
+        />
+      )}
     </div >
   );
 };

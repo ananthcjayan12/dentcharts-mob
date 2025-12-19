@@ -118,10 +118,21 @@ export interface PatientResponse {
 
 export interface UpdatePatientRequest {
   patient_id: string;
+  first_name?: string;
+  last_name?: string;
+  patient_name?: string;
   email?: string;
   mobile?: string;
   address?: string;
   occupation?: string;
+  dob?: string;
+  age?: number;
+  sex?: 'Male' | 'Female' | 'Other';
+  blood_group?: string;
+  marital_status?: string;
+  profile_image?: string;
+  medical_history?: string; // JSON string
+  insurance_details?: string;
 }
 
 export interface PatientSearchParams {

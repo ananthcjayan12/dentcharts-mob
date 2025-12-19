@@ -21,6 +21,7 @@ const NewPatientPage: React.FC = () => {
     occupation: '',
     registration_date: new Date().toISOString().split('T')[0],
     // Additional fields for UI (not sent to API)
+    nrmh: false,
     diabetic: false,
     bloodPressure: 'Normal' as 'Normal' | 'High' | 'Low' | 'Moderate High',
     cardiacHistory: false,
@@ -34,7 +35,7 @@ const NewPatientPage: React.FC = () => {
   const [addToQueue, setAddToQueue] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   // API mutation hook
   const { mutate: createPatient, isPending: isCreating } = useCreatePatient();
 
@@ -60,7 +61,7 @@ const NewPatientPage: React.FC = () => {
       ...prev,
       [field]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -117,6 +118,7 @@ const NewPatientPage: React.FC = () => {
       occupation: formData.occupation.trim() || undefined,
       registration_date: formData.registration_date || undefined,
       medical_history: JSON.stringify({
+        nrmh: formData.nrmh,
         diabetic: formData.diabetic,
         blood_pressure: formData.bloodPressure,
         cardiac_history: formData.cardiacHistory,
@@ -130,7 +132,7 @@ const NewPatientPage: React.FC = () => {
     createPatient(patientData, {
       onSuccess: (response) => {
         toast.success(`Patient "${formData.first_name} ${formData.last_name}" created successfully!`);
-        
+
         // If date is selected or add to queue is checked, navigate to appointments
         if (selectedAppointmentDate || addToQueue) {
           const patientId = response.patient_id;
@@ -174,7 +176,7 @@ const NewPatientPage: React.FC = () => {
             {/* Basic Information Section */}
             <div className="border-b border-gray-200 pb-4">
               <h3 className="text-sm font-bold text-gray-700 mb-3">Basic Information</h3>
-              
+
               <div className="space-y-3">
                 {/* Row 1: First Name and Last Name */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -185,9 +187,8 @@ const NewPatientPage: React.FC = () => {
                       value={formData.first_name}
                       onChange={(e) => handleInputChange('first_name', e.target.value)}
                       placeholder="Enter first name"
-                      className={`w-full px-3 py-2 border rounded-md text-sm ${
-                        errors.first_name ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${errors.first_name ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.first_name && (
                       <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>
@@ -201,9 +202,8 @@ const NewPatientPage: React.FC = () => {
                       value={formData.last_name}
                       onChange={(e) => handleInputChange('last_name', e.target.value)}
                       placeholder="Enter last name"
-                      className={`w-full px-3 py-2 border rounded-md text-sm ${
-                        errors.last_name ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${errors.last_name ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.last_name && (
                       <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>
@@ -267,9 +267,8 @@ const NewPatientPage: React.FC = () => {
                       value={formData.mobile}
                       onChange={(e) => handleInputChange('mobile', e.target.value)}
                       placeholder="+91XXXXXXXXXX"
-                      className={`w-full px-3 py-2 border rounded-md text-sm ${
-                        errors.mobile ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${errors.mobile ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.mobile && (
                       <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>
@@ -283,9 +282,8 @@ const NewPatientPage: React.FC = () => {
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       placeholder="patient@example.com"
-                      className={`w-full px-3 py-2 border rounded-md text-sm ${
-                        errors.email ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${errors.email ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.email && (
                       <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -301,9 +299,8 @@ const NewPatientPage: React.FC = () => {
                       value={formData.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
                       placeholder="Enter complete address"
-                      className={`w-full px-3 py-2 border rounded-md text-sm ${
-                        errors.address ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-md text-sm ${errors.address ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       rows={2}
                     />
                     {errors.address && (
@@ -328,7 +325,7 @@ const NewPatientPage: React.FC = () => {
             {/* Medical History Section */}
             <div className="border-b border-gray-200 pb-4">
               <h3 className="text-sm font-bold text-gray-700 mb-3">Medical History</h3>
-              
+
               <div className="space-y-3">
                 {/* Blood Pressure */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -344,6 +341,22 @@ const NewPatientPage: React.FC = () => {
                       <option value="Low">Low</option>
                       <option value="Moderate High">Moderate High</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* NRMH Toggle */}
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">No Relevant Medical History (NRMH)</label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.nrmh}
+                        onChange={(e) => handleInputChange('nrmh', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
                   </div>
                 </div>
 
@@ -444,7 +457,7 @@ const NewPatientPage: React.FC = () => {
                 />
               </div>
 
-              <button 
+              <button
                 type="button"
                 onClick={() => {
                   setAddToQueue(!addToQueue);
@@ -452,11 +465,10 @@ const NewPatientPage: React.FC = () => {
                     setSelectedAppointmentDate('');
                   }
                 }}
-                className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-md text-sm transition-colors ${
-                  addToQueue
+                className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-md text-sm transition-colors ${addToQueue
                     ? 'bg-primary-600 text-white border-primary-600'
                     : 'border-gray-300 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
