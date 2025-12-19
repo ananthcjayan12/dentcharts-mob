@@ -88,7 +88,7 @@ export class FileUploadService {
     try {
       // Convert file to base64
       const base64Content = await this.fileToBase64(file);
-      
+
       const fileData: UploadFileRequest = {
         file_name: file.name,
         content: base64Content,
@@ -186,7 +186,8 @@ export class FileUploadService {
         { file_id: fileId }
       );
 
-      if (response.message === 'File deleted successfully') {
+      // Check if the response indicates success (message contains 'deleted successfully')
+      if (response.message && response.message.includes('deleted successfully')) {
         return response;
       }
 

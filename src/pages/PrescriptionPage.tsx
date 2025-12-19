@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 // Icons removed as they are unused (replaced by SVGs)
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
+import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import { useClinic } from '../contexts/ClinicContext';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components';
@@ -20,79 +21,11 @@ import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoi
 import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
 import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
+import FileUploadModal from '../components/appointments/FileUploadModal';
 import ImageViewerModal from '../components/common/ImageViewerModal';
 
 // Get API base URL from environment variable (same as API client)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
-
-/**
- * Compress image file to reduce size
- * @param file - Original image file
- * @param maxWidth - Maximum width (default 1920px)
- * @param maxHeight - Maximum height (default 1920px)
- * @param quality - JPEG quality 0-1 (default 0.8)
- */
-const compressImage = async (
-  file: File,
-  maxWidth: number = 1920,
-  maxHeight: number = 1920,
-  quality: number = 0.8
-): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        // Calculate new dimensions while maintaining aspect ratio
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
-            } else {
-              reject(new Error('Canvas to Blob conversion failed'));
-            }
-          },
-          'image/jpeg',
-          quality
-        );
-      };
-
-      img.onerror = () => reject(new Error('Image load failed'));
-    };
-
-    reader.onerror = () => reject(new Error('FileReader failed'));
-  });
-};
 
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -110,6 +43,7 @@ const PrescriptionPage: React.FC = () => {
   const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart'>('medical');
   const [dentalChartData, setDentalChartData] = useState<Record<number, ToothData>>({});
   const [showUpload, setShowUpload] = useState(false);
+  const [showFileUploadModal, setShowFileUploadModal] = useState(false);
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploadNotes, setUploadNotes] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -130,7 +64,20 @@ const PrescriptionPage: React.FC = () => {
   const [paymentReference, setPaymentReference] = useState('');
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [showNewPrescriptionModal, setShowNewPrescriptionModal] = useState(false);
+  const [showClinicalDetails, setShowClinicalDetails] = useState(false);
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const [showMedicalHistoryEdit, setShowMedicalHistoryEdit] = useState(false);
+  const [editableMedicalHistory, setEditableMedicalHistory] = useState<any>({});
+  const [showClinicalRecordModal, setShowClinicalRecordModal] = useState(false);
+  const [isCreatingClinicalRecord, setIsCreatingClinicalRecord] = useState(false);
+  const [newClinicalRecord, setNewClinicalRecord] = useState({
+    notes: '',
+  });
+  const [recordsTab, setRecordsTab] = useState<'prescriptions' | 'clinical'>('prescriptions');
+  const [clinicalRecords, setClinicalRecords] = useState<any[]>([]);
+  const [clinicalRecordsLoading, setClinicalRecordsLoading] = useState(false);
+  const [expandedClinicalRecords, setExpandedClinicalRecords] = useState<Set<string>>(new Set());
+  const [detailedClinicalRecords, setDetailedClinicalRecords] = useState<Record<string, any>>({});
   const [newPrescription, setNewPrescription] = useState({
     chief_complaint: '',
     symptoms: '',
@@ -190,35 +137,60 @@ const PrescriptionPage: React.FC = () => {
 
       setIsLoadingFiles(true);
       try {
+        // Fetch files linked directly to the Patient
         const patientFilesList = await fileUploadService.getPatientFiles(patientId);
 
-        // If we have an appointment ID, also fetch files linked to the appointment
+        // Fetch appointment files
+        let appointmentFiles: any[] = [];
         if (appointmentId) {
+          // If specific appointmentId provided, fetch files for that appointment only
           try {
-            const appointmentFiles = await fileUploadService.listFiles({
+            appointmentFiles = await fileUploadService.listFiles({
               reference_doctype: 'Patient Appointment',
               reference_name: appointmentId,
               limit: 100
             });
-
-            // Merge and de-duplicate files by file_id
-            const allFiles = [...patientFilesList, ...appointmentFiles];
-            const uniqueFiles = allFiles.reduce((acc: any[], file: any) => {
-              const fileId = file.file_id || file.name;
-              if (!acc.find((f: any) => (f.file_id || f.name) === fileId)) {
-                acc.push(file);
-              }
-              return acc;
-            }, []);
-
-            setPatientFiles(uniqueFiles);
           } catch (e) {
             console.warn('Failed to fetch appointment files', e);
-            setPatientFiles(patientFilesList);
           }
         } else {
-          setPatientFiles(patientFilesList);
+          // When no appointmentId, fetch ALL appointments for this patient
+          // and get files for each appointment
+          try {
+            const { appointmentService } = await import('../api/services');
+            const patientAppointments = await appointmentService.getPatientAppointments(patientId, 100);
+
+            // Fetch files for each appointment in parallel
+            const appointmentFilePromises = patientAppointments.map(async (apt: any) => {
+              try {
+                return await fileUploadService.listFiles({
+                  reference_doctype: 'Patient Appointment',
+                  reference_name: apt.name || apt.id,
+                  limit: 100
+                });
+              } catch {
+                return [];
+              }
+            });
+
+            const allAppointmentFiles = await Promise.all(appointmentFilePromises);
+            appointmentFiles = allAppointmentFiles.flat();
+          } catch (e) {
+            console.warn('Failed to fetch patient appointments for files', e);
+          }
         }
+
+        // Merge and de-duplicate files by file_id
+        const allFiles = [...patientFilesList, ...appointmentFiles];
+        const uniqueFiles = allFiles.reduce((acc: any[], file: any) => {
+          const fileId = file.file_id || file.name;
+          if (!acc.find((f: any) => (f.file_id || f.name) === fileId)) {
+            acc.push(file);
+          }
+          return acc;
+        }, []);
+
+        setPatientFiles(uniqueFiles);
       } catch (error) {
         console.error('Error fetching patient files:', error);
         toast.error('Failed to load patient files');
@@ -229,6 +201,30 @@ const PrescriptionPage: React.FC = () => {
 
     fetchPatientFiles();
   }, [patientId, appointmentId]);
+
+  // Fetch clinical records when patient loads
+  React.useEffect(() => {
+    const fetchClinicalRecords = async () => {
+      if (!patientId) return;
+
+      setClinicalRecordsLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.clinical_record.get_clinical_records?patient_id=${patientId}`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.message?.data) {
+          setClinicalRecords(data.message.data);
+        }
+      } catch (e) {
+        console.error('Error fetching clinical records:', e);
+      } finally {
+        setClinicalRecordsLoading(false);
+      }
+    };
+
+    fetchClinicalRecords();
+  }, [patientId]);
 
   // Filter files based on selected category
   const filteredFiles = React.useMemo(() => {
@@ -392,11 +388,29 @@ const PrescriptionPage: React.FC = () => {
 
     try {
       await updatePrescription({
-        record_id: recordId,
+        prescription_id: recordId,
         ...editedData,
       });
+
+      // Refetch prescriptions to reflect changes immediately
+      await refetchPrescriptions();
+
       // Close edit mode after successful update
       toggleEdit(recordId);
+
+      // Clear edited data
+      setEditedPrescriptionData(prev => {
+        const newData = { ...prev };
+        delete newData[recordId];
+        return newData;
+      });
+
+      // Clear detailed prescriptions cache for this record to force refresh
+      setDetailedPrescriptions(prev => {
+        const newData = { ...prev };
+        delete newData[recordId];
+        return newData;
+      });
     } catch (error: any) {
       console.error('Update prescription error:', error);
     }
@@ -458,17 +472,10 @@ const PrescriptionPage: React.FC = () => {
   const handleCreatePrescription = async () => {
     if (!patientId) return;
 
-    // Validation
-    if (!newPrescription.chief_complaint.trim()) {
-      toast.error('Please enter chief complaint');
-      return;
-    }
-    if (!newPrescription.diagnosis.trim()) {
-      toast.error('Please enter diagnosis');
-      return;
-    }
-    if (!newPrescription.treatment_plan.trim()) {
-      toast.error('Please enter treatment plan');
+    // Validation - only medications are required now
+    const validMedications = newPrescription.medications.filter(m => m.drug_name.trim());
+    if (validMedications.length === 0) {
+      toast.error('Please add at least one medication');
       return;
     }
 
@@ -511,23 +518,59 @@ const PrescriptionPage: React.FC = () => {
       await fileUploadService.deleteFile(fileId);
       toast.success('File deleted successfully');
 
-      // Refresh patient files list
+      // Immediately remove the file from state for instant UI update
+      setPatientFiles(prevFiles => prevFiles.filter((f: any) => f.file_id !== fileId && f.name !== fileId));
+
+      // Also refresh from server to ensure consistency
       const files = await fileUploadService.getPatientFiles(patientId || '');
 
+      let appointmentFiles: any[] = [];
       if (appointmentId) {
         try {
-          const appointmentFiles = await fileUploadService.listFiles({
+          appointmentFiles = await fileUploadService.listFiles({
             reference_doctype: 'Patient Appointment',
             reference_name: appointmentId,
             limit: 100
           });
-          setPatientFiles([...files, ...appointmentFiles]);
         } catch (e) {
-          setPatientFiles(files);
+          // ignore
         }
       } else {
-        setPatientFiles(files);
+        // Fetch ALL appointments for this patient and get files for each
+        try {
+          const { appointmentService } = await import('../api/services');
+          const patientAppointments = await appointmentService.getPatientAppointments(patientId || '', 100);
+
+          const appointmentFilePromises = patientAppointments.map(async (apt: any) => {
+            try {
+              return await fileUploadService.listFiles({
+                reference_doctype: 'Patient Appointment',
+                reference_name: apt.name || apt.id,
+                limit: 100
+              });
+            } catch {
+              return [];
+            }
+          });
+
+          const allAppointmentFiles = await Promise.all(appointmentFilePromises);
+          appointmentFiles = allAppointmentFiles.flat();
+        } catch (e) {
+          // ignore
+        }
       }
+
+      // Merge and de-duplicate
+      const allFiles = [...files, ...appointmentFiles];
+      const uniqueFiles = allFiles.reduce((acc: any[], file: any) => {
+        const fId = file.file_id || file.name;
+        if (!acc.find((f: any) => (f.file_id || f.name) === fId)) {
+          acc.push(file);
+        }
+        return acc;
+      }, []);
+
+      setPatientFiles(uniqueFiles);
     } catch (error: any) {
       console.error('Delete file error:', error);
       toast.error(error?.message || 'Failed to delete file');
@@ -1218,6 +1261,12 @@ const PrescriptionPage: React.FC = () => {
                           <Card className="p-6">
                             <div className="flex items-center justify-between mb-4">
                               <h3 className="text-lg font-bold text-gray-800">Uploaded Documents ({filteredFiles.length})</h3>
+                              <button
+                                onClick={() => setShowFileUploadModal(true)}
+                                className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors text-sm"
+                              >
+                                Upload Files
+                              </button>
                             </div>
 
                             {/* Category Filter Pills */}
@@ -1314,6 +1363,18 @@ const PrescriptionPage: React.FC = () => {
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                             </svg>
                                           </a>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteFile(file.file_id);
+                                            }}
+                                            className="flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                                            title="Delete file"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                          </button>
                                         </div>
                                       </div>
                                     </div>
@@ -1334,273 +1395,398 @@ const PrescriptionPage: React.FC = () => {
                           <Card className="p-6">
                             <div className="flex items-center justify-between mb-4">
                               <h3 className="text-lg font-bold text-gray-800">Existing Medical History</h3>
+                              <button
+                                onClick={() => {
+                                  setEditableMedicalHistory({ ...medicalHistory });
+                                  setShowMedicalHistoryEdit(true);
+                                }}
+                                className="px-3 py-1.5 text-sm font-medium text-primary-600 border border-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+                              >
+                                Edit
+                              </button>
+                            </div>
+
+                            {/* Important Conditions - Red Badges */}
+                            <div className="mb-4">
+                              <span className="text-sm font-semibold text-gray-600">Conditions:</span>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {medicalHistory.diabetic && (
+                                  <span className="px-3 py-1 bg-red-100 text-red-800 font-bold text-sm rounded-full border border-red-200">
+                                    Diabetic
+                                  </span>
+                                )}
+                                {medicalHistory.cardiac_history && (
+                                  <span className="px-3 py-1 bg-red-100 text-red-800 font-bold text-sm rounded-full border border-red-200">
+                                    Cardiac History
+                                  </span>
+                                )}
+                                {medicalHistory.allergies && (
+                                  <span className="px-3 py-1 bg-orange-100 text-orange-800 font-bold text-sm rounded-full border border-orange-200">
+                                    Allergies
+                                  </span>
+                                )}
+                                {medicalHistory.family_heart_disease && (
+                                  <span className="px-3 py-1 bg-red-100 text-red-800 font-bold text-sm rounded-full border border-red-200">
+                                    Family Heart Disease
+                                  </span>
+                                )}
+                                {!medicalHistory.diabetic && !medicalHistory.cardiac_history && !medicalHistory.allergies && !medicalHistory.family_heart_disease && (
+                                  <span className="px-3 py-1 bg-green-100 text-green-800 font-medium text-sm rounded-full border border-green-200">
+                                    No significant conditions
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               <div>
-                                <span className="font-semibold text-gray-600">Diabetic:</span>
-                                <p className="text-gray-900">{medicalHistory.diabetic ? 'Yes' : 'No'}</p>
-                              </div>
-                              <div>
                                 <span className="font-semibold text-gray-600">Blood Pressure:</span>
-                                <p className="text-gray-900">{medicalHistory.blood_pressure || '-'}</p>
-                              </div>
-                              <div>
-                                <span className="font-semibold text-gray-600">Cardiac History:</span>
-                                <p className="text-gray-900">{medicalHistory.cardiac_history ? 'Yes' : 'No'}</p>
-                              </div>
-                              <div>
-                                <span className="font-semibold text-gray-600">Allergies:</span>
-                                <p className="text-gray-900">{medicalHistory.allergies ? 'Yes' : 'No'}</p>
-                              </div>
-                              <div>
-                                <span className="font-semibold text-gray-600">Family Heart Disease:</span>
-                                <p className="text-gray-900">{medicalHistory.family_heart_disease ? 'Yes' : 'No'}</p>
+                                <p className="text-gray-900">{medicalHistory.blood_pressure || 'Normal'}</p>
                               </div>
                               <div>
                                 <span className="font-semibold text-gray-600">COVID Vaccinated:</span>
                                 <p className="text-gray-900">{medicalHistory.covid_vaccinated ? 'Yes' : 'No'}</p>
                               </div>
-                              <div className="sm:col-span-2">
-                                <span className="font-semibold text-gray-600">Other:</span>
-                                <p className="text-gray-900">{medicalHistory.other || '-'}</p>
-                              </div>
+                              {medicalHistory.other && (
+                                <div className="sm:col-span-2">
+                                  <span className="font-semibold text-gray-600">Other:</span>
+                                  <p className="text-gray-900">{medicalHistory.other}</p>
+                                </div>
+                              )}
                             </div>
                           </Card>
                         )}
 
                         <Card className="p-6">
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-gray-800">Prescriptions & Clinical Records</h3>
+                            <h3 className="text-lg font-bold text-gray-800">Medical Records</h3>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setShowClinicalRecordModal(true)}
+                                className="px-3 py-2 border border-secondary-600 text-secondary-600 text-sm font-semibold rounded-lg hover:bg-secondary-50 transition-colors flex items-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Clinical
+                              </button>
+                              <button
+                                onClick={() => setShowNewPrescriptionModal(true)}
+                                className="px-3 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Prescription
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Tab Toggle */}
+                          <div className="flex mb-4 border-b border-gray-200">
                             <button
-                              onClick={() => setShowNewPrescriptionModal(true)}
-                              className="px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                              onClick={() => setRecordsTab('prescriptions')}
+                              className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${recordsTab === 'prescriptions'
+                                ? 'border-primary-600 text-primary-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                              </svg>
-                              Create Prescription
+                              Prescriptions ({prescriptions?.length || 0})
+                            </button>
+                            <button
+                              onClick={() => {
+                                setRecordsTab('clinical');
+                                // Fetch clinical records on first click
+                                if (clinicalRecords.length === 0 && patientId) {
+                                  setClinicalRecordsLoading(true);
+                                  fetch(`${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.clinical_record.get_clinical_records?patient_id=${patientId}`, {
+                                    credentials: 'include'
+                                  })
+                                    .then(res => res.json())
+                                    .then(data => {
+                                      if (data.message?.data) {
+                                        setClinicalRecords(data.message.data);
+                                      }
+                                    })
+                                    .finally(() => setClinicalRecordsLoading(false));
+                                }
+                              }}
+                              className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${recordsTab === 'clinical'
+                                ? 'border-primary-600 text-primary-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                              Clinical Records ({clinicalRecords?.length || 0})
                             </button>
                           </div>
 
-                          {prescriptionsLoading ? (
-                            <div className="space-y-4">
-                              {[1, 2].map((i) => (
-                                <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">
-                                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
-                                  <div className="space-y-2">
-                                    <div className="h-3 bg-gray-200 rounded w-full"></div>
-                                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : !prescriptions || prescriptions.length === 0 ? (
-                            <div className="text-center py-12 bg-gray-50 rounded-lg">
-                              <p className="text-gray-500">No prescription records available</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              {prescriptions?.map((prescription) => {
-                                // Use detailed data if available, otherwise use list data
-                                const recordId = prescription.name || prescription.record_id;
-                                const detailedData = detailedPrescriptions[recordId];
-                                const displayData = detailedData || prescription;
-                                const isLoadingDetail = loadingDetails.has(recordId);
-
-                                return (
-                                  <div key={recordId} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
-                                    <div className="flex items-center justify-between mb-3">
-                                      <h4 className="text-sm font-bold text-gray-700">
-                                        {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
-                                      </h4>
-                                      <div className="flex items-center space-x-2">
-                                        <button
-                                          onClick={() => handleDeletePrescription(recordId)}
-                                          className="text-red-500 hover:text-red-700 p-1"
-                                          title="Delete prescription"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                          </svg>
-                                        </button>
-                                        <button
-                                          onClick={() => toggleEdit(recordId)}
-                                          className="text-blue-500 hover:text-blue-700 p-1"
-                                          title="Edit prescription"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                          </svg>
-                                        </button>
-                                        <button
-                                          onClick={() => togglePrescription(recordId)}
-                                          className="text-gray-400 transform transition-transform duration-200"
-                                          disabled={isLoadingDetail}
-                                        >
-                                          {isLoadingDetail ? (
-                                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                          ) : (
-                                            <svg
-                                              className={`w-4 h-4 ${expandedPrescriptions.has(recordId) ? 'rotate-180' : ''}`}
-                                              fill="none"
-                                              stroke="currentColor"
-                                              viewBox="0 0 24 24"
-                                            >
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                          )}
-                                        </button>
-                                      </div>
+                          {/* Prescriptions Tab */}
+                          {recordsTab === 'prescriptions' && (
+                            prescriptionsLoading ? (
+                              <div className="space-y-4">
+                                {[1, 2].map((i) => (
+                                  <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">
+                                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+                                    <div className="space-y-2">
+                                      <div className="h-3 bg-gray-200 rounded w-full"></div>
+                                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                                     </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : !prescriptions || prescriptions.length === 0 ? (
+                              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                                <p className="text-gray-500">No prescription records available</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {prescriptions?.map((prescription) => {
+                                  // Use detailed data if available, otherwise use list data
+                                  const recordId = prescription.name || prescription.record_id;
+                                  const detailedData = detailedPrescriptions[recordId];
+                                  const displayData = detailedData || prescription;
+                                  const isLoadingDetail = loadingDetails.has(recordId);
 
-                                    {expandedPrescriptions.has(recordId) && detailedData && (
-                                      <div className="space-y-4 pt-3 border-t">
-                                        {/* Clinical Details */}
-                                        <div>
-                                          <h5 className="text-xs font-bold text-gray-700 mb-2">CLINICAL DETAILS</h5>
-                                          {editablePrescriptions.has(recordId) ? (
-                                            <div className="space-y-3 text-sm">
-                                              <div>
-                                                <label className="block font-semibold text-gray-600 mb-1">Chief Complaint:</label>
-                                                <textarea
-                                                  value={editedPrescriptionData[recordId]?.chief_complaint || displayData.chief_complaint}
-                                                  onChange={(e) => handlePrescriptionFieldChange(recordId, 'chief_complaint', e.target.value)}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                                  rows={2}
-                                                />
-                                              </div>
-                                              <div>
-                                                <label className="block font-semibold text-gray-600 mb-1">Symptoms:</label>
-                                                <textarea
-                                                  value={editedPrescriptionData[recordId]?.symptoms || displayData.symptoms}
-                                                  onChange={(e) => handlePrescriptionFieldChange(recordId, 'symptoms', e.target.value)}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                                  rows={2}
-                                                />
-                                              </div>
-                                              <div>
-                                                <label className="block font-semibold text-gray-600 mb-1">Diagnosis:</label>
-                                                <textarea
-                                                  value={editedPrescriptionData[recordId]?.diagnosis || displayData.diagnosis}
-                                                  onChange={(e) => handlePrescriptionFieldChange(recordId, 'diagnosis', e.target.value)}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                                  rows={2}
-                                                />
-                                              </div>
-                                              <div>
-                                                <label className="block font-semibold text-gray-600 mb-1">Treatment Plan:</label>
-                                                <textarea
-                                                  value={editedPrescriptionData[recordId]?.treatment_plan || displayData.treatment_plan}
-                                                  onChange={(e) => handlePrescriptionFieldChange(recordId, 'treatment_plan', e.target.value)}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                                  rows={3}
-                                                />
-                                              </div>
-                                              <div>
-                                                <label className="block font-semibold text-gray-600 mb-1">Status:</label>
-                                                <select
-                                                  value={editedPrescriptionData[recordId]?.status || displayData.status}
-                                                  onChange={(e) => handlePrescriptionFieldChange(recordId, 'status', e.target.value)}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                                >
-                                                  <option value="Active">Active</option>
-                                                  <option value="In Progress">In Progress</option>
-                                                  <option value="Completed">Completed</option>
-                                                  <option value="Cancelled">Cancelled</option>
-                                                </select>
-                                              </div>
+                                  return (
+                                    <div key={recordId} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-bold text-gray-700">
+                                          {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
+                                        </h4>
+                                        <div className="flex items-center space-x-2">
+                                          <button
+                                            onClick={() => handleDeletePrescription(recordId)}
+                                            className="text-red-500 hover:text-red-700 p-1"
+                                            title="Delete prescription"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                          </button>
+                                          <button
+                                            onClick={() => toggleEdit(recordId)}
+                                            className="text-blue-500 hover:text-blue-700 p-1"
+                                            title="Edit prescription"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                          </button>
+                                          <button
+                                            onClick={() => togglePrescription(recordId)}
+                                            className="text-gray-400 transform transition-transform duration-200"
+                                            disabled={isLoadingDetail}
+                                          >
+                                            {isLoadingDetail ? (
+                                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                              </svg>
+                                            ) : (
+                                              <svg
+                                                className={`w-4 h-4 ${expandedPrescriptions.has(recordId) ? 'rotate-180' : ''}`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                              >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                              </svg>
+                                            )}
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {expandedPrescriptions.has(recordId) && detailedData && (
+                                        <div className="space-y-4 pt-3 border-t">
+                                          {/* Medications */}
+                                          {displayData.medications && displayData.medications.length > 0 && (
+                                            <div>
+                                              <h5 className="text-xs font-bold text-gray-700 mb-2">MEDICATIONS</h5>
+                                              {editablePrescriptions.has(recordId) ? (
+                                                /* Edit Mode */
+                                                <div className="space-y-3">
+                                                  {(editedPrescriptionData[recordId]?.medications || displayData.medications).map((medication: any, index: number) => (
+                                                    <div key={index} className="p-3 border border-gray-200 rounded-lg bg-white">
+                                                      <div className="grid grid-cols-2 gap-2">
+                                                        <input
+                                                          type="text"
+                                                          value={medication.drug_name}
+                                                          onChange={(e) => {
+                                                            const meds = [...(editedPrescriptionData[recordId]?.medications || displayData.medications)];
+                                                            meds[index] = { ...meds[index], drug_name: e.target.value };
+                                                            handlePrescriptionFieldChange(recordId, 'medications', meds);
+                                                          }}
+                                                          placeholder="Drug name"
+                                                          className="col-span-2 px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                                        />
+                                                        <select
+                                                          value={medication.form || medication.dosage_form || 'Tablet'}
+                                                          onChange={(e) => {
+                                                            const meds = [...(editedPrescriptionData[recordId]?.medications || displayData.medications)];
+                                                            meds[index] = { ...meds[index], form: e.target.value };
+                                                            handlePrescriptionFieldChange(recordId, 'medications', meds);
+                                                          }}
+                                                          className="px-2 py-1.5 border border-gray-300 rounded text-sm bg-white"
+                                                        >
+                                                          <option value="Tablet">Tablet</option>
+                                                          <option value="Capsule">Capsule</option>
+                                                          <option value="Syrup">Syrup</option>
+                                                          <option value="Drops">Drops</option>
+                                                          <option value="Injection">Injection</option>
+                                                          <option value="Cream">Cream</option>
+                                                          <option value="Ointment">Ointment</option>
+                                                          <option value="Gel">Gel</option>
+                                                          <option value="Powder">Powder</option>
+                                                          <option value="Inhaler">Inhaler</option>
+                                                          <option value="Suspension">Suspension</option>
+                                                          <option value="Other">Other</option>
+                                                        </select>
+                                                        <input
+                                                          type="text"
+                                                          value={medication.dosage || ''}
+                                                          onChange={(e) => {
+                                                            const meds = [...(editedPrescriptionData[recordId]?.medications || displayData.medications)];
+                                                            meds[index] = { ...meds[index], dosage: e.target.value };
+                                                            handlePrescriptionFieldChange(recordId, 'medications', meds);
+                                                          }}
+                                                          placeholder="Dosage"
+                                                          className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                                        />
+                                                        <input
+                                                          type="text"
+                                                          value={medication.frequency || medication.interval || ''}
+                                                          onChange={(e) => {
+                                                            const meds = [...(editedPrescriptionData[recordId]?.medications || displayData.medications)];
+                                                            meds[index] = { ...meds[index], frequency: e.target.value };
+                                                            handlePrescriptionFieldChange(recordId, 'medications', meds);
+                                                          }}
+                                                          placeholder="Frequency"
+                                                          className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                                        />
+                                                        <input
+                                                          type="text"
+                                                          value={medication.duration || medication.period || ''}
+                                                          onChange={(e) => {
+                                                            const meds = [...(editedPrescriptionData[recordId]?.medications || displayData.medications)];
+                                                            meds[index] = { ...meds[index], duration: e.target.value };
+                                                            handlePrescriptionFieldChange(recordId, 'medications', meds);
+                                                          }}
+                                                          placeholder="Duration"
+                                                          className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                                        />
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              ) : (
+                                                /* View Mode */
+                                                <div className="space-y-2">
+                                                  {displayData.medications.map((medication: any, index: number) => (
+                                                    <div key={index} className="text-sm bg-green-50 p-3 rounded">
+                                                      <div className="flex items-center justify-between">
+                                                        <div className="font-semibold text-green-800">{medication.drug_name}</div>
+                                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                                          {medication.form || medication.dosage_form || 'Tablet'}
+                                                        </span>
+                                                      </div>
+                                                      <div className="text-xs text-gray-600 mt-1">
+                                                        {medication.dosage && <span>{medication.dosage}</span>}
+                                                        {(medication.frequency || medication.interval) && <span> • {medication.frequency || medication.interval}</span>}
+                                                        {(medication.duration || medication.period) && <span> • {medication.duration || medication.period}</span>}
+                                                      </div>
+                                                      {(medication.instructions || medication.comment) && (
+                                                        <div className="text-xs text-gray-500 mt-1 italic">{medication.instructions || medication.comment}</div>
+                                                      )}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
                                             </div>
-                                          ) : (
-                                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                              <div>
-                                                <span className="font-semibold text-gray-600">Chief Complaint:</span>
-                                                <p className="text-gray-900">{displayData.chief_complaint}</p>
-                                              </div>
-                                              <div>
-                                                <span className="font-semibold text-gray-600">Symptoms:</span>
-                                                <p className="text-gray-900">{displayData.symptoms}</p>
-                                              </div>
-                                              <div>
-                                                <span className="font-semibold text-gray-600">Diagnosis:</span>
-                                                <p className="text-gray-900">{displayData.diagnosis}</p>
-                                              </div>
-                                              <div>
-                                                <span className="font-semibold text-gray-600">Treatment Plan:</span>
-                                                <p className="text-gray-900">{displayData.treatment_plan}</p>
-                                              </div>
+                                          )}
+
+                                          {/* Action Buttons for Edit Mode - DESKTOP */}
+                                          {editablePrescriptions.has(recordId) && (
+                                            <div className="flex space-x-2 pt-4 border-t border-gray-100">
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => toggleEdit(recordId)}
+                                                disabled={isUpdating}
+                                              >
+                                                Cancel
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                onClick={() => handleSavePrescription(recordId)}
+                                                disabled={isUpdating}
+                                              >
+                                                {isUpdating ? 'Saving...' : 'Save Changes'}
+                                              </Button>
                                             </div>
                                           )}
                                         </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )
+                          )}
 
-                                        {/* Medications */}
-                                        {displayData.medications && displayData.medications.length > 0 && (
-                                          <div>
-                                            <h5 className="text-xs font-bold text-gray-700 mb-2">MEDICATIONS</h5>
-                                            <div className="space-y-2">
-                                              {displayData.medications.map((medication: any, index: number) => (
-                                                <div key={index} className="text-sm bg-green-50 p-3 rounded">
-                                                  <div className="font-semibold text-green-800">{medication.drug_name}</div>
-                                                  <div className="text-xs text-gray-600 mt-1">
-                                                    {medication.dosage} - {medication.interval} for {medication.period}
-                                                  </div>
-                                                  <div className="text-xs text-gray-500">Form: {medication.dosage_form}</div>
-                                                  {medication.comment && (
-                                                    <div className="text-xs text-gray-500 mt-1">{medication.comment}</div>
-                                                  )}
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {/* Investigations */}
-                                        {displayData.investigations && displayData.investigations.length > 0 && (
-                                          <div>
-                                            <h5 className="text-xs font-bold text-gray-700 mb-2">INVESTIGATIONS</h5>
-                                            <div className="space-y-2">
-                                              {displayData.investigations.map((investigation: any, index: number) => (
-                                                <div key={index} className="text-sm bg-blue-50 p-3 rounded">
-                                                  <div className="font-semibold text-blue-800">{investigation.lab_test_name}</div>
-                                                  <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
-                                                  {investigation.lab_test_comment && (
-                                                    <div className="text-xs text-gray-500 mt-1">{investigation.lab_test_comment}</div>
-                                                  )}
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {/* Action Buttons for Edit Mode - DESKTOP */}
-                                        {editablePrescriptions.has(recordId) && (
-                                          <div className="flex space-x-2 pt-4 border-t border-gray-100">
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => toggleEdit(recordId)}
-                                              disabled={isUpdating}
-                                            >
-                                              Cancel
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              onClick={() => handleSavePrescription(recordId)}
-                                              disabled={isUpdating}
-                                            >
-                                              {isUpdating ? 'Saving...' : 'Save Changes'}
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </div>
+                          {/* Clinical Records Tab */}
+                          {recordsTab === 'clinical' && (
+                            clinicalRecordsLoading ? (
+                              <div className="space-y-4">
+                                {[1, 2].map((i) => (
+                                  <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">
+                                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : clinicalRecords.length === 0 ? (
+                              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                                <p className="text-gray-500">No clinical records available</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {clinicalRecords.map((record: any) => (
+                                  <div key={record.name} className="border border-gray-200 rounded-lg p-4 hover:border-secondary-300 transition-colors">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <h4 className="text-sm font-bold text-gray-700">
+                                        {new Date(record.record_date || record.creation).toLocaleDateString()}
+                                      </h4>
+                                      <button
+                                        onClick={async () => {
+                                          if (!window.confirm('Are you sure you want to delete this clinical record?')) return;
+                                          try {
+                                            await fetch(`${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.clinical_record.delete_clinical_record`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              credentials: 'include',
+                                              body: JSON.stringify({ record_id: record.name })
+                                            });
+                                            toast.success('Clinical record deleted');
+                                            setClinicalRecords(prev => prev.filter(r => r.name !== record.name));
+                                          } catch (e) {
+                                            toast.error('Failed to delete clinical record');
+                                          }
+                                        }}
+                                        className="text-red-500 hover:text-red-700 p-1"
+                                        title="Delete"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                    {record.notes && (
+                                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{record.notes}</p>
                                     )}
                                   </div>
-                                );
-                              })}
-                            </div>
+                                ))}
+                              </div>
+                            )
                           )}
                         </Card>
                       </div>
@@ -2962,55 +3148,10 @@ const PrescriptionPage: React.FC = () => {
                     </div>
 
                     <Stack spacing={4}>
-                      {/* Clinical Details */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Chief Complaint *</label>
-                        <textarea
-                          value={newPrescription.chief_complaint}
-                          onChange={(e) => setNewPrescription({ ...newPrescription, chief_complaint: e.target.value })}
-                          placeholder="Main reason for visit..."
-                          rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Symptoms</label>
-                        <textarea
-                          value={newPrescription.symptoms}
-                          onChange={(e) => setNewPrescription({ ...newPrescription, symptoms: e.target.value })}
-                          placeholder="Describe symptoms..."
-                          rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Diagnosis *</label>
-                        <textarea
-                          value={newPrescription.diagnosis}
-                          onChange={(e) => setNewPrescription({ ...newPrescription, diagnosis: e.target.value })}
-                          placeholder="Clinical diagnosis..."
-                          rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Treatment Plan *</label>
-                        <textarea
-                          value={newPrescription.treatment_plan}
-                          onChange={(e) => setNewPrescription({ ...newPrescription, treatment_plan: e.target.value })}
-                          placeholder="Recommended treatment plan..."
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                        />
-                      </div>
-
-                      {/* Medications */}
+                      {/* Medications (shown first and required) */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <label className="block text-sm font-medium text-gray-700">Medications</label>
+                          <label className="block text-sm font-medium text-gray-700">Medications *</label>
                           <button
                             onClick={addMedication}
                             className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
@@ -3049,6 +3190,28 @@ const PrescriptionPage: React.FC = () => {
                                   placeholder="Drug name"
                                   className="col-span-2 px-2 py-1.5 border border-gray-300 rounded text-sm"
                                 />
+                                <select
+                                  value={med.dosage_form || 'Tablet'}
+                                  onChange={(e) => {
+                                    const newMeds = [...newPrescription.medications];
+                                    newMeds[index].dosage_form = e.target.value;
+                                    setNewPrescription({ ...newPrescription, medications: newMeds });
+                                  }}
+                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm bg-white"
+                                >
+                                  <option value="Tablet">Tablet</option>
+                                  <option value="Capsule">Capsule</option>
+                                  <option value="Syrup">Syrup</option>
+                                  <option value="Drops">Drops</option>
+                                  <option value="Injection">Injection</option>
+                                  <option value="Cream">Cream</option>
+                                  <option value="Ointment">Ointment</option>
+                                  <option value="Gel">Gel</option>
+                                  <option value="Powder">Powder</option>
+                                  <option value="Inhaler">Inhaler</option>
+                                  <option value="Suspension">Suspension</option>
+                                  <option value="Other">Other</option>
+                                </select>
                                 <input
                                   type="text"
                                   value={med.dosage}
@@ -3057,7 +3220,18 @@ const PrescriptionPage: React.FC = () => {
                                     newMeds[index].dosage = e.target.value;
                                     setNewPrescription({ ...newPrescription, medications: newMeds });
                                   }}
-                                  placeholder="Dosage"
+                                  placeholder="Dosage (e.g., 500mg)"
+                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                />
+                                <input
+                                  type="text"
+                                  value={med.interval || ''}
+                                  onChange={(e) => {
+                                    const newMeds = [...newPrescription.medications];
+                                    newMeds[index].interval = e.target.value;
+                                    setNewPrescription({ ...newPrescription, medications: newMeds });
+                                  }}
+                                  placeholder="Frequency (e.g., 3x daily)"
                                   className="px-2 py-1.5 border border-gray-300 rounded text-sm"
                                 />
                                 <input
@@ -3068,105 +3242,8 @@ const PrescriptionPage: React.FC = () => {
                                     newMeds[index].period = e.target.value;
                                     setNewPrescription({ ...newPrescription, medications: newMeds });
                                   }}
-                                  placeholder="Period (e.g., 7 days)"
+                                  placeholder="Duration (e.g., 7 days)"
                                   className="px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                                <select
-                                  value={med.dosage_form}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].dosage_form = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                >
-                                  <option value="Tablet">Tablet</option>
-                                  <option value="Capsule">Capsule</option>
-                                  <option value="Syrup">Syrup</option>
-                                  <option value="Injection">Injection</option>
-                                  <option value="Cream">Cream</option>
-                                  <option value="Drops">Drops</option>
-                                </select>
-                                <input
-                                  type="text"
-                                  value={med.interval}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].interval = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  placeholder="Interval (e.g., Every 8 hours)"
-                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                                <input
-                                  type="text"
-                                  value={med.comment}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].comment = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  placeholder="Instructions (e.g., After meals)"
-                                  className="col-span-2 px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Investigations */}
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <label className="block text-sm font-medium text-gray-700">Investigations</label>
-                          <button
-                            onClick={addInvestigation}
-                            className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Add Investigation
-                          </button>
-                        </div>
-                        <div className="space-y-3">
-                          {newPrescription.investigations.map((inv, index) => (
-                            <div key={index} className="p-3 border border-gray-200 rounded-lg">
-                              <div className="flex items-start justify-between mb-2">
-                                <span className="text-sm font-medium text-gray-700">Investigation {index + 1}</span>
-                                {newPrescription.investigations.length > 1 && (
-                                  <button
-                                    onClick={() => removeInvestigation(index)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                <input
-                                  type="text"
-                                  value={inv.lab_test_name}
-                                  onChange={(e) => {
-                                    const newInvs = [...newPrescription.investigations];
-                                    newInvs[index].lab_test_name = e.target.value;
-                                    setNewPrescription({ ...newPrescription, investigations: newInvs });
-                                  }}
-                                  placeholder="Test name (e.g., Blood Test, X-Ray)"
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                                <input
-                                  type="text"
-                                  value={inv.lab_test_comment}
-                                  onChange={(e) => {
-                                    const newInvs = [...newPrescription.investigations];
-                                    newInvs[index].lab_test_comment = e.target.value;
-                                    setNewPrescription({ ...newPrescription, investigations: newInvs });
-                                  }}
-                                  placeholder="Additional notes"
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                                 />
                               </div>
                             </div>
@@ -3212,12 +3289,241 @@ const PrescriptionPage: React.FC = () => {
               isCreating={isCreatingInvoice}
             />
 
+            {/* File Upload Modal (DRY: shared component) */}
+            <FileUploadModal
+              isOpen={showFileUploadModal}
+              onClose={() => setShowFileUploadModal(false)}
+              referenceDoctype={appointmentId ? 'Patient Appointment' : 'Patient'}
+              referenceName={appointmentId || patientId || ''}
+              title="Upload Files"
+              subtitle={patient?.patient_name || patientId}
+              onUploadComplete={async () => {
+                // Refresh patient files after upload
+                if (patientId) {
+                  const files = await fileUploadService.getPatientFiles(patientId);
+                  setPatientFiles(files);
+                }
+              }}
+            />
+
+            {/* Clinical Record Modal */}
+            {showClinicalRecordModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="bg-white rounded-lg shadow-xl max-w-lg w-full my-8">
+                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+                      </svg>
+                      Case Diary
+                    </h3>
+                    <button
+                      onClick={() => setShowClinicalRecordModal(false)}
+                      className="p-2 hover:bg-gray-100 rounded-full"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <textarea
+                      value={newClinicalRecord.notes}
+                      onChange={(e) => setNewClinicalRecord({ notes: e.target.value })}
+                      placeholder="Enter surgical history notes, procedures, and dates here..."
+                      rows={10}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y"
+                    />
+                  </div>
+                  <div className="p-4 border-t border-gray-200">
+                    <button
+                      onClick={async () => {
+                        if (!newClinicalRecord.notes?.trim()) {
+                          toast.error('Please enter some notes');
+                          return;
+                        }
+                        setIsCreatingClinicalRecord(true);
+                        try {
+                          const response = await fetch(`${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.clinical_record.create_clinical_record`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                              patient_id: patientId,
+                              notes: newClinicalRecord.notes
+                            })
+                          });
+                          const data = await response.json();
+                          if (data.message?.message === 'Clinical record created successfully') {
+                            toast.success('Notes saved');
+                            setClinicalRecordsLoading(true);
+                            try {
+                              const refreshRes = await fetch(`${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.clinical_record.get_clinical_records?patient_id=${patientId}`, {
+                                credentials: 'include'
+                              });
+                              const refreshData = await refreshRes.json();
+                              if (refreshData.message?.data) {
+                                setClinicalRecords(refreshData.message.data);
+                              }
+                            } finally {
+                              setClinicalRecordsLoading(false);
+                            }
+                            setShowClinicalRecordModal(false);
+                            setNewClinicalRecord({ notes: '' });
+                          } else {
+                            toast.error('Failed to save notes');
+                          }
+                        } catch (e) {
+                          toast.error('Failed to save notes');
+                        } finally {
+                          setIsCreatingClinicalRecord(false);
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-medium flex items-center justify-center gap-2"
+                      disabled={isCreatingClinicalRecord}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      {isCreatingClinicalRecord ? 'Saving...' : 'Save Notes'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Medical History Edit Modal */}
+            {
+              showMedicalHistoryEdit && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                  <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-gray-800">Edit Medical History</h3>
+                      <button
+                        onClick={() => setShowMedicalHistoryEdit(false)}
+                        className="p-2 hover:bg-gray-100 rounded-full"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editableMedicalHistory.diabetic || false}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, diabetic: e.target.checked })}
+                          className="w-5 h-5 text-primary-600"
+                        />
+                        <span className="text-sm font-medium">Diabetic</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editableMedicalHistory.cardiac_history || false}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, cardiac_history: e.target.checked })}
+                          className="w-5 h-5 text-primary-600"
+                        />
+                        <span className="text-sm font-medium">Cardiac History</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editableMedicalHistory.allergies || false}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, allergies: e.target.checked })}
+                          className="w-5 h-5 text-primary-600"
+                        />
+                        <span className="text-sm font-medium">Allergies</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editableMedicalHistory.family_heart_disease || false}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, family_heart_disease: e.target.checked })}
+                          className="w-5 h-5 text-primary-600"
+                        />
+                        <span className="text-sm font-medium">Family Heart Disease</span>
+                      </label>
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editableMedicalHistory.covid_vaccinated || false}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, covid_vaccinated: e.target.checked })}
+                          className="w-5 h-5 text-primary-600"
+                        />
+                        <span className="text-sm font-medium">COVID Vaccinated</span>
+                      </label>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Blood Pressure</label>
+                        <select
+                          value={editableMedicalHistory.blood_pressure || 'Normal'}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, blood_pressure: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        >
+                          <option value="Normal">Normal</option>
+                          <option value="High">High</option>
+                          <option value="Low">Low</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Other Notes</label>
+                        <textarea
+                          value={editableMedicalHistory.other || ''}
+                          onChange={(e) => setEditableMedicalHistory({ ...editableMedicalHistory, other: e.target.value })}
+                          placeholder="Any other medical history..."
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-4 border-t border-gray-200 flex gap-3">
+                      <button
+                        onClick={() => setShowMedicalHistoryEdit(false)}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            // Save to backend
+                            const response = await fetch(`${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.patient.update_patient`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({
+                                patient_id: patientId,
+                                medical_history: JSON.stringify(editableMedicalHistory)
+                              })
+                            });
+                            if (response.ok) {
+                              toast.success('Medical history updated');
+                              setShowMedicalHistoryEdit(false);
+                              window.location.reload(); // Refresh to get updated data
+                            } else {
+                              toast.error('Failed to update medical history');
+                            }
+                          } catch (e) {
+                            toast.error('Failed to update medical history');
+                          }
+                        }}
+                        className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
             {/* Fixed Bottom Navigation */}
             <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-          </div>
-        </MobileContainer>
-      </div>
-    </div>
+          </div >
+        </MobileContainer >
+      </div >
+    </div >
   );
 };
 

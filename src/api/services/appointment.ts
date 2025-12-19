@@ -266,7 +266,7 @@ export class AppointmentService {
    */
   async getTodaysAppointments(): Promise<AppointmentResponse[]> {
     const today = new Date().toISOString().split('T')[0];
-    
+
     try {
       const response = await this.getAppointments(
         { limit_page_length: 50 },
@@ -319,7 +319,7 @@ export class AppointmentService {
     try {
       const response = await this.getAppointments(
         { limit_page_length: limit },
-        { patient_id: patientId }
+        { patient: patientId }  // Use 'patient' field name (matches Frappe doctype field)
       );
 
       return response.data || [];
@@ -428,7 +428,7 @@ export class AppointmentService {
     try {
       const response = await apiClient.post<ApiResponse>(
         '/api/method/mob_clinic.mob_clinic.api.appointment.update_review_status',
-        { 
+        {
           appointment_id: appointmentId,
           review_requested: requested
         }

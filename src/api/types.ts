@@ -454,6 +454,7 @@ export interface AppointmentFilters {
   date_from?: string;
   date_to?: string;
   patient_id?: string;
+  patient?: string;  // Frappe field name for patient filter
   practitioner?: string;
 }
 

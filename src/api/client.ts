@@ -347,13 +347,22 @@ export const API_ENDPOINTS = {
 
   // Prescription Management
   PRESCRIPTIONS: {
-    CREATE: '/api/method/mob_clinic.mob_clinic.api.prescription.create_prescription',
-    GET: '/api/method/mob_clinic.mob_clinic.api.prescription.get_prescription',
-    LIST: '/api/method/mob_clinic.mob_clinic.api.prescription.get_prescriptions',
-    UPDATE: '/api/method/mob_clinic.mob_clinic.api.prescription.update_prescription',
-    DELETE: '/api/method/mob_clinic.mob_clinic.api.prescription.delete_prescription',
+    CREATE: '/api/method/mob_clinic.mob_clinic.api.patient_prescription.create_patient_prescription',
+    GET: '/api/method/mob_clinic.mob_clinic.api.patient_prescription.get_patient_prescription',
+    LIST: '/api/method/mob_clinic.mob_clinic.api.patient_prescription.get_patient_prescriptions',
+    UPDATE: '/api/method/mob_clinic.mob_clinic.api.patient_prescription.update_patient_prescription',
+    DELETE: '/api/method/mob_clinic.mob_clinic.api.patient_prescription.delete_patient_prescription',
     SHARE: '/api/method/mob_clinic.mob_clinic.api.prescription.share_prescription',
     PATIENT_HISTORY: '/api/method/mob_clinic.mob_clinic.api.prescription.get_patient_history',
+  },
+
+  // Clinical Records Management
+  CLINICAL_RECORDS: {
+    CREATE: '/api/method/mob_clinic.mob_clinic.api.clinical_record.create_clinical_record',
+    GET: '/api/method/mob_clinic.mob_clinic.api.clinical_record.get_clinical_record',
+    LIST: '/api/method/mob_clinic.mob_clinic.api.clinical_record.get_clinical_records',
+    UPDATE: '/api/method/mob_clinic.mob_clinic.api.clinical_record.update_clinical_record',
+    DELETE: '/api/method/mob_clinic.mob_clinic.api.clinical_record.delete_clinical_record',
   },
 
   // Payment & Invoice Management

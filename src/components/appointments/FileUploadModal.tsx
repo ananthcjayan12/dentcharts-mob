@@ -1,35 +1,58 @@
 import React, { useState, useRef } from 'react';
 import { fileUploadService } from '../../api/services';
-import { useUploadFile, useAppointmentFiles, useDeleteFile } from '../../hooks/useFileUpload';
+import { useUploadFile, useFiles, useDeleteFile } from '../../hooks/useFileUpload';
+import { processFilesWithCompression } from '../../utils/imageCompression';
 
 interface FileUploadModalProps {
     isOpen: boolean;
     onClose: () => void;
-    appointmentId: string;
-    patientName: string;
+    referenceDoctype: string;  // 'Patient Appointment' or 'Patient'
+    referenceName: string;     // appointmentId or patientId
+    title?: string;            // Modal title (default: 'Upload Files')
+    subtitle?: string;         // Subtitle (e.g. patient name)
+    onUploadComplete?: () => void;  // Callback after upload completes
 }
 
 const FileUploadModal: React.FC<FileUploadModalProps> = ({
     isOpen,
     onClose,
-    appointmentId,
-    patientName
+    referenceDoctype,
+    referenceName,
+    title = 'Upload Files',
+    subtitle,
+    onUploadComplete
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [category, setCategory] = useState('report');
     const [description, setDescription] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const { mutate: uploadFile, isPending: isUploading } = useUploadFile();
-    const { data: files, refetch: refetchFiles } = useAppointmentFiles(appointmentId, isOpen);
+    const { data: files, refetch: refetchFiles } = useFiles({
+        reference_doctype: referenceDoctype,
+        reference_name: referenceName,
+        enabled: isOpen && !!referenceName
+    });
     const { mutate: deleteFile } = useDeleteFile();
 
     const categories = fileUploadService.getCommonFileCategories();
     const existingFiles = files || [];
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setSelectedFiles(Array.from(e.target.files));
+            setIsProcessing(true);
+            try {
+                const fileArray = Array.from(e.target.files);
+                // Compress images before adding to state (1280px max, 70% quality for mobile)
+                const processedFiles = await processFilesWithCompression(fileArray, 1280, 1280, 0.7);
+                setSelectedFiles(processedFiles);
+            } catch (error) {
+                console.error('Error processing files:', error);
+                setSelectedFiles(Array.from(e.target.files));
+            } finally {
+                setIsProcessing(false);
+            }
         }
     };
 
@@ -42,8 +65,8 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 options: {
                     file_category: category,
                     description: description || file.name,
-                    reference_doctype: 'Patient Appointment',
-                    reference_name: appointmentId,
+                    reference_doctype: referenceDoctype,
+                    reference_name: referenceName,
                     is_private: false,
                 },
             }, {
@@ -54,6 +77,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
                     if (fileInputRef.current) {
                         fileInputRef.current.value = '';
                     }
+                    onUploadComplete?.();
                 },
             });
         }
@@ -77,8 +101,8 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">Upload Files</h2>
-                        <p className="text-sm text-gray-500 mt-1">{patientName}</p>
+                        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+                        {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
                     </div>
                     <button
                         onClick={onClose}
@@ -156,10 +180,10 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
                         <button
                             onClick={handleUpload}
-                            disabled={selectedFiles.length === 0 || isUploading}
+                            disabled={selectedFiles.length === 0 || isUploading || isProcessing}
                             className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                         >
-                            {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}`}
+                            {isProcessing ? 'Processing...' : isUploading ? 'Uploading...' : `Upload ${selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}`}
                         </button>
                     </div>
 

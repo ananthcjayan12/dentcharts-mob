@@ -1890,8 +1890,10 @@ const AppointmentsPage: React.FC = () => {
             setShowFileUploadModal(false);
             setFileUploadAppointment(null);
           }}
-          appointmentId={fileUploadAppointment.name || fileUploadAppointment.appointment_id}
-          patientName={fileUploadAppointment.patient_name}
+          referenceDoctype="Patient Appointment"
+          referenceName={fileUploadAppointment.name || fileUploadAppointment.appointment_id}
+          title="Upload Files"
+          subtitle={fileUploadAppointment.patient_name}
         />
       )}
 

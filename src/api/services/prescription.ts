@@ -39,7 +39,7 @@ export class PrescriptionService {
   async getPrescription(recordId: string): Promise<PrescriptionResponse> {
     try {
       const response = await apiClient.get<PrescriptionResponse>(
-        `${API_ENDPOINTS.PRESCRIPTIONS.GET}?record_id=${recordId}`
+        `${API_ENDPOINTS.PRESCRIPTIONS.GET}?prescription_id=${recordId}`
       );
 
       if (response.data) {
@@ -61,22 +61,23 @@ export class PrescriptionService {
     filters: PrescriptionFilters = {}
   ): Promise<PaginatedResponse<PrescriptionResponse>> {
     try {
-      const params = new URLSearchParams({
-        limit_page_length: (pagination.limit_page_length || 20).toString(),
-        limit_start: (pagination.limit_start || 0).toString(),
-      });
+      const params = new URLSearchParams();
 
-      // Add patient_id filter if provided
+      // Add patient_id filter if provided (required for new API)
       if (filters.patient_id) {
         params.append('patient_id', filters.patient_id);
       }
 
-      const response = await apiClient.get<PaginatedResponse<PrescriptionResponse>>(
+      // Add limit
+      params.append('limit', (pagination.limit_page_length || 20).toString());
+
+      const response = await apiClient.get<any>(
         `${API_ENDPOINTS.PRESCRIPTIONS.LIST}?${params.toString()}`
       );
 
+      // Handle new API response format
       if (response.data) {
-        return response.data;
+        return { data: response.data, total_count: response.data?.length || 0, page_length: pagination.limit_page_length || 20, start: 0 };
       }
 
       throw new Error(response.message || 'Failed to fetch prescriptions');
@@ -258,7 +259,7 @@ export class PrescriptionService {
     try {
       const response = await apiClient.post<ApiResponse>(
         API_ENDPOINTS.PRESCRIPTIONS.DELETE,
-        { record_id: recordId }
+        { prescription_id: recordId }
       );
 
       if (response.message === 'Prescription deleted successfully' || response.data) {
