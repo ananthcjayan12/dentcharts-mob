@@ -98,6 +98,9 @@ const AppointmentsPage: React.FC = () => {
   // Sorting state
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
+  // Queue View State (Moved up for scope access)
+  const [queueFilter, setQueueFilter] = useState<'all' | 'booking' | 'waiting' | 'completed'>('all');
+
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [practitionerFilter, setPractitionerFilter] = useState<string>('all');
@@ -115,6 +118,11 @@ const AppointmentsPage: React.FC = () => {
   const { mutate: startVisit } = useStartVisit();
   const { mutate: completeVisit } = useCompleteVisit();
   const { mutate: updateReviewStatus } = useUpdateReviewStatus();
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, practitionerFilter, dateFrom, dateTo, procedureFilter]);
 
   const handleContextMenu = (e: React.MouseEvent, appointment: any) => {
     e.preventDefault();
@@ -570,15 +578,35 @@ const AppointmentsPage: React.FC = () => {
   const totalCount = appointmentsData?.total_count || 0;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  // Sorted and filtered appointments based on sortConfig and procedureFilter
+  // Grouping logic for Queue View
+  const getQueueGroup = (status: string) => {
+    // Map new backend statuses into the existing UI groups
+    // waiting: needs action during clinic flow (waiting for visit / payment)
+    const s = (status || '').toLowerCase();
+    if (['waiting', 'in progress', 'pending payment'].includes(s)) return 'waiting';
+    // booked: scheduled or needs invoice creation
+    if (['scheduled', 'confirmed', 'open', 'to be invoiced'].includes(s)) return 'booked';
+    // completed: finalised or needs file upload
+    if (['completed', 'files to be uploaded'].includes(s)) return 'completed';
+    return 'other';
+  };
+
+  // Sorted and filtered appointments based on sortConfig, procedureFilter, and queueFilter
+
   const sortedAppointments = React.useMemo(() => {
     let sortableItems = [...appointments];
 
+    // Apply procedure filter (client-side since API may not support it)
     // Apply procedure filter (client-side since API may not support it)
     if (procedureFilter && procedureFilter !== 'all') {
       sortableItems = sortableItems.filter((apt: any) =>
         (apt.chief_complaint || '').toLowerCase().includes(procedureFilter.toLowerCase())
       );
+    }
+
+    // Apply Queue Filter (Booking/Waiting/Completed)
+    if (queueFilter && queueFilter !== 'all') {
+      sortableItems = sortableItems.filter((apt: any) => getQueueGroup(apt.status) === queueFilter);
     }
 
     if (sortConfig !== null) {
@@ -602,22 +630,12 @@ const AppointmentsPage: React.FC = () => {
       });
     }
     return sortableItems;
-  }, [appointments, sortConfig, procedureFilter]);
+  }, [appointments, sortConfig, procedureFilter, queueFilter]);
 
-  // Queue View State
-  const [queueFilter, setQueueFilter] = useState<'all' | 'booking' | 'waiting' | 'completed'>('all');
+
 
   // Grouping logic for Queue View
-  const getQueueGroup = (status: string) => {
-    // Map new backend statuses into the existing UI groups
-    // waiting: needs action during clinic flow (waiting for visit / payment)
-    if (['Waiting', 'In Progress', 'Pending Payment', 'Pending Payment'].includes(status)) return 'waiting';
-    // booked: scheduled or needs invoice creation
-    if (['Scheduled', 'Confirmed', 'Open', 'To Be Invoiced'].includes(status)) return 'booked';
-    // completed: finalised or needs file upload
-    if (['Completed', 'Files To Be Uploaded'].includes(status)) return 'completed';
-    return 'other';
-  };
+
 
   // Map status to badge classes (desktop)
   const getStatusBadgeClass = (status: string) => {
@@ -686,16 +704,7 @@ const AppointmentsPage: React.FC = () => {
           <h3 className="font-bold text-gray-800">{title}</h3>
           <div className="flex items-center gap-4">
             {title === 'Visit Completed' && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-600">Google reviews</span>
-                <button
-                  className="relative inline-flex h-6 w-11 items-center rounded-full bg-blue-600"
-                  role="switch"
-                  aria-checked="true"
-                >
-                  <span className="translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition" />
-                </button>
-              </div>
+              <div className="hidden"></div>
             )}
             <span className="text-sm font-bold text-gray-900">{items.length} Patients</span>
           </div>
@@ -1149,6 +1158,20 @@ const AppointmentsPage: React.FC = () => {
             >
               View Files
             </button>
+            <div
+              className="flex items-center gap-2 ml-2 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleReview(id, !appointment.google_review_requested);
+              }}
+            >
+              <label className="text-xs font-medium text-gray-600 cursor-pointer select-none">Google review</label>
+              <div
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${appointment.google_review_requested ? 'bg-blue-600' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${appointment.google_review_requested ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+            </div>
             {invoiceId && (
               <ActionDropdown
                 isOpen={openActionMenu === invoiceId}
@@ -1449,9 +1472,9 @@ const AppointmentsPage: React.FC = () => {
                   renderAllAppointmentsTable(sortedAppointments)
                 ) : (
                   <>
-                    {renderQueueSection('Waiting', groupedAppointments.waiting, 'bg-gray-200')}
-                    {renderQueueSection('Booked', groupedAppointments.booked, 'bg-blue-100')}
-                    {renderQueueSection('Visit Completed', groupedAppointments.completed, 'bg-green-100')}
+                    {(queueFilter === 'all' || queueFilter === 'waiting') && renderQueueSection('Waiting', groupedAppointments.waiting, 'bg-gray-200')}
+                    {(queueFilter === 'all' || queueFilter === 'booking') && renderQueueSection('Booked', groupedAppointments.booked, 'bg-blue-100')}
+                    {(queueFilter === 'all' || queueFilter === 'completed') && renderQueueSection('Visit Completed', groupedAppointments.completed, 'bg-green-100')}
                   </>
                 )}
 

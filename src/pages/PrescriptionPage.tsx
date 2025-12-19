@@ -1065,6 +1065,8 @@ const PrescriptionPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:pl-20">
+
+
         <MobileContainer>
           <div className="min-h-screen bg-primary-50 relative">
             <TopBar
@@ -1076,9 +1078,9 @@ const PrescriptionPage: React.FC = () => {
             {/* Scrollable Content */}
             <div className="overflow-y-auto pb-20 lg:pb-4" style={{ height: 'calc(100vh - 60px)' }}>
 
-              {/* Desktop Layout - Two Column */}
-              <div className="hidden lg:block px-6 py-6">
-                <div className="grid grid-cols-3 gap-6">
+              {/* Responsive Layout */}
+              <div className="block px-4 lg:px-6 py-4 lg:py-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
 
                   {/* Left Sidebar - Patient Info */}
                   <div className="col-span-1 space-y-4">
@@ -1127,6 +1129,17 @@ const PrescriptionPage: React.FC = () => {
                               </span>
                             </div>
                           </div>
+
+                          {/* Edit Profile Button */}
+                          <button
+                            onClick={() => navigate(`/patients/${patientId}/edit`)}
+                            className="mt-4 w-full py-2 px-4 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Edit Profile
+                          </button>
                         </div>
                       ) : (
                         <div className="text-center py-8">
@@ -1136,7 +1149,23 @@ const PrescriptionPage: React.FC = () => {
                     </Card>
 
                     {/* Payment Summary Card */}
-                    <Card className="p-6">
+                    <div className="grid grid-cols-2 gap-3 lg:hidden">
+                      <div className="bg-white rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-green-600">
+                          ₹{paymentSummary?.total_paid?.toLocaleString() || '0'}
+                        </div>
+                        <div className="text-xs text-green-700 uppercase font-semibold mt-1">Total Paid</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 text-center">
+                        <div className="text-xl font-bold text-orange-600">
+                          ₹{paymentSummary?.total_pending?.toLocaleString() || '0'}
+                        </div>
+                        <div className="text-xs text-orange-700 uppercase font-semibold mt-1">Pending</div>
+                      </div>
+                    </div>
+
+                    {/* Desktop Payment Summary Card */}
+                    <Card className="p-6 hidden lg:block">
                       <h3 className="text-sm font-bold text-gray-700 mb-4">Payment Summary</h3>
                       {paymentSummaryLoading ? (
                         <div className="space-y-3">
@@ -1162,7 +1191,44 @@ const PrescriptionPage: React.FC = () => {
                     </Card>
 
                     {/* Quick Actions */}
-                    <Card className="p-6">
+                    <div className="flex justify-center gap-6 lg:hidden py-2">
+                      <button
+                        onClick={handleNewAppointment}
+                        className="flex flex-col items-center gap-2 group"
+                      >
+                        <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                          <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Appointment</span>
+                      </button>
+                      <button
+                        onClick={() => setShowCreateInvoiceModal(true)}
+                        className="flex flex-col items-center gap-2 group"
+                      >
+                        <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 4h6m-6 4h6M9 7h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Invoice</span>
+                      </button>
+                      <button
+                        onClick={() => setShowUpload(true)}
+                        className="flex flex-col items-center gap-2 group"
+                      >
+                        <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                        </div>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Upload</span>
+                      </button>
+                    </div>
+
+                    {/* Desktop Quick Actions */}
+                    <Card className="p-6 hidden lg:block">
                       <h3 className="text-sm font-bold text-gray-700 mb-4">Quick Actions</h3>
                       <div className="space-y-2">
                         <Button
@@ -1208,10 +1274,32 @@ const PrescriptionPage: React.FC = () => {
                   </div>
 
                   {/* Right Content - Medical Records & Payments */}
-                  <div className="col-span-2 space-y-6">
+                  <div className="lg:col-span-2 space-y-4 lg:space-y-6">
 
-                    {/* Section Tabs */}
-                    <div className="flex bg-white rounded-lg border border-gray-200">
+                    {/* Mobile Section Tabs - Pill Style */}
+                    <div className="flex bg-gray-100 rounded-full p-1 lg:hidden">
+                      <button
+                        onClick={() => setCurrentSection('medical')}
+                        className={`flex-1 py-2 text-sm font-medium transition-all rounded-full ${currentSection === 'medical' || currentSection === 'dental-chart'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500'
+                          }`}
+                      >
+                        Medical History
+                      </button>
+                      <button
+                        onClick={() => setCurrentSection('payments')}
+                        className={`flex-1 py-2 text-sm font-medium transition-all rounded-full ${currentSection === 'payments'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500'
+                          }`}
+                      >
+                        Payments
+                      </button>
+                    </div>
+
+                    {/* Desktop Section Tabs */}
+                    <div className="hidden lg:flex bg-white rounded-lg border border-gray-200">
                       <button
                         onClick={() => setCurrentSection('medical')}
                         className={`flex-1 py-3 px-6 text-sm font-bold font-lato transition-colors ${currentSection === 'medical'
@@ -1247,36 +1335,39 @@ const PrescriptionPage: React.FC = () => {
 
                         {/* Uploaded Documents */}
                         {isLoadingFiles ? (
-                          <Card className="p-6">
+                          <Card className="p-4 lg:p-6">
                             <div className="animate-pulse space-y-4">
                               <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-                              <div className="grid grid-cols-3 gap-4">
+                              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                                 {[1, 2, 3].map((i) => (
-                                  <div key={i} className="h-48 bg-gray-200 rounded"></div>
+                                  <div key={i} className="h-40 bg-gray-200 rounded"></div>
                                 ))}
                               </div>
                             </div>
                           </Card>
                         ) : patientFiles.length > 0 ? (
-                          <Card className="p-6">
+                          <Card className="p-4 lg:p-6">
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-bold text-gray-800">Uploaded Documents ({filteredFiles.length})</h3>
+                              <h3 className="text-base lg:text-lg font-bold text-gray-800">Uploaded Documents ({filteredFiles.length})</h3>
                               <button
                                 onClick={() => setShowFileUploadModal(true)}
-                                className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors text-sm"
+                                className="p-2 lg:px-4 lg:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
                               >
-                                Upload Files
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                <span className="hidden lg:inline font-medium text-sm">Upload Files</span>
                               </button>
                             </div>
 
-                            {/* Category Filter Pills */}
+                            {/* Category Filter Pills - Scrollable on mobile */}
                             {fileCategories.length > 0 && (
-                              <div className="flex flex-wrap gap-2 mb-6">
+                              <div className="flex overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:flex-wrap gap-2 mb-4 scrollbar-hide">
                                 <button
                                   onClick={() => setSelectedFileCategory('all')}
-                                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${selectedFileCategory === 'all'
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${selectedFileCategory === 'all'
+                                    ? 'bg-primary-600 text-white border-primary-600'
+                                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                                     }`}
                                 >
                                   All ({patientFiles.length})
@@ -1287,9 +1378,9 @@ const PrescriptionPage: React.FC = () => {
                                     <button
                                       key={category}
                                       onClick={() => setSelectedFileCategory(category)}
-                                      className={`px-4 py-2 rounded-full text-xs font-semibold capitalize transition-colors ${selectedFileCategory === category
-                                        ? 'bg-primary-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-colors border ${selectedFileCategory === category
+                                        ? 'bg-primary-600 text-white border-primary-600'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                                         }`}
                                     >
                                       {category} ({count})
@@ -1299,68 +1390,60 @@ const PrescriptionPage: React.FC = () => {
                               </div>
                             )}
 
-                            {/* Desktop Grid */}
+                            {/* Files Grid */}
                             {filteredFiles.length > 0 ? (
-                              <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                              <div className="grid grid-cols-2 lg:grid-cols-3 lg:gap-4 gap-3">
                                 {filteredFiles.map((file: any) => (
-                                  <div key={file.file_id} className="group">
-                                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                                  <div key={file.file_id} className="group relative bg-white border border-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                    {/* File Preview */}
+                                    <div
+                                      className="relative w-full h-32 bg-gray-50 cursor-pointer overflow-hidden"
+                                      onClick={() => handleOpenImageViewer(file.file_id)}
+                                    >
                                       {fileUploadService.isImageFile(file.file_name) ? (
-                                        <div
-                                          className="relative w-full h-40 bg-gray-100 overflow-hidden cursor-pointer"
-                                          onClick={() => handleOpenImageViewer(file.file_id)}
-                                        >
-                                          <img
-                                            src={`${API_BASE_URL}${file.file_url}`}
-                                            alt={file.file_name}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                          />
-                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                                            <svg className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                            </svg>
-                                          </div>
-                                          <div className="absolute top-2 right-2">
-                                            <span className="px-2 py-1 bg-black/60 text-white text-xs rounded-full capitalize">
-                                              {file.file_category || 'image'}
-                                            </span>
-                                          </div>
-                                        </div>
+                                        <img
+                                          src={`${API_BASE_URL}${file.file_url}`}
+                                          alt={file.file_name}
+                                          className="w-full h-full object-cover"
+                                        />
                                       ) : (
-                                        <div className="relative w-full h-40 bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center">
-                                          <div className="text-5xl mb-2">
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                          <div className="text-3xl mb-1">
                                             {fileUploadService.getFileIcon(file.file_name)}
                                           </div>
-                                          <span className="px-3 py-1 bg-white text-gray-700 text-xs rounded-full capitalize shadow-sm">
-                                            {file.file_category || 'document'}
-                                          </span>
                                         </div>
                                       )}
 
-                                      <div className="p-3">
-                                        <p className="text-sm font-semibold text-gray-900 truncate mb-1">
-                                          {file.file_name}
-                                        </p>
-                                        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                                          <span>{fileUploadService.formatFileSize(file.file_size)}</span>
-                                          <span>{new Date(file.creation).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                                        </div>
-                                        <div className="flex space-x-2">
+                                      {/* Category Badge overlay */}
+                                      <div className="absolute top-1 right-1">
+                                        <span className="px-1.5 py-0.5 bg-black/50 text-white text-[10px] rounded backdrop-blur-sm capitalize">
+                                          {file.file_category || 'doc'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* File Info */}
+                                    <div className="p-2">
+                                      <p className="text-xs font-medium text-gray-900 truncate mb-2">
+                                        {file.file_name}
+                                      </p>
+
+                                      {/* Actions Row */}
+                                      <div className="flex items-center justify-between border-t border-gray-50 pt-2">
+                                        <span className="text-[10px] text-gray-400">
+                                          {new Date(file.creation).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })}
+                                        </span>
+                                        <div className="flex items-center gap-1">
                                           <a
                                             href={`${API_BASE_URL}${file.file_url}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex-1 flex items-center justify-center px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded hover:bg-primary-700 transition-colors"
-                                          >
-                                            View
-                                          </a>
-                                          <a
-                                            href={`${API_BASE_URL}${file.download_url}`}
-                                            download
-                                            className="flex items-center justify-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                            title="View"
                                           >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                           </a>
                                           <button
@@ -1368,8 +1451,8 @@ const PrescriptionPage: React.FC = () => {
                                               e.stopPropagation();
                                               handleDeleteFile(file.file_id);
                                             }}
-                                            className="flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                                            title="Delete file"
+                                            className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                                            title="Delete"
                                           >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1382,8 +1465,8 @@ const PrescriptionPage: React.FC = () => {
                                 ))}
                               </div>
                             ) : (
-                              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                                <p className="text-gray-500">No {selectedFileCategory === 'all' ? '' : selectedFileCategory} documents found</p>
+                              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                <p className="text-sm text-gray-500">No {selectedFileCategory === 'all' ? '' : selectedFileCategory} documents</p>
                               </div>
                             )}
                           </Card>
@@ -1392,15 +1475,15 @@ const PrescriptionPage: React.FC = () => {
                         {/* Prescriptions */}
                         {/* Show existing medical_history from patient record if available */}
                         {medicalHistory && (
-                          <Card className="p-6">
+                          <Card className="p-4 lg:p-6">
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-bold text-gray-800">Existing Medical History</h3>
+                              <h3 className="text-base lg:text-lg font-bold text-gray-800">Existing Medical History</h3>
                               <button
                                 onClick={() => {
                                   setEditableMedicalHistory({ ...medicalHistory });
                                   setShowMedicalHistoryEdit(true);
                                 }}
-                                className="px-3 py-1.5 text-sm font-medium text-primary-600 border border-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+                                className="px-3 py-1 text-xs lg:text-sm font-medium text-primary-600 border border-primary-600 rounded-full hover:bg-primary-50 transition-colors"
                               >
                                 Edit
                               </button>
@@ -1408,76 +1491,79 @@ const PrescriptionPage: React.FC = () => {
 
                             {/* Important Conditions - Red Badges */}
                             <div className="mb-4">
-                              <span className="text-sm font-semibold text-gray-600">Conditions:</span>
+                              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Conditions</span>
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {medicalHistory.diabetic && (
-                                  <span className="px-3 py-1 bg-red-100 text-red-800 font-bold text-sm rounded-full border border-red-200">
+                                  <span className="px-2 lg:px-3 py-1 bg-red-50 text-red-700 font-semibold text-xs rounded-full border border-red-100">
                                     Diabetic
                                   </span>
                                 )}
                                 {medicalHistory.cardiac_history && (
-                                  <span className="px-3 py-1 bg-red-100 text-red-800 font-bold text-sm rounded-full border border-red-200">
+                                  <span className="px-2 lg:px-3 py-1 bg-red-50 text-red-700 font-semibold text-xs rounded-full border border-red-100">
                                     Cardiac History
                                   </span>
                                 )}
                                 {medicalHistory.allergies && (
-                                  <span className="px-3 py-1 bg-orange-100 text-orange-800 font-bold text-sm rounded-full border border-orange-200">
+                                  <span className="px-2 lg:px-3 py-1 bg-orange-50 text-orange-700 font-semibold text-xs rounded-full border border-orange-100">
                                     Allergies
                                   </span>
                                 )}
                                 {medicalHistory.family_heart_disease && (
-                                  <span className="px-3 py-1 bg-red-100 text-red-800 font-bold text-sm rounded-full border border-red-200">
+                                  <span className="px-2 lg:px-3 py-1 bg-red-50 text-red-700 font-semibold text-xs rounded-full border border-red-100">
                                     Family Heart Disease
                                   </span>
                                 )}
                                 {!medicalHistory.diabetic && !medicalHistory.cardiac_history && !medicalHistory.allergies && !medicalHistory.family_heart_disease && (
-                                  <span className="px-3 py-1 bg-green-100 text-green-800 font-medium text-sm rounded-full border border-green-200">
+                                  <span className="px-2 lg:px-3 py-1 bg-green-50 text-green-700 font-medium text-xs rounded-full border border-green-100">
                                     No significant conditions
                                   </span>
                                 )}
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="grid grid-cols-2 gap-y-4 gap-x-6">
                               <div>
-                                <span className="font-semibold text-gray-600">Blood Pressure:</span>
-                                <p className="text-gray-900">{medicalHistory.blood_pressure || 'Normal'}</p>
+                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Blood Pressure</span>
+                                <p className="text-sm font-medium text-gray-900">{medicalHistory.blood_pressure || 'Normal'}</p>
                               </div>
                               <div>
-                                <span className="font-semibold text-gray-600">COVID Vaccinated:</span>
-                                <p className="text-gray-900">{medicalHistory.covid_vaccinated ? 'Yes' : 'No'}</p>
+                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">COVID Vac.</span>
+                                <p className="text-sm font-medium text-gray-900">{medicalHistory.covid_vaccinated ? 'Yes' : 'No'}</p>
                               </div>
                               {medicalHistory.other && (
-                                <div className="sm:col-span-2">
-                                  <span className="font-semibold text-gray-600">Other:</span>
-                                  <p className="text-gray-900">{medicalHistory.other}</p>
+                                <div className="col-span-2">
+                                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Other</span>
+                                  <p className="text-sm text-gray-900">{medicalHistory.other}</p>
                                 </div>
                               )}
                             </div>
                           </Card>
                         )}
 
-                        <Card className="p-6">
+                        <Card className="p-4 lg:p-6">
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-gray-800">Medical Records</h3>
+                            <h3 className="text-base lg:text-lg font-bold text-gray-800">Medical Records</h3>
                             <div className="flex gap-2">
+                              {/* Mobile: Icon only, Desktop: Text */}
                               <button
                                 onClick={() => setShowClinicalRecordModal(true)}
-                                className="px-3 py-2 border border-secondary-600 text-secondary-600 text-sm font-semibold rounded-lg hover:bg-secondary-50 transition-colors flex items-center gap-2"
+                                className="p-2 lg:px-3 lg:py-2 border border-secondary-600 text-secondary-600 text-sm font-semibold rounded-lg hover:bg-secondary-50 transition-colors flex items-center gap-1.5"
+                                title="Add Clinical Record"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                Clinical
+                                <span className="hidden lg:inline">Clinical</span>
                               </button>
                               <button
                                 onClick={() => setShowNewPrescriptionModal(true)}
-                                className="px-3 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                                className="p-2 lg:px-3 lg:py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1.5"
+                                title="New Prescription"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
-                                Prescription
+                                <span className="hidden lg:inline">Prescription</span>
                               </button>
                             </div>
                           </div>
@@ -1794,8 +1880,8 @@ const PrescriptionPage: React.FC = () => {
 
                     {/* Payments Content */}
                     {currentSection === 'payments' && (
-                      <Card className="p-6">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4">Payment History</h3>
+                      <Card className="p-4 lg:p-6">
+                        <h3 className="text-base lg:text-lg font-bold text-gray-800 mb-4">Payment History</h3>
                         {invoicesLoading ? (
                           <div className="space-y-4">
                             {[1, 2].map((i) => (
@@ -1812,26 +1898,28 @@ const PrescriptionPage: React.FC = () => {
                         ) : (
                           <div className="space-y-4">
                             {displayInvoices.map((invoice: any) => (
-                              <div key={invoice.invoice_id} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center space-x-3">
-                                    <h4 className="text-sm font-bold text-gray-700">{invoice.invoice_id || invoice.name}</h4>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${invoice.status === 'Paid'
-                                      ? 'bg-green-100 text-green-800'
+                              <div key={invoice.invoice_id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                {/* Invoice Header */}
+                                <div className="flex items-start justify-between mb-4">
+                                  <div>
+                                    <h4 className="text-sm font-bold text-gray-900">{invoice.invoice_id || invoice.name}</h4>
+                                    <span className="text-xs text-gray-500 block mt-0.5">
+                                      {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-2">
+                                    <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-wide ${invoice.status === 'Paid'
+                                      ? 'bg-green-100 text-green-700'
                                       : invoice.status === 'Partially Paid'
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-red-100 text-red-800'
+                                        ? 'bg-orange-100 text-orange-700'
+                                        : 'bg-red-100 text-red-700'
                                       }`}>
                                       {invoice.status || (invoice.pending > 0 ? 'Unpaid' : 'Paid')}
                                     </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500">
-                                      {new Date(invoice.posting_date || invoice.date).toLocaleDateString()}
-                                    </span>
+                                    {/* Delete Button (Icon only) */}
                                     <button
                                       onClick={() => handleDeleteInvoice(invoice.invoice_id || invoice.name)}
-                                      className="text-red-500 hover:text-red-700 transition-colors p-1"
+                                      className="text-gray-400 hover:text-red-500 transition-colors p-1"
                                       title="Delete Invoice"
                                       disabled={deleteInvoiceMutation.isPending}
                                     >
@@ -1841,94 +1929,95 @@ const PrescriptionPage: React.FC = () => {
                                     </button>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                  <div className="bg-gray-50 rounded p-2">
-                                    <div className="text-sm font-bold text-gray-700">₹{(invoice.grand_total || invoice.amount || 0).toLocaleString()}</div>
-                                    <div className="text-xs text-gray-500">Total</div>
+
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-3 gap-2 mb-4">
+                                  <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                                    <div className="text-sm font-bold text-gray-800">₹{(invoice.grand_total || invoice.amount || 0).toLocaleString()}</div>
+                                    <div className="text-[10px] font-semibold text-gray-500 uppercase mt-0.5">Total</div>
                                   </div>
-                                  <div className="bg-green-50 rounded p-2">
+                                  <div className="bg-green-50 rounded-lg p-2.5 text-center">
                                     <div className="text-sm font-bold text-green-600">₹{(invoice.paid_amount || invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
-                                    <div className="text-xs text-gray-500">Paid</div>
+                                    <div className="text-[10px] font-semibold text-green-700 uppercase mt-0.5">Paid</div>
                                   </div>
-                                  <div className="bg-red-50 rounded p-2">
-                                    <div className="text-sm font-bold text-red-600">₹{(invoice.pending || invoice.outstanding_amount || 0).toLocaleString()}</div>
-                                    <div className="text-xs text-gray-500">Pending</div>
+                                  <div className="bg-orange-50 rounded-lg p-2.5 text-center">
+                                    <div className="text-sm font-bold text-orange-600">₹{(invoice.pending || invoice.outstanding_amount || 0).toLocaleString()}</div>
+                                    <div className="text-[10px] font-semibold text-orange-700 uppercase mt-0.5">Pending</div>
                                   </div>
                                 </div>
 
                                 {/* Payment History Section */}
                                 {expandedInvoices.has(invoice.invoice_id || invoice.name) && (
-                                  <div className="mt-4 pt-4 border-t border-gray-200">
+                                  <div className="mb-4 pt-3 border-t border-gray-100">
                                     {loadingInvoiceDetails.has(invoice.invoice_id || invoice.name) ? (
                                       <div className="text-center py-4">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600 mx-auto"></div>
                                       </div>
                                     ) : invoiceDetails[invoice.invoice_id || invoice.name]?.payments?.length > 0 ? (
-                                      <div>
-                                        <h5 className="text-xs font-semibold text-gray-700 mb-2">Payment History</h5>
-                                        <div className="space-y-2">
-                                          {invoiceDetails[invoice.invoice_id || invoice.name].payments.map((payment: any, idx: number) => (
-                                            <div key={payment.payment_id || idx} className="bg-gray-50 rounded p-3 text-xs">
-                                              <div className="flex justify-between items-center mb-1">
-                                                <span className="font-semibold text-gray-700">{payment.payment_id}</span>
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-gray-500">{new Date(payment.posting_date).toLocaleDateString()}</span>
-                                                  <button
-                                                    onClick={() => handlePrintReceipt(payment, invoiceDetails[invoice.invoice_id || invoice.name])}
-                                                    className="text-primary-600 hover:text-primary-800 transition-colors"
-                                                    title="Print Receipt"
-                                                  >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                    </svg>
-                                                  </button>
-                                                </div>
+                                      <div className="space-y-2">
+                                        <h5 className="text-[10px] uppercase font-bold text-gray-500 mb-2">History</h5>
+                                        {invoiceDetails[invoice.invoice_id || invoice.name].payments.map((payment: any, idx: number) => (
+                                          <div key={payment.payment_id || idx} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                            <div className="flex justify-between items-start mb-1">
+                                              <div>
+                                                <span className="text-xs font-bold text-gray-800 block">₹{payment.paid_amount.toLocaleString()}</span>
+                                                <span className="text-[10px] text-gray-500">{payment.mode_of_payment}</span>
                                               </div>
-                                              <div className="flex justify-between items-center">
-                                                <span className="text-gray-600">{payment.mode_of_payment}</span>
-                                                <span className="font-bold text-green-600">₹{payment.paid_amount.toLocaleString()}</span>
+                                              <div className="flex flex-col items-end gap-1">
+                                                <span className="text-[10px] text-gray-400">{new Date(payment.posting_date).toLocaleDateString()}</span>
+                                                <button
+                                                  onClick={() => handlePrintReceipt(payment, invoiceDetails[invoice.invoice_id || invoice.name])}
+                                                  className="text-primary-600 text-[10px] font-medium hover:underline flex items-center gap-1"
+                                                >
+                                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                  </svg>
+                                                  Receipt
+                                                </button>
                                               </div>
-                                              {payment.reference_no && (
-                                                <div className="text-gray-500 mt-1">Ref: {payment.reference_no}</div>
-                                              )}
                                             </div>
-                                          ))}
-                                        </div>
+                                          </div>
+                                        ))}
                                       </div>
                                     ) : (
-                                      <div className="text-center py-2 text-xs text-gray-500">No payments recorded yet</div>
+                                      <div className="text-center py-2 text-xs text-gray-400 italic">No payments recorded</div>
                                     )}
                                   </div>
                                 )}
 
-                                <div className="flex space-x-2 mt-3">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="flex-1"
-                                    onClick={() => toggleInvoiceExpansion(invoice.invoice_id || invoice.name)}
-                                  >
-                                    {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'View'} Payment History
-                                  </Button>
-                                  {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
+                                {/* Action Buttons */}
+                                <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                                  {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) ? (
                                     <Button
                                       size="sm"
-                                      className="flex-1"
+                                      className="w-full bg-primary-600 hover:bg-primary-700 text-white border-0"
                                       onClick={() => handleOpenPaymentModal(invoice)}
                                     >
-                                      Record Payment
+                                      Pay Now
                                     </Button>
+                                  ) : (
+                                    <div className="hidden"></div> /* Spacer if paid */
                                   )}
+
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex items-center gap-1"
+                                    className={`flex items-center gap-1 ${((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) ? '' : 'flex-1'}`}
+                                    onClick={() => toggleInvoiceExpansion(invoice.invoice_id || invoice.name)}
+                                  >
+                                    {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'History'}
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="px-3"
                                     onClick={() => handlePrintInvoice(invoice)}
+                                    title="Print Invoice"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                     </svg>
-                                    Print
                                   </Button>
                                 </div>
                               </div>
@@ -1951,886 +2040,6 @@ const PrescriptionPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* Mobile Layout - Original */}
-              <div className="lg:hidden px-4 space-y-6 py-4">
-                {/* Patient Header */}
-                <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-4 text-white shadow-lg">{patientLoading ? (
-                  <div className="animate-pulse">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-white/20"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-white/20 rounded w-3/4"></div>
-                        <div className="h-3 bg-white/20 rounded w-1/2"></div>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      <div className="h-3 bg-white/20 rounded w-full"></div>
-                      <div className="h-3 bg-white/20 rounded w-2/3"></div>
-                    </div>
-                  </div>
-                ) : patient ? (
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
-                      {patient.sex === 'Female' ? (
-                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-sm font-bold font-lato mb-1">
-                        History for<br />
-                        {patient.name}
-                      </h2>
-                      <div className="text-xs font-lato space-y-1">
-                        <div className="flex justify-between">
-                          <span>Patient id: {patient.patient_id}</span>
-                          <span>Phone: {patient.mobile}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Age: {patient.age || 'N/A'}</span>
-                          <span>DOB: {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        <div>
-                          <span>Gender: {patient.sex || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-white/80">Patient not found</p>
-                  </div>
-                )}
-
-                  <hr className="my-4 border-white/30" />
-
-                  <div className="flex space-x-4">
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-white/20 backdrop-blur-sm hover:bg-white/30"
-                      onClick={() => setShowUpload(true)}
-                    >
-                      Upload Report
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-white/20 backdrop-blur-sm hover:bg-white/30"
-                      onClick={handleNewAppointment}
-                    >
-                      New Appointment
-                    </Button>
-                  </div>
-
-                  {/* Payment Summary in Header */}
-                  <div className="mt-3 pt-3 border-t border-white/30">
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div className="text-center">
-                        <div className="font-bold">₹{paymentSummary?.total_paid?.toLocaleString() || '0'}</div>
-                        <div className="text-white/80">Total Paid</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-bold text-yellow-200">₹{paymentSummary?.total_pending?.toLocaleString() || '0'}</div>
-                        <div className="text-white/80">Pending</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section Tabs */}
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setCurrentSection('medical')}
-                    className={`flex-1 py-2 px-3 rounded-md text-xs sm:text-sm font-bold font-lato transition-colors ${currentSection === 'medical'
-                      ? 'bg-white text-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                      }`}
-                  >
-                    Medical History
-                  </button>
-                  <button
-                    onClick={() => setCurrentSection('payments')}
-                    className={`flex-1 py-2 px-3 rounded-md text-xs sm:text-sm font-bold font-lato transition-colors ${currentSection === 'payments'
-                      ? 'bg-white text-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                      }`}
-                  >
-                    Payment Details
-                  </button>
-                </div>
-
-                {/* Medical History Section */}
-                {currentSection === 'medical' && (
-                  <div>
-                    <h3 className="text-base font-bold text-gray-700 font-lato mb-4">
-                      Medical History
-                    </h3>
-
-                    {/* Uploaded Files Section */}
-                    {isLoadingFiles ? (
-                      <div className="mb-6">
-                        <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
-                          Uploaded Documents
-                        </h4>
-                        <div className="space-y-2">
-                          {[1, 2].map((i) => (
-                            <Card key={i} className="animate-pulse">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-gray-200 rounded"></div>
-                                <div className="flex-1 space-y-2">
-                                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                                  <div className="h-2 bg-gray-200 rounded w-1/2"></div>
-                                </div>
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    ) : patientFiles.length > 0 ? (
-                      <div className="mb-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-bold text-gray-700 font-lato">
-                            Uploaded Documents ({filteredFiles.length})
-                          </h4>
-                        </div>
-
-                        {/* Category Filter Pills */}
-                        {fileCategories.length > 0 && (
-                          <div className="overflow-x-auto pb-3 -mx-6 px-6 mb-4">
-                            <div className="flex space-x-2" style={{ minWidth: 'min-content' }}>
-                              <button
-                                onClick={() => setSelectedFileCategory('all')}
-                                className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${selectedFileCategory === 'all'
-                                  ? 'bg-primary-600 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                  }`}
-                              >
-                                All ({patientFiles.length})
-                              </button>
-                              {fileCategories.map((category: string) => {
-                                const count = patientFiles.filter((f: any) => f.file_category === category).length;
-                                return (
-                                  <button
-                                    key={category}
-                                    onClick={() => setSelectedFileCategory(category)}
-                                    className={`px-4 py-2 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-colors ${selectedFileCategory === category
-                                      ? 'bg-primary-600 text-white'
-                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                      }`}
-                                  >
-                                    {category} ({count})
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Mobile: Horizontal scrollable gallery */}
-                        {filteredFiles.length > 0 ? (
-                          <>
-                            <div className="overflow-x-auto pb-2 -mx-6 px-6">
-                              <div className="flex space-x-4" style={{ minWidth: 'min-content' }}>
-                                {filteredFiles.map((file: any) => (
-                                  <div key={file.file_id} className="flex-shrink-0 w-64">
-                                    <Card className="hover:shadow-lg transition-shadow overflow-hidden">
-                                      {/* Image preview */}
-                                      {fileUploadService.isImageFile(file.file_name) ? (
-                                        <div
-                                          className="relative w-full h-64 bg-gray-100 overflow-hidden cursor-pointer group"
-                                          onClick={() => handleOpenImageViewer(file.file_id)}
-                                        >
-                                          <img
-                                            src={`${API_BASE_URL}${file.file_url}`}
-                                            alt={file.file_name}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                          />
-                                          {/* Overlay on hover */}
-                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                              </svg>
-                                            </div>
-                                          </div>
-                                          {/* Category badge */}
-                                          <div className="absolute top-3 right-3">
-                                            <span className="px-3 py-1 bg-black/60 backdrop-blur-sm text-white text-xs rounded-full capitalize font-semibold">
-                                              {file.file_category || 'image'}
-                                            </span>
-                                          </div>
-                                          {/* Click to fullscreen hint */}
-                                          <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className="px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs rounded">
-                                              Click to view fullscreen
-                                            </span>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="relative w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center">
-                                          <div className="text-6xl mb-4">
-                                            {fileUploadService.getFileIcon(file.file_name)}
-                                          </div>
-                                          <span className="px-4 py-2 bg-white text-gray-700 text-sm rounded-full font-semibold capitalize shadow-sm">
-                                            {file.file_category || 'document'}
-                                          </span>
-                                        </div>
-                                      )}
-
-                                      {/* File details */}
-                                      <div className="p-4">
-                                        <div className="flex items-start justify-between mb-2">
-                                          <p className="text-sm font-semibold text-gray-900 truncate flex-1 mr-2">
-                                            {file.file_name}
-                                          </p>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDeleteFile(file.file_id);
-                                            }}
-                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                                            title="Delete file"
-                                          >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                          </button>
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                                          <span className="font-medium">{fileUploadService.formatFileSize(file.file_size)}</span>
-                                          <span>{new Date(file.creation).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                        </div>
-                                        {file.description && (
-                                          <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">
-                                            {file.description}
-                                          </p>
-                                        )}
-
-                                        {/* Action buttons */}
-                                        <div className="flex space-x-2">
-                                          <a
-                                            href={`${API_BASE_URL}${file.file_url}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex-1 flex items-center justify-center px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors"
-                                          >
-                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            View
-                                          </a>
-                                          <a
-                                            href={`${API_BASE_URL}${file.download_url}`}
-                                            download
-                                            className="flex items-center justify-center px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                                          >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                            </svg>
-                                          </a>
-                                        </div>
-                                      </div>
-                                    </Card>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Scroll hint */}
-                            {filteredFiles.length > 1 && (
-                              <div className="flex items-center justify-center mt-3 text-xs text-gray-400">
-                                <svg className="w-4 h-4 mr-1 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                                </svg>
-                                Swipe to see more
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <Card className="text-center py-8">
-                            <p className="text-gray-500">No {selectedFileCategory === 'all' ? '' : selectedFileCategory} documents found</p>
-                          </Card>
-                        )}
-                      </div>
-                    ) : null}
-
-                    {/* Existing Medical History from patient record - Mobile */}
-                    {medicalHistory && (
-                      <Card className="mb-6">
-                        <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
-                          Existing Medical History
-                        </h4>
-
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                          <div>
-                            <span className="font-semibold text-gray-600">Diabetic:</span>
-                            <p className="text-gray-900">{medicalHistory.diabetic ? 'Yes' : 'No'}</p>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-gray-600">Blood Pressure:</span>
-                            <p className="text-gray-900">{medicalHistory.blood_pressure || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-gray-600">Cardiac History:</span>
-                            <p className="text-gray-900">{medicalHistory.cardiac_history ? 'Yes' : 'No'}</p>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-gray-600">Allergies:</span>
-                            <p className="text-gray-900">{medicalHistory.allergies ? 'Yes' : 'No'}</p>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-gray-600">Family Heart Disease:</span>
-                            <p className="text-gray-900">{medicalHistory.family_heart_disease ? 'Yes' : 'No'}</p>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-gray-600">COVID Vaccinated:</span>
-                            <p className="text-gray-900">{medicalHistory.covid_vaccinated ? 'Yes' : 'No'}</p>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="font-semibold text-gray-600">Other:</span>
-                            <p className="text-gray-900">{medicalHistory.other || '-'}</p>
-                          </div>
-                        </div>
-                      </Card>
-                    )}
-
-                    {/* Prescriptions Section */}
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-bold text-gray-700 font-lato">
-                        Prescriptions & Records
-                      </h4>
-                      <button
-                        onClick={() => setShowNewPrescriptionModal(true)}
-                        className="px-2.5 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span className="hidden xs:inline">Create</span>
-                        <span className="xs:hidden">New</span>
-                      </button>
-                    </div>
-
-                    {prescriptionsLoading ? (
-                      <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
-                          <Card key={i} className="animate-pulse">
-                            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
-                            <div className="space-y-2">
-                              <div className="h-3 bg-gray-200 rounded w-full"></div>
-                              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : !prescriptions || prescriptions.length === 0 ? (
-                      <Card className="text-center py-8">
-                        <p className="text-gray-500">No prescription records available</p>
-                        {patientFiles.length === 0 && (
-                          <p className="text-gray-400 text-sm mt-2">Upload documents using the button above</p>
-                        )}
-                      </Card>
-                    ) : (
-
-                      <div className="space-y-3">
-                        {prescriptions?.map((prescription) => {
-                          // Use detailed data if available, otherwise use list data
-                          const recordId = prescription.name || prescription.record_id;
-                          const detailedData = detailedPrescriptions[recordId];
-                          const displayData = detailedData || prescription;
-                          const isLoadingDetail = loadingDetails.has(recordId);
-
-                          return (
-                            <Card key={recordId} className="relative p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-xs sm:text-sm font-bold text-gray-600 font-lato">
-                                  {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                                </h4>
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleDeletePrescription(recordId)}
-                                    className="text-red-500 hover:text-red-700 active:text-red-800 p-1"
-                                    title="Delete prescription"
-                                  >
-                                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                  <button
-                                    onClick={() => toggleEdit(recordId)}
-                                    className="text-blue-500 hover:text-blue-700 active:text-blue-800 p-1"
-                                    title="Edit prescription"
-                                  >
-                                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                  </button>
-                                  <button
-                                    onClick={() => togglePrescription(recordId)}
-                                    className="text-gray-400 transform transition-transform duration-200"
-                                    disabled={isLoadingDetail}
-                                  >
-                                    {isLoadingDetail ? (
-                                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                      </svg>
-                                    ) : (
-                                      <svg
-                                        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${expandedPrescriptions.has(recordId) ? 'rotate-180' : ''}`}
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                      </svg>
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-
-                              {expandedPrescriptions.has(recordId) && detailedData && (
-                                <div className="space-y-3">
-                                  {/* Investigations Section */}
-                                  <div className="pt-3 border-t border-gray-100">
-                                    <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
-                                      INVESTIGATIONS
-                                    </h5>
-                                    {editablePrescriptions.has(recordId) ? (
-                                      <div className="space-y-2">
-                                        {displayData.investigations?.map((investigation: any, index: number) => (
-                                          <div key={index} className="p-2 border border-gray-300 rounded text-sm">
-                                            <div className="font-semibold">{investigation.lab_test_name}</div>
-                                            <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
-                                            {investigation.lab_test_comment && (
-                                              <div className="text-xs text-gray-500">{investigation.lab_test_comment}</div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="space-y-2">
-                                        {displayData.investigations?.map((investigation: any, index: number) => (
-                                          <div key={index} className="text-sm text-black font-montserrat">
-                                            <div className="font-semibold">{investigation.lab_test_name}</div>
-                                            <div className="text-xs text-gray-600">Code: {investigation.lab_test_code}</div>
-                                            {investigation.lab_test_comment && (
-                                              <div className="text-xs text-gray-500">{investigation.lab_test_comment}</div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* Medications Section */}
-                                  <div className="pt-3 border-t border-gray-100">
-                                    <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
-                                      MEDICATIONS
-                                    </h5>
-                                    {editablePrescriptions.has(recordId) ? (
-                                      <div className="space-y-2">
-                                        {displayData.medications?.map((medication: any, index: number) => (
-                                          <div key={index} className="p-2 border border-gray-300 rounded text-sm">
-                                            <div className="font-semibold">{medication.drug_name}</div>
-                                            <div className="text-xs text-gray-600">
-                                              {medication.dosage} - {medication.interval} for {medication.period}
-                                            </div>
-                                            <div className="text-xs text-gray-500">Form: {medication.dosage_form}</div>
-                                            {medication.comment && (
-                                              <div className="text-xs text-gray-500">{medication.comment}</div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="space-y-2">
-                                        {displayData.medications?.map((medication: any, index: number) => (
-                                          <div key={index} className="text-sm text-green-700 font-montserrat">
-                                            <div className="font-semibold">{medication.drug_name}</div>
-                                            <div className="text-xs text-gray-600">
-                                              {medication.dosage} - {medication.interval} for {medication.period}
-                                            </div>
-                                            <div className="text-xs text-gray-500">Form: {medication.dosage_form}</div>
-                                            {medication.comment && (
-                                              <div className="text-xs text-gray-500">{medication.comment}</div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* Notes Section */}
-                                  <div className="pt-3 border-t border-gray-100">
-                                    <h5 className="text-xs font-bold text-gray-700 font-lato mb-2">
-                                      CLINICAL DETAILS
-                                    </h5>
-                                    <div className="space-y-2.5 text-xs sm:text-sm font-montserrat">
-                                      <div>
-                                        <span className="font-semibold text-gray-700">Chief Complaint:</span>
-                                        {editablePrescriptions.has(recordId) ? (
-                                          <textarea
-                                            value={editedPrescriptionData[recordId]?.chief_complaint || displayData.chief_complaint}
-                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'chief_complaint', e.target.value)}
-                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                            rows={2}
-                                          />
-                                        ) : (
-                                          <p className="text-gray-900 mt-1">{displayData.chief_complaint}</p>
-                                        )}
-                                      </div>
-                                      <div>
-                                        <span className="font-semibold text-gray-700">Symptoms:</span>
-                                        {editablePrescriptions.has(recordId) ? (
-                                          <textarea
-                                            value={editedPrescriptionData[recordId]?.symptoms || displayData.symptoms}
-                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'symptoms', e.target.value)}
-                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                            rows={2}
-                                          />
-                                        ) : (
-                                          <p className="text-gray-900 mt-1">{displayData.symptoms}</p>
-                                        )}
-                                      </div>
-                                      <div>
-                                        <span className="font-semibold text-gray-700">Diagnosis:</span>
-                                        {editablePrescriptions.has(recordId) ? (
-                                          <textarea
-                                            value={editedPrescriptionData[recordId]?.diagnosis || displayData.diagnosis}
-                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'diagnosis', e.target.value)}
-                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                            rows={2}
-                                          />
-                                        ) : (
-                                          <p className="text-gray-900 mt-1">{displayData.diagnosis}</p>
-                                        )}
-                                      </div>
-                                      <div>
-                                        <span className="font-semibold text-gray-700">Treatment Plan:</span>
-                                        {editablePrescriptions.has(recordId) ? (
-                                          <textarea
-                                            value={editedPrescriptionData[recordId]?.treatment_plan || displayData.treatment_plan}
-                                            onChange={(e) => handlePrescriptionFieldChange(recordId, 'treatment_plan', e.target.value)}
-                                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                            rows={3}
-                                          />
-                                        ) : (
-                                          <p className="text-gray-900 mt-1">{displayData.treatment_plan}</p>
-                                        )}
-                                      </div>
-
-                                      {editablePrescriptions.has(recordId) && (
-                                        <>
-                                          <div>
-                                            <span className="font-semibold text-gray-700">Status:</span>
-                                            <select
-                                              value={editedPrescriptionData[recordId]?.status || displayData.status}
-                                              onChange={(e) => handlePrescriptionFieldChange(recordId, 'status', e.target.value)}
-                                              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                                            >
-                                              <option value="Active">Active</option>
-                                              <option value="In Progress">In Progress</option>
-                                              <option value="Completed">Completed</option>
-                                              <option value="Cancelled">Cancelled</option>
-                                            </select>
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Action Buttons for Edit Mode */}
-                                  {editablePrescriptions.has(recordId) && (
-                                    <div className="flex gap-2 pt-3 border-t border-gray-100">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => toggleEdit(recordId)}
-                                        className="flex-1 text-xs"
-                                      >
-                                        Cancel
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleSavePrescription(recordId)}
-                                        disabled={isUpdating}
-                                        className="flex-1 text-xs"
-                                      >
-                                        {isUpdating ? 'Saving...' : 'Save'}
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </Card>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Payment Details Section */}
-                {currentSection === 'payments' && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-base font-bold text-gray-700 font-lato">
-                        Payment Summary
-                      </h3>
-                    </div>
-
-                    {/* Payment Summary Cards */}
-                    {paymentSummaryLoading ? (
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        <Card className="text-center animate-pulse">
-                          <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
-                        </Card>
-                        <Card className="text-center animate-pulse">
-                          <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
-                        </Card>
-                      </div>
-                    ) : paymentSummary ? (
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        <Card className="text-center">
-                          <div className="text-2xl font-bold text-green-600 font-lato">
-                            ₹{(paymentSummary.total_paid || 0).toLocaleString()}
-                          </div>
-                          <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
-                        </Card>
-                        <Card className="text-center">
-                          <div className="text-2xl font-bold text-red-600 font-lato">
-                            ₹{(paymentSummary.total_pending || 0).toLocaleString()}
-                          </div>
-                          <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
-                        </Card>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        <Card className="text-center">
-                          <div className="text-2xl font-bold text-gray-400 font-lato">₹0</div>
-                          <div className="text-xs text-gray-600 font-lato mt-1">Total Paid</div>
-                        </Card>
-                        <Card className="text-center">
-                          <div className="text-2xl font-bold text-gray-400 font-lato">₹0</div>
-                          <div className="text-xs text-gray-600 font-lato mt-1">Total Pending</div>
-                        </Card>
-                      </div>
-                    )}
-
-                    {/* Payment History */}
-                    <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
-                      Payment History
-                    </h4>
-
-                    {invoicesLoading ? (
-                      <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
-                          <Card key={i} className="animate-pulse">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                              <div className="h-6 bg-gray-200 rounded w-20"></div>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="h-3 bg-gray-200 rounded w-full"></div>
-                              <div className="grid grid-cols-3 gap-2">
-                                <div className="h-12 bg-gray-200 rounded"></div>
-                                <div className="h-12 bg-gray-200 rounded"></div>
-                                <div className="h-12 bg-gray-200 rounded"></div>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : !displayInvoices || displayInvoices.length === 0 ? (
-                      <Card className="text-center py-8">
-                        <p className="text-gray-500">No payment history available</p>
-                      </Card>
-                    ) : (
-                      <div className="space-y-3">
-                        {displayInvoices.map((invoice: any) => (
-                          <Card key={invoice.invoice_id || invoice.name} className="p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                <h5 className="text-xs sm:text-sm font-bold text-gray-700 font-lato truncate">
-                                  {invoice.invoice_id || invoice.name}
-                                </h5>
-                                <span className={`px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 ${invoice.status === 'Paid'
-                                  ? 'bg-green-100 text-green-800'
-                                  : invoice.status === 'Partially Paid'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-red-100 text-red-800'
-                                  }`}>
-                                  {invoice.status || (invoice.pending > 0 ? 'Unpaid' : 'Paid')}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <span className="text-xs text-gray-500 font-lato hidden sm:inline">
-                                  {new Date(invoice.posting_date || invoice.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                                </span>
-                                <button
-                                  onClick={() => handleDeleteInvoice(invoice.invoice_id || invoice.name)}
-                                  className="text-red-500 hover:text-red-700 active:text-red-800 transition-colors p-1"
-                                  title="Delete Invoice"
-                                  disabled={deleteInvoiceMutation.isPending}
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="text-xs sm:text-sm text-gray-600 font-montserrat truncate">
-                                <strong>Patient:</strong> {invoice.patient_name || patient?.patient_name}
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-1.5 text-xs">
-                                <div className="text-center p-1.5 bg-gray-50 rounded">
-                                  <div className="font-bold text-gray-700 text-xs">₹{(invoice.grand_total || invoice.amount || 0).toLocaleString()}</div>
-                                  <div className="text-gray-500 text-[10px]">Total</div>
-                                </div>
-                                <div className="text-center p-1.5 bg-green-50 rounded">
-                                  <div className="font-bold text-green-600 text-xs">₹{(invoice.paid_amount || invoice.paid || (invoice.grand_total - invoice.outstanding_amount) || 0).toLocaleString()}</div>
-                                  <div className="text-gray-500 text-[10px]">Paid</div>
-                                </div>
-                                <div className="text-center p-1.5 bg-red-50 rounded">
-                                  <div className="font-bold text-red-600 text-xs">₹{(invoice.pending || invoice.outstanding_amount || 0).toLocaleString()}</div>
-                                  <div className="text-gray-500 text-[10px]">Due</div>
-                                </div>
-                              </div>
-
-                              <div className="text-xs text-gray-600 font-montserrat">
-                                <strong>Due:</strong> {new Date(invoice.due_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </div>
-
-                              {/* Payment History Section - Mobile */}
-                              {expandedInvoices.has(invoice.invoice_id || invoice.name) && (
-                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                  {loadingInvoiceDetails.has(invoice.invoice_id || invoice.name) ? (
-                                    <div className="text-center py-3">
-                                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600 mx-auto"></div>
-                                    </div>
-                                  ) : invoiceDetails[invoice.invoice_id || invoice.name]?.payments?.length > 0 ? (
-                                    <div>
-                                      <h6 className="text-xs font-semibold text-gray-700 mb-2">Payment History</h6>
-                                      <div className="space-y-2">
-                                        {invoiceDetails[invoice.invoice_id || invoice.name].payments.map((payment: any, idx: number) => (
-                                          <div key={payment.payment_id || idx} className="bg-gray-50 rounded p-2 text-xs">
-                                            <div className="flex justify-between items-center mb-1">
-                                              <span className="font-semibold text-gray-700">{payment.payment_id}</span>
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-gray-500">{new Date(payment.posting_date).toLocaleDateString()}</span>
-                                                <button
-                                                  onClick={() => handlePrintReceipt(payment, invoiceDetails[invoice.invoice_id || invoice.name])}
-                                                  className="text-primary-600 hover:text-primary-800 transition-colors"
-                                                  title="Print Receipt"
-                                                >
-                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                  </svg>
-                                                </button>
-                                              </div>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                              <span className="text-gray-600">{payment.mode_of_payment}</span>
-                                              <span className="font-bold text-green-600">₹{payment.paid_amount.toLocaleString()}</span>
-                                            </div>
-                                            {payment.reference_no && (
-                                              <div className="text-gray-500 mt-1">Ref: {payment.reference_no}</div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="text-center py-2 text-xs text-gray-500">No payments recorded yet</div>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="flex flex-wrap gap-1.5 mt-3">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="flex-1 min-w-[80px] text-xs"
-                                  onClick={() => toggleInvoiceExpansion(invoice.invoice_id || invoice.name)}
-                                >
-                                  {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'View'}
-                                </Button>
-                                {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) && (
-                                  <Button
-                                    size="sm"
-                                    variant="primary"
-                                    className="flex-1 min-w-[80px] text-xs"
-                                    onClick={() => handleOpenPaymentModal(invoice)}
-                                  >
-                                    <span className="hidden xs:inline">Record Payment</span>
-                                    <span className="xs:hidden">Pay</span>
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="flex items-center justify-center gap-1 px-2 text-xs"
-                                  onClick={() => handlePrintInvoice(invoice)}
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                  </svg>
-                                  <span className="hidden sm:inline">Print</span>
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Quick Payment Actions */}
-                    <Card className="mt-6">
-                      <h4 className="text-sm font-bold text-gray-700 font-lato mb-3">
-                        Quick Actions
-                      </h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => setShowCreateInvoiceModal(true)}
-                          className="flex flex-col items-center justify-center py-4 h-auto"
-                        >
-                          <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          <span className="text-xs">New Invoice</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            alert('Generating payment report...');
-                          }}
-                          className="flex flex-col items-center justify-center py-4 h-auto"
-                        >
-                          <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <span className="text-xs">Payment Report</span>
-                        </Button>
-                      </div>
-                    </Card>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -3522,6 +2731,8 @@ const PrescriptionPage: React.FC = () => {
             <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
           </div >
         </MobileContainer >
+
+
       </div >
     </div >
   );
