@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import { useClinic } from '../contexts/ClinicContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components';
 import MobileContainer from '../components/layout/MobileContainer';
@@ -33,6 +34,7 @@ const PrescriptionPage: React.FC = () => {
   const location = useLocation();
   const { patientId: rawPatientId } = useParams<{ patientId: string }>();
   const { profile } = useClinic();
+  const { user } = useAuth();
 
   // Decode the patientId from URL (e.g., "Ananth.C%20Jayan" -> "Ananth.C Jayan")
   const patientId = rawPatientId ? decodeURIComponent(rawPatientId) : undefined;
@@ -912,10 +914,10 @@ const PrescriptionPage: React.FC = () => {
       // Extract clinic branding
       const branding = (profile?.branding || {}) as any;
       const invoiceSettings = (profile?.invoice_settings || {}) as any;
-      const templateId = invoiceSettings.template_id || 'standard';
+      const templateId = invoiceSettings.template_id || 'modern';
 
       // Generate HTML using shared utility
-      const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId);
+      const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId, user?.name);
 
       printWindow.document.write(invoiceHTML);
       printWindow.document.close();

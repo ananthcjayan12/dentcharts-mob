@@ -4,6 +4,7 @@ import { Sidebar, Container, Card, Typography, Badge, Button, InputField, Flex, 
 import { paymentService } from '../api/services/payment';
 import { InvoiceResponse } from '../api/types';
 import { useClinic } from '../contexts/ClinicContext';
+import { useAuth } from '../contexts/AuthContext';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import toast from 'react-hot-toast';
 import {
@@ -19,6 +20,7 @@ import {
 const InvoicesPage: React.FC = () => {
     const navigate = useNavigate();
     const { profile } = useClinic();
+    const { user } = useAuth();
     const [invoices, setInvoices] = useState<InvoiceResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
@@ -80,9 +82,9 @@ const InvoicesPage: React.FC = () => {
         try {
             const fullInvoice = await paymentService.getInvoice(invoice.name);
             const invoiceSettings = (profile?.invoice_settings || {}) as any;
-            const templateId = invoiceSettings.template_id || 'standard';
+            const templateId = invoiceSettings.template_id || 'modern';
 
-            const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId);
+            const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId, user?.name);
 
             const printWindow = window.open('', '_blank');
             if (printWindow) {

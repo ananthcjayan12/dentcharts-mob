@@ -13,7 +13,8 @@ export const useDashboardStats = (
         queryKey: queryKeys.dashboard.stats(params),
         queryFn: () => dashboardService.getFinancialStats(params),
         enabled: enabled,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 0, // Always fetch fresh data - backend has caching with auto-invalidation
+        refetchOnWindowFocus: true, // Refetch when user returns to tab
     });
 };
 
@@ -28,6 +29,7 @@ export const useCollectionSummary = (
         queryKey: queryKeys.dashboard.collection(params),
         queryFn: () => dashboardService.getCollectionSummary(params),
         enabled: enabled,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 0, // Always fetch fresh data - backend has caching with auto-invalidation
+        refetchOnWindowFocus: true,
     });
 };
