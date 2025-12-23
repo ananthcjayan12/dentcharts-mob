@@ -6,6 +6,7 @@ import { InvoiceResponse } from '../api/types';
 import { useClinic } from '../contexts/ClinicContext';
 import { useAuth } from '../contexts/AuthContext';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
+import { printHTML } from '../utils/printUtils';
 import toast from 'react-hot-toast';
 import {
     CurrencyDollarIcon,
@@ -86,13 +87,8 @@ const InvoicesPage: React.FC = () => {
 
             const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId, user?.name);
 
-            const printWindow = window.open('', '_blank');
-            if (printWindow) {
-                printWindow.document.write(invoiceHTML);
-                printWindow.document.close();
-            } else {
-                toast.error('Please allow popups to view invoice');
-            }
+
+            printHTML(invoiceHTML);
         } catch (e) {
             toast.error('Failed to load invoice details');
         }

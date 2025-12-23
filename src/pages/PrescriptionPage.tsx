@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 // Icons removed as they are unused (replaced by SVGs)
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
+import { printHTML } from '../utils/printUtils';
 import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import { useClinic } from '../contexts/ClinicContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -900,27 +901,15 @@ const PrescriptionPage: React.FC = () => {
 
       toast.dismiss();
 
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        toast.error('Please allow pop-ups to print invoice');
-        return;
-      }
-
-      // Use full invoice data with items
-      // Cast to any since API returns additional fields not in type definition
-      const fullInvoiceData = fullInvoice as any;
-      const invoicePatient = fullInvoiceData.patient || patient;
 
       // Extract clinic branding
-      const branding = (profile?.branding || {}) as any;
       const invoiceSettings = (profile?.invoice_settings || {}) as any;
       const templateId = invoiceSettings.template_id || 'modern';
 
       // Generate HTML using shared utility
       const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId, user?.name);
 
-      printWindow.document.write(invoiceHTML);
-      printWindow.document.close();
+      printHTML(invoiceHTML);
     } catch (error: any) {
       toast.dismiss();
       console.error('Print invoice error:', error);

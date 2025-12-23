@@ -46,9 +46,7 @@ export const generateInvoiceHTML = (
   const basicInfo = (profile?.basic_info || {}) as any;
   const address = (profile?.address || {}) as any;
 
-  // Debug logging
-  console.log('Invoice Generation Profile:', profile);
-  console.log('Invoice Generation Address:', address);
+  // Debug logging - REMOVED
 
   // Defaults
   const primaryColor = branding.primary_color || '#2563eb';
@@ -142,7 +140,8 @@ export const generateInvoiceHTML = (
     .print-button { background: ${primaryColor}; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-size: 14px; position: fixed; top: 20px; right: 20px; z-index: 100; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     .print-button:hover { opacity: 0.9; }
     .text-right { text-align: right; }
-    .debug-info { margin-top: 20px; padding: 10px; border: 1px dashed red; color: red; font-size: 10px; background: #fff0f0; white-space: pre-wrap; display: none; }
+    
+    @page { margin: 0; size: auto; }
   `;
 
   // --- Templates ---
@@ -237,8 +236,15 @@ export const generateInvoiceHTML = (
       .footer { margin-top: 60px; text-align: center; color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 24px; font-style: italic; }
 
       @media print {
-        body { background: white; padding: 0; }
-        .invoice-container { box-shadow: none; max-width: 100%; margin: 0; border: none; }
+        body { background: white; padding: 0; margin: 0; width: 100%; }
+        .invoice-container { 
+          box-shadow: none; 
+          max-width: none; 
+          width: 100%; 
+          margin: 0; 
+          border: none; 
+          overflow: visible;
+        }
         .header-bg { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .meta-grid { background: #f8fafc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .totals { background: #f8fafc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -439,7 +445,7 @@ export const generateInvoiceHTML = (
               
               <div class="footer">
                 <p>🦷 ${footerText}</p>
-                 ${!clinicAddress ? `<div class="debug-info" style="display: block;">Attempted Address: ${JSON.stringify(address, null, 2)}</div>` : ''}
+                 ${!clinicAddress ? '<!-- Address missing in profile -->' : ''}
               </div>
             </div>
           </div>
