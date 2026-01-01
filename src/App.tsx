@@ -19,6 +19,7 @@ import { ClinicProvider } from './contexts/ClinicContext';
 import ToastProvider from './components/providers/ToastProvider';
 
 import FinancialDashboardPage from './pages/FinancialDashboardPage';
+import PublicClinicPage from './pages/PublicClinicPage';
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -29,6 +30,7 @@ const AppRoutes = () => {
     <>
       <Routes location={background}>
         <Route path="/" element={<RootRedirect />} />
+        <Route path="/public/clinic/:clinicId" element={<PublicClinicPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/home" element={<HomePage />} />

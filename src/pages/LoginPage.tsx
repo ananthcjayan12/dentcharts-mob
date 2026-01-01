@@ -22,11 +22,11 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: { [key: string]: string } = {};
     if (!formData.email) newErrors.email = 'Email is required';
     if (!formData.password) newErrors.password = 'Password is required';
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -35,8 +35,8 @@ const LoginPage: React.FC = () => {
     try {
       await login(formData.email, formData.password);
       navigate('/home');
-    } catch (error) {
-      setErrors({ general: 'Login failed. Please try again.' });
+    } catch (error: any) {
+      setErrors({ general: error?.message || 'Login failed. Please check your credentials.' });
     }
   };
 
@@ -135,8 +135,8 @@ const LoginPage: React.FC = () => {
                   </Button>
 
                   <div className="text-center">
-                    <Link 
-                      to="/forgot-password" 
+                    <Link
+                      to="/forgot-password"
                       className="text-sm text-gray-600 hover:text-primary-500 transition-colors"
                     >
                       Forgot password?

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 // Icons removed as they are unused (replaced by SVGs)
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
+import { printPrescription, PrescriptionPrintData } from '../utils/prescriptionTemplates';
 import { printHTML } from '../utils/printUtils';
 import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
+import PrescriptionModal from '../components/prescription/PrescriptionModal';
+import { PrescriptionMedicine } from '../api/services/medicine';
 import { useClinic } from '../contexts/ClinicContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -474,6 +477,41 @@ const PrescriptionPage: React.FC = () => {
     navigate(`/appointments/new?patientId=${patientId}`, { state: { backgroundLocation: location } });
   };
 
+  // Handler for new prescription modal submission
+  const handleNewPrescriptionSubmit = async (medications: PrescriptionMedicine[]) => {
+    if (!patientId) return;
+
+    try {
+      // Convert from new modal format to API format
+      const apiMedications = medications.map(med => ({
+        drug_name: med.medicine_name,
+        dosage: med.strength || '',
+        dosage_form: med.dosage_form,
+        interval: `${med.morning}-${med.lunch}-${med.evening}-${med.night}`, // e.g., "1-0-0-1"
+        period: `${med.days} days`,
+        comment: med.condition + (med.instructions ? ` - ${med.instructions}` : ''),
+      }));
+
+      const prescriptionData: any = {
+        patient_id: patientId,
+        appointment_id: appointmentId,
+        medications: apiMedications,
+      };
+
+      await createPrescription(prescriptionData);
+
+      // Manually refetch prescriptions to ensure UI updates
+      await refetchPrescriptions();
+
+      setShowNewPrescriptionModal(false);
+      toast.success('Prescription created successfully');
+    } catch (error: any) {
+      console.error('Create prescription error:', error);
+      toast.error('Failed to create prescription');
+    }
+  };
+
+  // Legacy handler (kept for compatibility)
   const handleCreatePrescription = async () => {
     if (!patientId) return;
 
@@ -2335,153 +2373,15 @@ const PrescriptionPage: React.FC = () => {
               initialIndex={viewerInitialIndex}
             />
 
-            {/* Create Prescription Modal */}
-            {showNewPrescriptionModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8">
-                  <div className="p-6 max-h-[80vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-6">
-                      <Typography variant="h5" weight="bold" className="text-gray-900">
-                        Create New Prescription
-                      </Typography>
-                      <button
-                        onClick={() => setShowNewPrescriptionModal(false)}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <Stack spacing={4}>
-                      {/* Medications (shown first and required) */}
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <label className="block text-sm font-medium text-gray-700">Medications *</label>
-                          <button
-                            onClick={addMedication}
-                            className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Add Medication
-                          </button>
-                        </div>
-                        <div className="space-y-3">
-                          {newPrescription.medications.map((med, index) => (
-                            <div key={index} className="p-3 border border-gray-200 rounded-lg">
-                              <div className="flex items-start justify-between mb-2">
-                                <span className="text-sm font-medium text-gray-700">Medication {index + 1}</span>
-                                {newPrescription.medications.length > 1 && (
-                                  <button
-                                    onClick={() => removeMedication(index)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  value={med.drug_name}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].drug_name = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  placeholder="Drug name"
-                                  className="col-span-2 px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                                <select
-                                  value={med.dosage_form || 'Tablet'}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].dosage_form = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm bg-white"
-                                >
-                                  <option value="Tablet">Tablet</option>
-                                  <option value="Capsule">Capsule</option>
-                                  <option value="Syrup">Syrup</option>
-                                  <option value="Drops">Drops</option>
-                                  <option value="Injection">Injection</option>
-                                  <option value="Cream">Cream</option>
-                                  <option value="Ointment">Ointment</option>
-                                  <option value="Gel">Gel</option>
-                                  <option value="Powder">Powder</option>
-                                  <option value="Inhaler">Inhaler</option>
-                                  <option value="Suspension">Suspension</option>
-                                  <option value="Other">Other</option>
-                                </select>
-                                <input
-                                  type="text"
-                                  value={med.dosage}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].dosage = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  placeholder="Dosage (e.g., 500mg)"
-                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                                <input
-                                  type="text"
-                                  value={med.interval || ''}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].interval = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  placeholder="Frequency (e.g., 3x daily)"
-                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                                <input
-                                  type="text"
-                                  value={med.period}
-                                  onChange={(e) => {
-                                    const newMeds = [...newPrescription.medications];
-                                    newMeds[index].period = e.target.value;
-                                    setNewPrescription({ ...newPrescription, medications: newMeds });
-                                  }}
-                                  placeholder="Duration (e.g., 7 days)"
-                                  className="px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <Flex gap={3} className="mt-6">
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowNewPrescriptionModal(false)}
-                          className="flex-1"
-                          disabled={isCreating}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="primary"
-                          onClick={handleCreatePrescription}
-                          className="flex-1"
-                          disabled={isCreating}
-                        >
-                          {isCreating ? 'Creating...' : 'Create Prescription'}
-                        </Button>
-                      </Flex>
-                    </Stack>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Create Prescription Modal - New Table Layout */}
+            <PrescriptionModal
+              isOpen={showNewPrescriptionModal}
+              onClose={() => setShowNewPrescriptionModal(false)}
+              patientId={patientId || ''}
+              patientName={patient?.patient_name || patientId || ''}
+              onSubmit={handleNewPrescriptionSubmit}
+              isSubmitting={isCreating}
+            />
 
             {/* Create Invoice Modal */}
             <CreateInvoiceModal

@@ -17,17 +17,23 @@ export const getStoredToken = (): string | null => {
   try {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     const expiry = localStorage.getItem(STORAGE_KEYS.SESSION_EXPIRY);
-    
+
     if (token && expiry) {
       const expiryTime = new Date(expiry);
       if (new Date() > expiryTime) {
-        // Token expired, clear storage
-        clearStoredToken();
+        // Token expired, clear ALL stored data to ensure clean state for re-login
+        // Inline the cleanup to avoid circular dependency
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.SESSION_EXPIRY);
+        localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_CLINIC);
+        localStorage.removeItem(STORAGE_KEYS.USER_CLINICS);
         return null;
       }
       return token;
     }
-    
+
     return token;
   } catch (error) {
     console.error('Error getting stored token:', error);
@@ -39,7 +45,7 @@ export const setStoredToken = (token: string, expiryHours: number = 24): void =>
   try {
     const expiryTime = new Date();
     expiryTime.setHours(expiryTime.getHours() + expiryHours);
-    
+
     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
     localStorage.setItem(STORAGE_KEYS.SESSION_EXPIRY, expiryTime.toISOString());
   } catch (error) {
@@ -89,6 +95,28 @@ export const clearAllStoredData = (): void => {
   clearStoredToken();
   clearStoredUserData();
   clearClinicData();
+  clearSessionCookies();
+};
+
+// Clear session cookies (for Frappe session management)
+export const clearSessionCookies = (): void => {
+  try {
+    // Get all cookies and clear them
+    const cookies = document.cookie.split(';');
+
+    for (const cookie of cookies) {
+      const cookieName = cookie.split('=')[0].trim();
+      // Clear the cookie by setting expiry to past date
+      // Also try with different paths and domains
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname}`;
+    }
+
+    console.log('Session cookies cleared');
+  } catch (error) {
+    console.error('Error clearing session cookies:', error);
+  }
 };
 
 // Check if user is authenticated (has valid token)

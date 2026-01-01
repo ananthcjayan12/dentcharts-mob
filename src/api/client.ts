@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { getStoredToken, clearStoredToken } from '../utils/storage';
+import { getStoredToken, clearStoredToken, clearAllStoredData } from '../utils/storage';
 
 // API Response wrapper interface
 export interface ApiResponse<T = any> {
@@ -315,9 +315,10 @@ export const apiClient = new ApiClient();
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: '/api/method/mob_clinic.mob_clinic.api.auth.mobile_login',
+    // Use Frappe's standard login endpoint - it handles stale sessions correctly
+    LOGIN: '/api/method/login',
     REGISTER: '/api/method/mob_clinic.mob_clinic.api.auth.mobile_register',
-    LOGOUT: '/api/method/mob_clinic.mob_clinic.api.auth.mobile_logout',
+    LOGOUT: '/api/method/logout',
     PROFILE: '/api/method/mob_clinic.mob_clinic.api.auth.get_practitioner_profile',
     UPDATE_PROFILE: '/api/method/mob_clinic.mob_clinic.api.auth.update_practitioner_profile',
   },

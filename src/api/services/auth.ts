@@ -10,58 +10,70 @@ import { setStoredToken, setStoredUserData, clearAllStoredData, setActiveClinic,
 
 export class AuthService {
   /**
-   * Login user with email and password
+   * Login user with email and password using Frappe's standard login
+   * This endpoint correctly handles stale session cookies
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    try {
-      const response = await apiClient.post<any>(
-        API_ENDPOINTS.AUTH.LOGIN,
-        credentials
-      );
+    // Clear any stale data before login attempt
+    clearAllStoredData();
 
-      // Handle Frappe's nested response structure
-      // Response structure: { message: { message: "Logged In", user: {...}, ... }, data: {...} }
-      if (response.data && typeof response.data === 'object') {
-        const loginData: any = response.data;
-        
-        if (loginData.message === 'Logged In' && loginData.user) {
-          // Clear old user's data first to prevent clinic data from persisting
-          clearAllStoredData();
-          
-          // Store session data
-          const userData = {
-            email: loginData.user.email || loginData.user.id,
-            full_name: loginData.full_name || loginData.user.name,
-            mobile: loginData.user.phone,
-            practitioner_id: loginData.user.clinic?.practitioner_id || loginData.user.id,
-            clinic: loginData.user.clinic,
-            clinics: loginData.user.clinics || [],
-            active_clinic: loginData.user.active_clinic,
-            primary_clinic: loginData.user.primary_clinic,
-          };
-          
-          setStoredUserData(userData);
-          
-          // Store clinic data separately for easy access
-          if (loginData.user.clinics && loginData.user.clinics.length > 0) {
-            setUserClinics(loginData.user.clinics);
-          }
-          if (loginData.user.active_clinic) {
-            setActiveClinic(loginData.user.active_clinic);
-          }
-          
-          return {
-            message: 'Logged In',
-            user: userData,
-          };
+    // Use Frappe's standard login - it handles session cleanup automatically
+    const response = await apiClient.post<any>(
+      API_ENDPOINTS.AUTH.LOGIN,
+      credentials
+    );
+
+    // Frappe standard login returns { message: "Logged In", full_name: "...", home_page: "..." }
+    const loginData = response.data || response;
+
+    if (loginData.message === 'Logged In') {
+      // Fetch profile to get full user/clinic data
+      try {
+        const profileResponse = await apiClient.get<any>(API_ENDPOINTS.AUTH.PROFILE);
+        const profile = profileResponse.data || {};
+
+        const userData = {
+          email: profile.email || credentials.usr,
+          full_name: loginData.full_name || profile.name,
+          mobile: profile.phone,
+          practitioner_id: profile.id,
+          clinic: profile.clinic,
+          clinics: profile.clinics || [],
+          active_clinic: profile.active_clinic,
+          primary_clinic: profile.primary_clinic,
+        };
+
+        setStoredUserData(userData);
+
+        if (userData.clinics?.length > 0) {
+          setUserClinics(userData.clinics);
         }
-      }
+        if (userData.active_clinic) {
+          setActiveClinic(userData.active_clinic);
+        }
 
-      throw new Error('Login failed');
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+        return {
+          message: 'Logged In',
+          user: userData,
+        };
+      } catch (profileError) {
+        // If profile fetch fails, still return success with basic info
+        const basicUserData = {
+          email: credentials.usr,
+          full_name: loginData.full_name || credentials.usr,
+          mobile: '',
+          practitioner_id: '',
+          clinics: [],
+        };
+        setStoredUserData(basicUserData);
+        return {
+          message: 'Logged In',
+          user: basicUserData,
+        };
+      }
     }
+
+    throw new Error('Login failed');
   }
 
   /**
@@ -184,14 +196,14 @@ export class AuthService {
       if (response.data && response.data.active_clinic) {
         // Update stored active clinic
         setActiveClinic(response.data.active_clinic);
-        
+
         // Update user data with new active clinic
         const userData = this.getCurrentUser();
         if (userData) {
           userData.active_clinic = response.data.active_clinic;
           setStoredUserData(userData);
         }
-        
+
         return response.data;
       }
 

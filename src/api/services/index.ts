@@ -9,6 +9,8 @@ export { fileUploadService } from './fileUpload';
 export { dentalChartService } from './dentalChart';
 export { practitionerService } from './practitioner';
 export { dashboardService } from './dashboard';
+export { publicService } from './public';
+export { medicineService } from './medicine';
 
 // Re-export types for convenience
 export * from '../types';

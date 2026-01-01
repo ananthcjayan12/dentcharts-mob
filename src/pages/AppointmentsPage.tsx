@@ -393,9 +393,10 @@ const AppointmentsPage: React.FC = () => {
       return;
     }
 
-    const patientIdentifier = invoiceModalAppointment.patient || invoiceModalAppointment.patient_name;
-    if (!patientIdentifier) {
-      toast.error('Appointment has no patient');
+    // Always use the Patient doctype ID (appointment.patient), not patient_name
+    const patientId = invoiceModalAppointment.patient;
+    if (!patientId) {
+      toast.error('Appointment has no patient ID');
       return;
     }
 
@@ -407,7 +408,7 @@ const AppointmentsPage: React.FC = () => {
     }
 
     const invoiceRequest: any = {
-      patient_id: patientIdentifier,
+      patient_id: patientId,
       appointment_id: invoiceModalAppointment.name || invoiceModalAppointment.appointment_id,
       items: items.map(({ id, ...rest }: any) => ({ ...rest, qty: Number(rest.qty) || 1, rate: Number(rest.rate) || 0 })),
       posting_date: data.date,
@@ -437,11 +438,12 @@ const AppointmentsPage: React.FC = () => {
     setPendingAmount(null);
 
     if (appointment) {
-      const patientIdentifier = appointment.patient || appointment.patient_name;
-      if (patientIdentifier) {
-        setPaymentPatientId(patientIdentifier);
+      // Always use the Patient doctype ID (appointment.patient), not patient_name
+      const patientId = appointment.patient;
+      if (patientId) {
+        setPaymentPatientId(patientId);
         try {
-          const summary = await paymentService.getPaymentSummary(patientIdentifier);
+          const summary = await paymentService.getPaymentSummary(patientId);
           // Use pending_invoices total if available or sum unpaid invoices
           const pendingInvoices = (summary && (summary.pending_invoices || []));
           if (pendingInvoices && pendingInvoices.length > 0) {
@@ -471,7 +473,30 @@ const AppointmentsPage: React.FC = () => {
       return;
     }
 
-    // If invoice id present, record payment for that invoice
+    // If invoice id present and amount fits within that invoice, record payment for that invoice
+    if (paymentInvoiceId && paymentPatientId) {
+      // Check if amount exceeds pending (which means user wants to pay across multiple invoices)
+      if (pendingAmount !== null && amount > pendingAmount) {
+        toast.error(`Payment amount cannot exceed total pending (${pendingAmount})`);
+        return;
+      }
+
+      // Use FIFO payment for patient's pending invoices (handles both single and multi-invoice scenarios)
+      try {
+        const res = await paymentService.payPatientPendingInvoices(paymentPatientId, amount, paymentMode, paymentDate, paymentReference || undefined, paymentDate);
+        toast.success('Payment processed successfully');
+        setShowPaymentModal(false);
+        setPaymentInvoiceId(null);
+        setPaymentPatientId(null);
+        setPendingAmount(null);
+      } catch (err: any) {
+        console.error('Pay pending invoices failed', err);
+        toast.error(err?.message || 'Failed to process payment');
+      }
+      return;
+    }
+
+    // If only invoice id present (without patient context), use direct payment
     if (paymentInvoiceId) {
       try {
         await recordPayment({
@@ -1089,12 +1114,24 @@ const AppointmentsPage: React.FC = () => {
                 </ActionDropdown>
               </div>
             ) : (
-              <button
-                onClick={(e) => { e.stopPropagation(); openCreateInvoiceModal(appointment); }}
-                className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 border border-blue-200 flex items-center gap-1"
-              >
-                Create Invoice
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); openCreateInvoiceModal(appointment); }}
+                  className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 border border-blue-200 flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" /></svg>
+                  <span className="hidden sm:inline">Create Invoice</span>
+                  <span className="sm:hidden">Invoice</span>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); openPaymentModal(undefined, appointment); }}
+                  className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 rounded hover:bg-green-100 border border-green-200 flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12" /></svg>
+                  <span className="hidden sm:inline">Pay Pending</span>
+                  <span className="sm:hidden">Pay</span>
+                </button>
+              </div>
             )}
           </>
         )}
