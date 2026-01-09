@@ -1,0 +1,19 @@
+name: Deploy to Coolify
+
+on:
+  push:
+    branches:
+      - br-v1
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify Deployment
+        run: |
+          echo "🚀 Triggering Coolify deployment for UI..."
+          curl --request GET \
+            --url "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_UI_UUID }}&force=false" \
+            --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
+          echo "✅ Deployment triggered!"
