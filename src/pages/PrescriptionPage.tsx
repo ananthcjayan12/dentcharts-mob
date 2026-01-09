@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 // Icons removed as they are unused (replaced by SVGs)
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
-import { printPrescription, PrescriptionPrintData } from '../utils/prescriptionTemplates';
+import { printPrescription, PrescriptionPrintData, downloadPrescriptionPDF } from '../utils/prescriptionTemplates';
 import { printHTML } from '../utils/printUtils';
 import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
 import { PrescriptionMedicine } from '../api/services/medicine';
+import { prescriptionService } from '../api/services/prescription';
 import { useClinic } from '../contexts/ClinicContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -1676,6 +1677,79 @@ const PrescriptionPage: React.FC = () => {
                                           {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
                                         </h4>
                                         <div className="flex items-center space-x-2">
+                                          <button
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+
+                                              let pdfDisplayData = displayData;
+
+                                              // Fetch full details if medications are missing
+                                              if (!pdfDisplayData.medications || pdfDisplayData.medications.length === 0) {
+                                                try {
+                                                  toast.loading('Preparing PDF...', { id: 'pdf-prep' });
+                                                  const fullData = await prescriptionService.getPrescription(recordId);
+                                                  pdfDisplayData = fullData;
+                                                  toast.dismiss('pdf-prep');
+                                                } catch (err) {
+                                                  console.error("Failed to fetch prescription details for PDF", err);
+                                                  toast.error("Failed to load full prescription details", { id: 'pdf-prep' });
+                                                  return;
+                                                }
+                                              }
+
+                                              const medications = (pdfDisplayData.medications || []).map((m: any) => ({
+                                                medicine_name: m.drug_name || m.medicine_name,
+                                                strength: m.dosage || '',
+                                                frequency: m.frequency || m.interval || '',
+                                                days: m.duration || m.period || '',
+                                                condition: m.instruction || m.comment || '',
+                                                comment: m.instructions || m.comment,
+                                                morning: 0, lunch: 0, evening: 0, night: 0
+                                              }));
+                                              // Parse 1-0-1 format
+                                              medications.forEach((m: any) => {
+                                                if (m.frequency && /^\d+-\d+-\d+(-\d+)?$/.test(m.frequency)) {
+                                                  const parts = m.frequency.split('-');
+                                                  m.morning = parseInt(parts[0]) || 0;
+                                                  m.lunch = parseInt(parts[1]) || 0;
+                                                  // If 3 parts: Mor-Aft-Night (standard 1-0-1 is Morn-Aft-Night usually)
+                                                  if (parts.length === 3) {
+                                                    m.evening = parseInt(parts[2]) || 0;
+                                                    m.night = m.evening; // Template uses evening/night logic
+                                                  } else if (parts.length === 4) {
+                                                    m.evening = parseInt(parts[2]) || 0;
+                                                    m.night = parseInt(parts[3]) || 0;
+                                                  }
+                                                }
+                                              });
+
+                                              const data: PrescriptionPrintData = {
+                                                patientName: pdfDisplayData.patient_name || patient?.patient_name || 'Patient',
+                                                patientAge: patient?.age ? String(patient.age) : (pdfDisplayData.age ? String(pdfDisplayData.age) : ''),
+                                                patientGender: patient?.sex || pdfDisplayData.gender || '',
+                                                patientId: pdfDisplayData.patient || pdfDisplayData.patient_id || patient?.patient_id || patient?.name || patientId,
+                                                doctorName: pdfDisplayData.practitioner_name || (user as any)?.full_name || 'Doctor', // User might need casting if strict
+                                                clinicName: profile?.basic_info?.clinic_name || 'Dental Clinic',
+                                                doctorRegNo: profile?.basic_info?.registration_number || '',
+                                                doctorQualification: '', // Removed default static value
+                                                clinicAddress: profile?.address ? `${profile.address.address_line1 || ''}, ${profile.address.city || ''}` : '',
+                                                clinicPhone: profile?.basic_info?.phone,
+                                                clinicEmail: profile?.basic_info?.email,
+                                                clinicLogo: profile?.basic_info?.logo_url,
+                                                prescriptionDate: new Date(pdfDisplayData.encounter_date || pdfDisplayData.posting_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
+                                                diagnosis: pdfDisplayData.diagnosis || '',
+                                                notes: pdfDisplayData.notes || '',
+                                                medications: medications
+                                              };
+                                              downloadPrescriptionPDF(data);
+                                            }}
+                                            className="text-gray-500 hover:text-gray-700 p-1"
+                                            title="Download PDF"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                          </button>
                                           <button
                                             onClick={() => handleDeletePrescription(recordId)}
                                             className="text-red-500 hover:text-red-700 p-1"
