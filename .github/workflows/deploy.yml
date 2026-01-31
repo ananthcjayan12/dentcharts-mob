@@ -1,19 +1,50 @@
-name: Deploy to Coolify
+name: Deploy to Cloudflare Pages
 
 on:
   push:
     branches:
       - br-v1
       - main
+      - prod
+  workflow_dispatch:
+
+env:
+  PROJECT_NAME: dent-cue360-mob
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Pages
+    
     steps:
-      - name: Trigger Coolify Deployment
-        run: |
-          echo "🚀 Triggering Coolify deployment for UI..."
-          curl --request GET \
-            --url "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_UI_UUID }}&force=false" \
-            --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
-          echo "✅ Deployment triggered!"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          REACT_APP_API_BASE_URL: ${{ secrets.REACT_APP_API_BASE_URL }}
+
+      - name: Create Cloudflare Pages project if not exists
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ env.PROJECT_NAME }} --production-branch=main
+        continue-on-error: true
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy build --project-name=${{ env.PROJECT_NAME }} --branch=${{ github.ref_name }}
