@@ -33,6 +33,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          CI: false
           # Uses STAGING_API_BASE_URL secret for staging branch, otherwise falls back to production secret
           REACT_APP_API_BASE_URL: ${{ github.ref_name == 'staging' && secrets.STAGING_API_BASE_URL || secrets.REACT_APP_API_BASE_URL }}
 
