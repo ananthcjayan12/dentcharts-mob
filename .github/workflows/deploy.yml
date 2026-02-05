@@ -6,6 +6,7 @@ on:
       - br-v1
       - main
       - prod
+      - staging
   workflow_dispatch:
 
 env:
@@ -32,7 +33,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          REACT_APP_API_BASE_URL: ${{ secrets.REACT_APP_API_BASE_URL }}
+          # Uses STAGING_API_BASE_URL secret for staging branch, otherwise falls back to production secret
+          REACT_APP_API_BASE_URL: ${{ github.ref_name == 'staging' && secrets.STAGING_API_BASE_URL || secrets.REACT_APP_API_BASE_URL }}
 
       - name: Create Cloudflare Pages project if not exists
         uses: cloudflare/wrangler-action@v3
