@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useClinicProfile } from '../../hooks/useClinicProfile';
 import { ClinicProfile } from '../../api/services/clinicProfile';
@@ -9,12 +9,25 @@ import Card from '../common/Card';
 const ProfileTab: React.FC = () => {
     const { profile, updateProfile, uploadLogo, isUploadingLogo } = useClinicProfile();
 
-    const { register: registerBasic, handleSubmit: handleSubmitBasic, formState: { errors: basicErrors, isSubmitting: isBasicSubmitting } } = useForm({
+    const formatTimeForInput = (value?: string) => {
+        if (!value) return value;
+        const parts = value.split(':');
+        if (parts.length < 2) return value;
+        const hours = parts[0].padStart(2, '0');
+        const minutes = parts[1].padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
+    const { register: registerBasic, handleSubmit: handleSubmitBasic, formState: { errors: basicErrors, isSubmitting: isBasicSubmitting }, reset: resetBasic } = useForm({
         defaultValues: profile?.basic_info || {}
     });
 
-    const { register: registerAddress, handleSubmit: handleSubmitAddress, formState: { errors: addressErrors, isSubmitting: isAddressSubmitting } } = useForm({
+    const { register: registerAddress, handleSubmit: handleSubmitAddress, formState: { errors: addressErrors, isSubmitting: isAddressSubmitting }, reset: resetAddress } = useForm({
         defaultValues: profile?.address || {}
+    });
+
+    const { register: registerAdditional, handleSubmit: handleSubmitAdditional, formState: { errors: additionalErrors, isSubmitting: isAdditionalSubmitting }, reset: resetAdditional } = useForm({
+        defaultValues: profile?.additional || {}
     });
 
     const onBasicSubmit = async (data: any) => {
@@ -25,11 +38,31 @@ const ProfileTab: React.FC = () => {
         await updateProfile('address', data);
     };
 
+    const onAdditionalSubmit = async (data: any) => {
+        await updateProfile('additional', data);
+    };
+
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             await uploadLogo(e.target.files[0]);
         }
     };
+
+    useEffect(() => {
+        if (profile?.basic_info) {
+            resetBasic(profile.basic_info);
+        }
+        if (profile?.address) {
+            resetAddress(profile.address);
+        }
+        if (profile?.additional) {
+            resetAdditional({
+                ...profile.additional,
+                start_time: formatTimeForInput(profile.additional.start_time),
+                end_time: formatTimeForInput(profile.additional.end_time)
+            });
+        }
+    }, [profile, resetBasic, resetAddress, resetAdditional]);
 
     if (!profile) return <div>Loading...</div>;
 
@@ -89,6 +122,37 @@ const ProfileTab: React.FC = () => {
                         </div>
                     </form>
                 </div>
+            </Card>
+
+            <Card title="⏰ Appointment Settings">
+                <form onSubmit={handleSubmitAdditional(onAdditionalSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputField
+                            label="Slot Size (Minutes)"
+                            type="number"
+                            {...registerAdditional('appointment_slot_duration')}
+                            placeholder="30"
+                            error={additionalErrors.appointment_slot_duration?.message as string}
+                        />
+                        <InputField
+                            label="Start Time"
+                            type="time"
+                            {...registerAdditional('start_time')}
+                            placeholder="09:00"
+                            error={additionalErrors.start_time?.message as string}
+                        />
+                        <InputField
+                            label="End Time"
+                            type="time"
+                            {...registerAdditional('end_time')}
+                            placeholder="17:00"
+                            error={additionalErrors.end_time?.message as string}
+                        />
+                    </div>
+                    <div className="flex justify-end">
+                        <Button type="submit" isLoading={isAdditionalSubmitting}>Save Appointment Settings</Button>
+                    </div>
+                </form>
             </Card>
 
             <Card title="📍 Address">

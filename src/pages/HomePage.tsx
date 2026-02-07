@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Container, Grid, Stack, Flex, Card, Button, Typography, Badge, Avatar, Divider, InputField, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
-import { useAppointmentsDashboard } from '../hooks/useAppointments';
+import { useAppointmentsDashboard, useUpdateAppointment } from '../hooks/useAppointments';
 import { usePatientStats, usePatientsForSelect } from '../hooks/usePatients';
 import { ChevronRightIcon, CalendarIcon, UserIcon, MagnifyingGlassIcon, PlusIcon, UserGroupIcon, ClockIcon, CurrencyDollarIcon, CalendarDaysIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 
@@ -15,6 +15,7 @@ const HomePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [openTypeMenuId, setOpenTypeMenuId] = useState<string | null>(null);
 
   // Real API data
   const {
@@ -27,6 +28,8 @@ const HomePage: React.FC = () => {
     isLoading: appointmentsLoading,
     refetchTodays,
   } = useAppointmentsDashboard();
+
+  const { mutate: updateAppointment } = useUpdateAppointment();
 
   const {
     data: patientStats,
@@ -73,6 +76,11 @@ const HomePage: React.FC = () => {
     setShowSearchResults(false);
     setSearchQuery('');
     navigate(`/prescriptions/${encodeURIComponent(patientId)}`);
+  };
+
+  const handleAppointmentTypeSelect = (appointmentId: string, type: 'Booking' | 'Walk In') => {
+    updateAppointment({ appointment_id: appointmentId, appointment_type: type });
+    setOpenTypeMenuId(null);
   };
 
   // Filter appointments based on search query
@@ -304,6 +312,11 @@ const HomePage: React.FC = () => {
                           if (pid) navigate(`/prescriptions/${encodeURIComponent(pid)}`);
                         }}
                       >
+                        {(() => {
+                          const appointmentId = (apt.name || apt.appointment_id || '') as string;
+                          const displayType = (apt.appointment_type || 'Booking') as 'Booking' | 'Walk In';
+
+                          return (
                         <Flex align="center" justify="between">
                           <Flex gap={4} align="center">
                             <div className="flex flex-col items-center justify-center w-12 h-12 bg-gray-50 rounded-lg text-gray-900 font-medium text-xs border border-gray-200">
@@ -318,6 +331,40 @@ const HomePage: React.FC = () => {
                                 <span>Consultation</span>
                                 <span>•</span>
                                 <span>{apt.duration || 30} min</span>
+                                <span>•</span>
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setOpenTypeMenuId(prev => (prev === appointmentId ? null : appointmentId));
+                                    }}
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100"
+                                  >
+                                    {displayType}
+                                  </button>
+                                  {openTypeMenuId === appointmentId && (
+                                    <div
+                                      className="absolute z-10 mt-2 right-0 w-28 bg-white border border-gray-200 rounded-lg shadow-lg"
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAppointmentTypeSelect(appointmentId, 'Booking')}
+                                        className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+                                      >
+                                        Booking
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAppointmentTypeSelect(appointmentId, 'Walk In')}
+                                        className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+                                      >
+                                        Walk In
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </Flex>
                             </Stack>
                           </Flex>
@@ -333,6 +380,8 @@ const HomePage: React.FC = () => {
                             {apt.status}
                           </Badge>
                         </Flex>
+                          );
+                        })()}
                       </Card>
                     ))}
                   </Stack>

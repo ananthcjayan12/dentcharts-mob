@@ -179,6 +179,7 @@ export interface CreateAppointmentRequest {
   notes?: string;
   chief_complaint?: string;
   practitioner?: string;
+  appointment_type?: 'Booking' | 'Walk In';
 }
 
 export interface AppointmentResponse {
