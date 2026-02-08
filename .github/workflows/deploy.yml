@@ -6,6 +6,7 @@ on:
       - br-v1
       - main
       - prod
+      - stg
   workflow_dispatch:
 
 env:
