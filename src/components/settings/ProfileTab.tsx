@@ -68,7 +68,7 @@ const ProfileTab: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <Card title="🏥 Basic Information">
+            <Card title="🏥 Basic Infssormation">
                 <div className="flex flex-col md:flex-row gap-6 mb-6">
                     <div className="flex flex-col items-center space-y-2">
                         <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
