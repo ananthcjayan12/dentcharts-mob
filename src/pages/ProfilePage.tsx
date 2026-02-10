@@ -8,19 +8,18 @@ import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
 import { useProfile, useUpdateProfile, useLogout } from '../hooks/useAuth';
 import { PractitionerProfile } from '../api/types';
-import toast from 'react-hot-toast';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('profile');
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // API hooks
   const { data: profile, isLoading: profileLoading, error: profileError } = useProfile();
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutate: logout } = useLogout();
-  
+
   // Local state for editing
   const [editFormData, setEditFormData] = useState<Partial<PractitionerProfile>>({});
 
@@ -43,7 +42,6 @@ const ProfilePage: React.FC = () => {
 
   const handleEdit = () => {
     setIsEditing(true);
-    // Initialize edit form with current profile data
     if (profile) {
       setEditFormData({ ...profile });
     }
@@ -74,245 +72,251 @@ const ProfilePage: React.FC = () => {
     navigate('/login');
   };
 
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
   return (
     <MobileContainer>
-      <div className="min-h-screen bg-gradient-to-b from-primary-300 to-green-200 relative">
-        <div className="w-16 h-1.5 bg-primary-500 mx-auto pt-6 rounded-full"></div>
-        
-        <TopBar 
-          title="Doctor Profile" 
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <TopBar
+          title="Profile"
           onBack={() => navigate('/home')}
-          showMenu
+          showMenu={false}
         />
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto pb-20" style={{ height: 'calc(100vh - 60px)' }}>
-          <div className="px-6 space-y-6">
-            {/* Profile Header */}
-            {profileLoading ? (
-              <div className="text-center animate-pulse">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-200"></div>
-                <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div>
-                </div>
-                <div className="flex justify-center space-x-4 mt-4">
-                  <div className="h-8 bg-gray-200 rounded w-20"></div>
-                  <div className="h-8 bg-gray-200 rounded w-24"></div>
-                </div>
+        <div className="flex-1 overflow-y-auto pb-20">
+          {/* Profile Header Background */}
+          <div className="bg-white border-b border-gray-200 pb-6 pt-4 px-4 mb-4">
+            <div className="flex flex-col items-center">
+              <div className="w-24 h-24 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 text-3xl font-bold mb-3 shadow-inner ring-4 ring-primary-50">
+                {profile?.practitioner_name?.charAt(0) || profile?.name?.charAt(0) || 'D'}
               </div>
-            ) : profileError ? (
-              <div className="text-center py-8">
-                <p className="text-red-600 mb-4">Error loading profile</p>
-                <Button onClick={() => window.location.reload()}>
-                  Retry
-                </Button>
-              </div>
-            ) : profile ? (
-              <div className="text-center">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden shadow-lg border-4 border-white bg-primary-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-2xl">
-                    {profile.practitioner_name?.charAt(0) || profile.name?.charAt(0) || 'D'}
-                  </span>
-                </div>
-                
-                <h1 className="text-lg font-bold text-primary-600 font-lato mb-2">
-                  {profile.practitioner_name || profile.name}
-                </h1>
-                
-                <div className="text-sm text-black font-lato mb-2">
-                  <p className="font-semibold">Dental Practitioner</p>
-                  {profile.years_of_experience && (
-                    <p className="text-gray-600">{profile.years_of_experience} years Experience</p>
-                  )}
-                  {profile.consultation_fee && (
-                    <p className="text-green-600">₹{profile.consultation_fee} Consultation Fee</p>
-                  )}
-                </div>
+              <h1 className="text-xl font-bold text-gray-900">
+                {profile?.practitioner_name || profile?.name || 'Practitioner'}
+              </h1>
+              <p className="text-sm text-gray-500 font-medium">Dental Practitioner</p>
 
-                <div className="flex justify-center space-x-4">
-                  <Button 
-                    size="sm" 
-                    variant="primary"
-                    onClick={handleEdit}
-                    disabled={isUpdating}
-                  >
-                    Edit Profile
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="secondary"
-                    onClick={() => navigate('/appointments')}
-                  >
-                    View Schedule
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Personal Info */}
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-bold text-gray-700 font-lato">
-                  Personal Information
-                </h3>
-                <button 
+              <div className="flex gap-3 mt-4 w-full max-w-xs">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 justify-center"
                   onClick={handleEdit}
-                  className="text-blue-500 hover:text-blue-700"
                   disabled={isUpdating}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
+                  Edit Profile
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 justify-center text-red-600 hover:bg-red-50 border-gray-200"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </Button>
               </div>
-              
-              {isEditing ? (
-                <div className="space-y-3">
+            </div>
+
+            {/* Stats / Pills */}
+            <div className="flex justify-center flex-wrap gap-2 mt-4">
+              {profile?.years_of_experience && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {profile.years_of_experience} Yrs Exp
+                </span>
+              )}
+              {profile?.consultation_fee && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  ₹{profile.consultation_fee} Fee
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="px-4 space-y-4">
+            {profileError && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center mb-4">
+                Unable to load latest profile data.
+              </div>
+            )}
+
+            {isEditing ? (
+              <Card title="Edit Details">
+                <div className="space-y-4">
                   <InputField
-                    label="Practitioner Name"
+                    label="Full Name"
                     value={editFormData.practitioner_name || ''}
                     onChange={(e) => updateFormField('practitioner_name', e.target.value)}
                   />
                   <InputField
-                    label="Mobile"
+                    label="Mobile Number"
                     value={editFormData.mobile || ''}
                     onChange={(e) => updateFormField('mobile', e.target.value)}
                   />
                   <InputField
-                    label="Email"
+                    label="Email Address"
                     value={editFormData.email || ''}
                     onChange={(e) => updateFormField('email', e.target.value)}
                   />
-                  <InputField
-                    label="Years of Experience"
-                    type="number"
-                    value={editFormData.years_of_experience?.toString() || ''}
-                    onChange={(e) => updateFormField('years_of_experience', parseInt(e.target.value) || 0)}
-                  />
-                  <InputField
-                    label="Consultation Fee"
-                    type="number"
-                    value={editFormData.consultation_fee?.toString() || ''}
-                    onChange={(e) => updateFormField('consultation_fee', parseFloat(e.target.value) || 0)}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputField
+                      label="Experience (Yrs)"
+                      type="number"
+                      value={editFormData.years_of_experience?.toString() || ''}
+                      onChange={(e) => updateFormField('years_of_experience', parseInt(e.target.value) || 0)}
+                    />
+                    <InputField
+                      label="Fee (₹)"
+                      type="number"
+                      value={editFormData.consultation_fee?.toString() || ''}
+                      onChange={(e) => updateFormField('consultation_fee', parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                      Clinic Description
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Time
+                    </label>
+                    <input
+                      type="time"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                      value={editFormData.start_time || ''}
+                      onChange={(e) => updateFormField('start_time', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Time
+                    </label>
+                    <input
+                      type="time"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                      value={editFormData.end_time || ''}
+                      onChange={(e) => updateFormField('end_time', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      About
                     </label>
                     <textarea
                       value={editFormData.clinic_description || ''}
                       onChange={(e) => updateFormField('clinic_description', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                       rows={3}
-                      placeholder="Describe your clinic and services..."
+                      placeholder="Short bio..."
                     />
                   </div>
-                  
-                  <div className="flex space-x-3 pt-4">
-                    <Button 
-                      variant="outline" 
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="outline"
                       onClick={handleCancel}
                       className="flex-1"
                       disabled={isUpdating}
                     >
                       Cancel
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleSave}
                       className="flex-1"
-                      disabled={isUpdating}
+                      isLoading={isUpdating}
                     >
-                      {isUpdating ? 'Saving...' : 'Save'}
+                      Save Changes
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-bold text-gray-700 font-lato">Name:</span>
-                    <span className="text-sm text-gray-600 font-lato">{profile?.practitioner_name || 'Not set'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-bold text-gray-700 font-lato">Mobile:</span>
-                    <span className="text-sm text-gray-600 font-lato">{profile?.mobile || 'Not set'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-bold text-gray-700 font-lato">Email:</span>
-                    <span className="text-sm text-gray-600 font-lato text-right">{profile?.email || 'Not set'}</span>
-                  </div>
-                  {profile?.years_of_experience && (
-                    <div className="flex justify-between">
-                      <span className="text-sm font-bold text-gray-700 font-lato">Experience:</span>
-                      <span className="text-sm text-gray-600 font-lato">{profile.years_of_experience} years</span>
+              </Card>
+            ) : (
+              <>
+                {/* Contact Info Card */}
+                <Card>
+                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                    <div className="p-1.5 bg-blue-50 rounded text-blue-600">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
                     </div>
-                  )}
-                  {profile?.consultation_fee && (
-                    <div className="flex justify-between">
-                      <span className="text-sm font-bold text-gray-700 font-lato">Consultation Fee:</span>
-                      <span className="text-sm text-gray-600 font-lato">₹{profile.consultation_fee}</span>
+                    <h3 className="text-sm font-bold text-gray-900">Contact Information</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-sm text-gray-500">Mobile</span>
+                      <span className="text-sm font-medium text-gray-900">{profile?.mobile || '-'}</span>
                     </div>
-                  )}
-                  {profile?.clinic_description && (
-                    <div>
-                      <span className="text-sm font-bold text-gray-700 font-lato">Clinic Description:</span>
-                      <p className="text-sm text-gray-600 font-lato mt-1">{profile.clinic_description}</p>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-sm text-gray-500">Email</span>
+                      <span className="text-sm font-medium text-gray-900">{profile?.email || '-'}</span>
                     </div>
-                  )}
-                </div>
-              )}
-            </Card>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-sm text-gray-500">Working Hours</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {profile?.start_time ? profile.start_time.substring(0, 5) : '09:00'} - {profile?.end_time ? profile.end_time.substring(0, 5) : '17:00'}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
 
-            {/* Quick Actions */}
-            <Card>
-              <h3 className="text-base font-bold text-gray-700 font-lato mb-4">
-                Quick Actions
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/appointments')}
-                  className="flex flex-col items-center py-4"
-                >
-                  <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-xs">Appointments</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/patients')}
-                  className="flex flex-col items-center py-4"
-                >
-                  <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                  </svg>
-                  <span className="text-xs">Patients</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/invoice')}
-                  className="flex flex-col items-center py-4"
-                >
-                  <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="text-xs">Invoice</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleLogout}
-                  className="flex flex-col items-center py-4 text-red-600 border-red-300 hover:bg-red-50"
-                >
-                  <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  <span className="text-xs">Logout</span>
-                </Button>
-              </div>
-            </Card>
+                {/* About Card */}
+                {profile?.clinic_description && (
+                  <Card>
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                      <div className="p-1.5 bg-indigo-50 rounded text-indigo-600">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-sm font-bold text-gray-900">About</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {profile.clinic_description}
+                    </p>
+                  </Card>
+                )}
+
+                {/* Settings Links */}
+                <div className="space-y-3 pt-2">
+                  <button
+                    onClick={() => navigate('/settings/profile')}
+                    className="w-full bg-white p-4 rounded-lg border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-gray-900">Clinic Settings</span>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={() => navigate('/appointments')}
+                    className="w-full bg-white p-4 rounded-lg border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-gray-900">Manage Appointments</span>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
