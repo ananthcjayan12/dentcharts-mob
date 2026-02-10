@@ -21,6 +21,8 @@ import ToastProvider from './components/providers/ToastProvider';
 import FinancialDashboardPage from './pages/FinancialDashboardPage';
 import PublicClinicPage from './pages/PublicClinicPage';
 
+import ProtectedRoute from './components/ProtectedRoute';
+
 const AppRoutes = () => {
   const location = useLocation();
   const state = location.state as { backgroundLocation?: Location } | null;
@@ -29,27 +31,30 @@ const AppRoutes = () => {
   return (
     <>
       <Routes location={background}>
+        {/* Public routes */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="/public/clinic/:clinicId" element={<PublicClinicPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/dashboard" element={<HomePage />} /> {/* Alias for home */}
-        <Route path="/financial-dashboard" element={<FinancialDashboardPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/prescriptions/:patientId" element={<PrescriptionPage />} />
-        <Route path="/appointments" element={<AppointmentsPage />} />
-        <Route path="/appointments/new" element={<NewAppointmentPage />} />
-        <Route path="/patients" element={<PatientsPage />} />
-        <Route path="/patients/new" element={<NewPatientPage />} />
-        <Route path="/invoice" element={<InvoicePage />} />
-        <Route path="/invoices" element={<InvoicesPage />} />
-        <Route path="/settings/*" element={<SettingsPage />} />
+
+        {/* Protected routes */}
+        <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+        <Route path="/financial-dashboard" element={<ProtectedRoute><FinancialDashboardPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/prescriptions/:patientId" element={<ProtectedRoute><PrescriptionPage /></ProtectedRoute>} />
+        <Route path="/appointments" element={<ProtectedRoute><AppointmentsPage /></ProtectedRoute>} />
+        <Route path="/appointments/new" element={<ProtectedRoute><NewAppointmentPage /></ProtectedRoute>} />
+        <Route path="/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
+        <Route path="/patients/new" element={<ProtectedRoute><NewPatientPage /></ProtectedRoute>} />
+        <Route path="/invoice" element={<ProtectedRoute><InvoicePage /></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute><InvoicesPage /></ProtectedRoute>} />
+        <Route path="/settings/*" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       </Routes>
 
       {state?.backgroundLocation && (
         <Routes>
-          <Route path="/appointments/new" element={<NewAppointmentPage />} />
+          <Route path="/appointments/new" element={<ProtectedRoute><NewAppointmentPage /></ProtectedRoute>} />
         </Routes>
       )}
     </>

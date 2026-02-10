@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Container, Stack, Card, Typography, InputField, Button, Divider } from '../components';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
+  const location = useLocation();
+  const { login, isLoading, user } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Redirect already-authenticated users away from login page
+  useEffect(() => {
+    if (user) {
+      navigate('/home', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Get the intended destination from ProtectedRoute's redirect state
+  const from = (location.state as any)?.from?.pathname || '/home';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,7 +45,7 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(formData.email, formData.password);
-      navigate('/home');
+      navigate(from, { replace: true });
     } catch (error: any) {
       setErrors({ general: error?.message || 'Login failed. Please check your credentials.' });
     }
