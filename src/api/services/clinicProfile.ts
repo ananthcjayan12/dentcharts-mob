@@ -54,6 +54,8 @@ export interface ClinicProfile {
         allow_online_booking: boolean;
         timezone: string;
         currency: string;
+        start_time?: string;
+        end_time?: string;
     };
 }
 

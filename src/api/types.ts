@@ -64,6 +64,8 @@ export interface PractitionerProfile {
   clinic_description?: string;
   online_consultation?: number;
   years_of_experience?: number;
+  start_time?: string;
+  end_time?: string;
 }
 
 // Practitioner list response type
@@ -179,6 +181,7 @@ export interface CreateAppointmentRequest {
   notes?: string;
   chief_complaint?: string;
   practitioner?: string;
+  appointment_type?: 'Booking' | 'Walk In';
 }
 
 export interface AppointmentResponse {

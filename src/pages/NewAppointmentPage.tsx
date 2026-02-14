@@ -8,6 +8,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { useCreateAppointment, useAvailableSlots, useAppointments } from '../hooks/useAppointments';
 import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
 import { usePractitioners } from '../hooks/usePractitioners';
+import { useClinic } from '../contexts/ClinicContext';
 import toast from 'react-hot-toast';
 
 const NewAppointmentPage: React.FC = () => {
@@ -18,6 +19,7 @@ const NewAppointmentPage: React.FC = () => {
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [appointmentType, setAppointmentType] = useState<'date' | 'today'>('today');
+  const [bookingType, setBookingType] = useState<'Booking' | 'Walk In'>('Walk In');
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [formData, setFormData] = useState({
     appointment_date: new Date().toISOString().split('T')[0],
@@ -29,6 +31,7 @@ const NewAppointmentPage: React.FC = () => {
 
   // Track if we've already loaded patient from URL params to prevent infinite loop
   const patientLoadedFromUrl = useRef(false);
+  const { profile } = useClinic();
 
   // API hooks
   const debouncedSearchQuery = useDebounce(patientSearchQuery, 500);
@@ -58,6 +61,7 @@ const NewAppointmentPage: React.FC = () => {
   const practitioners = practitionersData?.data || [];
   const slots = availableSlots || [];
   const dateAppointments = dateAppointmentsData?.data || [];
+  const todayDate = new Date().toISOString().split('T')[0];
 
   // Auto-select first practitioner if available
   useEffect(() => {
@@ -65,6 +69,28 @@ const NewAppointmentPage: React.FC = () => {
       setSelectedDoctor(practitioners[0].name);
     }
   }, [practitioners, selectedDoctor]);
+
+  useEffect(() => {
+    const slotDuration = profile?.additional?.appointment_slot_duration;
+    if (slotDuration && typeof slotDuration === 'number') {
+      setFormData(prev => ({ ...prev, duration: slotDuration }));
+    }
+  }, [profile?.additional?.appointment_slot_duration]);
+
+  useEffect(() => {
+    if (appointmentType === 'today') {
+      setBookingType('Walk In');
+      return;
+    }
+
+    if (appointmentType === 'date') {
+      if (formData.appointment_date === todayDate) {
+        setBookingType('Walk In');
+      } else {
+        setBookingType('Booking');
+      }
+    }
+  }, [appointmentType, formData.appointment_date, todayDate]);
 
   // Check if patient ID is provided in URL params
   useEffect(() => {
@@ -170,6 +196,7 @@ const NewAppointmentPage: React.FC = () => {
         : formData.appointment_date,
       appointment_time: normalizedTime,
       duration: formData.duration,
+      appointment_type: bookingType,
       notes: formData.notes || undefined,
       chief_complaint: formData.chief_complaint || undefined,
     };
@@ -559,17 +586,42 @@ const NewAppointmentPage: React.FC = () => {
               </div>
 
               {/* WhatsApp Confirmation */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="whatsapp"
-                  checked={sendWhatsApp}
-                  onChange={(e) => setSendWhatsApp(e.target.checked)}
-                  className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                />
-                <label htmlFor="whatsapp" className="text-sm text-gray-700 cursor-pointer">
-                  Send WhatsApp Confirmation
-                </label>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="whatsapp"
+                    checked={sendWhatsApp}
+                    onChange={(e) => setSendWhatsApp(e.target.checked)}
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                  />
+                  <label htmlFor="whatsapp" className="text-sm text-gray-700 cursor-pointer">
+                    Send WhatsApp Confirmation
+                  </label>
+                </div>
+
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => setBookingType('Walk In')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md font-medium transition-colors ${bookingType === 'Walk In'
+                      ? 'bg-white text-primary-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                  >
+                    Walk In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBookingType('Booking')}
+                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-md font-medium transition-colors ${bookingType === 'Booking'
+                      ? 'bg-white text-primary-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                      }`}
+                  >
+                    Booking
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -22,7 +22,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  
+
   const {
     login: apiLogin,
     register: apiRegister,
@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await apiLogin({ usr: email, pwd: password });
-      
+
       // Convert API response to User format
       const userData: User = {
         id: response.user.practitioner_id || response.user.email,
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         active_clinic: response.user.active_clinic,
         primary_clinic: response.user.primary_clinic,
       };
-      
+
       setUser(userData);
     } catch (error) {
       console.error('Login error in context:', error);
@@ -91,19 +91,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       await apiLogout();
-      setUser(null);
     } catch (error) {
       console.error('Logout error in context:', error);
-      // Still clear local state even if API call fails
+    } finally {
+      // Always clear local state and redirect, even if API call fails
       setUser(null);
-      throw error;
+      window.location.replace('/login');
     }
   };
 
   const switchClinic = async (clinic: string) => {
     try {
       const response = await authService.switchClinic(clinic);
-      
+
       if (response.active_clinic && user) {
         // Update user with new active clinic
         const updatedUser = {

@@ -17,7 +17,7 @@ This document outlines all the API endpoints required for the DentCharts mobile 
 ## 1. Authentication APIs
 
 ### 1.1 Login
-**Endpoint:** `POST /api/method/login`
+**Endpoisnt:** `POST /api/method/login`
 
 **Description:** Authenticates a doctor/user with email/phone and password.
 
