@@ -9,6 +9,7 @@ import BrandingTab from '../components/settings/BrandingTab';
 import InvoiceTab from '../components/settings/InvoiceTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
 import SocialMediaTab from '../components/settings/SocialMediaTab';
+import RolesSettingsTab from '../components/settings/RolesSettingsTab';
 
 const SettingsPage: React.FC = () => {
     return (
@@ -25,6 +26,7 @@ const SettingsPage: React.FC = () => {
                         <Route path="invoice" element={<InvoiceTab key="invoice" />} />
                         <Route path="notifications" element={<NotificationsTab key="notifications" />} />
                         <Route path="social" element={<SocialMediaTab key="social" />} />
+                        <Route path="roles" element={<RolesSettingsTab key="roles" />} />
                     </Routes>
                 </main>
             </div>

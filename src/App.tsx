@@ -20,6 +20,7 @@ import ToastProvider from './components/providers/ToastProvider';
 
 import FinancialDashboardPage from './pages/FinancialDashboardPage';
 import PublicClinicPage from './pages/PublicClinicPage';
+import PageAccessGuard from './components/auth/PageAccessGuard';
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -33,23 +34,23 @@ const AppRoutes = () => {
         <Route path="/public/clinic/:clinicId" element={<PublicClinicPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/dashboard" element={<HomePage />} /> {/* Alias for home */}
-        <Route path="/financial-dashboard" element={<FinancialDashboardPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/prescriptions/:patientId" element={<PrescriptionPage />} />
-        <Route path="/appointments" element={<AppointmentsPage />} />
-        <Route path="/appointments/new" element={<NewAppointmentPage />} />
-        <Route path="/patients" element={<PatientsPage />} />
-        <Route path="/patients/new" element={<NewPatientPage />} />
-        <Route path="/invoice" element={<InvoicePage />} />
-        <Route path="/invoices" element={<InvoicesPage />} />
-        <Route path="/settings/*" element={<SettingsPage />} />
+        <Route path="/home" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} />
+        <Route path="/dashboard" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} /> {/* Alias for home */}
+        <Route path="/financial-dashboard" element={<PageAccessGuard pageKey="financial_dashboard"><FinancialDashboardPage /></PageAccessGuard>} />
+        <Route path="/profile" element={<PageAccessGuard><ProfilePage /></PageAccessGuard>} />
+        <Route path="/prescriptions/:patientId" element={<PageAccessGuard pageKey="prescriptions"><PrescriptionPage /></PageAccessGuard>} />
+        <Route path="/appointments" element={<PageAccessGuard pageKey="appointments"><AppointmentsPage /></PageAccessGuard>} />
+        <Route path="/appointments/new" element={<PageAccessGuard pageKey="appointments"><NewAppointmentPage /></PageAccessGuard>} />
+        <Route path="/patients" element={<PageAccessGuard pageKey="patients"><PatientsPage /></PageAccessGuard>} />
+        <Route path="/patients/new" element={<PageAccessGuard pageKey="patients"><NewPatientPage /></PageAccessGuard>} />
+        <Route path="/invoice" element={<PageAccessGuard pageKey="invoice"><InvoicePage /></PageAccessGuard>} />
+        <Route path="/invoices" element={<PageAccessGuard pageKey="invoice"><InvoicesPage /></PageAccessGuard>} />
+        <Route path="/settings/*" element={<PageAccessGuard pageKey="settings" requireAdmin><SettingsPage /></PageAccessGuard>} />
       </Routes>
 
       {state?.backgroundLocation && (
         <Routes>
-          <Route path="/appointments/new" element={<NewAppointmentPage />} />
+          <Route path="/appointments/new" element={<PageAccessGuard pageKey="appointments"><NewAppointmentPage /></PageAccessGuard>} />
         </Routes>
       )}
     </>

@@ -1,7 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const SettingsSidebar: React.FC = () => {
+    const { user } = useAuth();
+    const isClinicAdmin = Boolean(user?.permissions?.is_clinic_admin);
+
     const navItems = [
         { name: 'Profile', path: '/settings/profile', icon: '🏥' },
         { name: 'Procedures', path: '/settings/procedures', icon: '💉' },
@@ -10,6 +14,7 @@ const SettingsSidebar: React.FC = () => {
         { name: 'Invoice', path: '/settings/invoice', icon: '📄' },
         { name: 'Notifications', path: '/settings/notifications', icon: '🔔' },
         { name: 'Social Media', path: '/settings/social', icon: '🔗' },
+        ...(isClinicAdmin ? [{ name: 'Roles Settings', path: '/settings/roles', icon: '🛡️' }] : []),
     ];
 
     return (

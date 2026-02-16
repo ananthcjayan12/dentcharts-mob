@@ -52,6 +52,12 @@ export interface LoginResponse {
     clinics?: string[];
     active_clinic?: string;
     primary_clinic?: string;
+    is_clinic_admin?: boolean;
+    allowed_pages?: string[];
+    permissions?: {
+      is_clinic_admin: boolean;
+      allowed_pages: string[];
+    };
   };
 }
 
@@ -64,6 +70,26 @@ export interface PractitionerProfile {
   clinic_description?: string;
   online_consultation?: number;
   years_of_experience?: number;
+  is_clinic_admin?: boolean;
+  allowed_pages?: string[];
+  permissions?: {
+    is_clinic_admin: boolean;
+    allowed_pages: string[];
+  };
+}
+
+export interface ClinicPractitionerPermission {
+  practitioner_id: string;
+  practitioner_name: string;
+  user_id?: string;
+  primary_company: string;
+  is_clinic_admin: boolean;
+  allowed_pages: string[];
+}
+
+export interface ClinicPractitionerPermissionsResponse {
+  clinic: string;
+  practitioners: ClinicPractitionerPermission[];
 }
 
 // Practitioner list response type
