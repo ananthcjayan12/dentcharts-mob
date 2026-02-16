@@ -1,9 +1,47 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { User, AuthContextType } from '../types';
+import { User, AuthContextType, PagePermissionKey } from '../types';
 import { useAuthActions } from '../hooks/useAuth';
-import { getStoredUserData, getActiveClinic, getUserClinics } from '../utils/storage';
+import { getStoredUserData } from '../utils/storage';
 import { authService } from '../api/services/auth';
 import toast from 'react-hot-toast';
+
+const DEFAULT_ALLOWED_PAGES: PagePermissionKey[] = [
+  'home',
+  'appointments',
+  'patients',
+  'prescriptions',
+  'invoice',
+  'financial_dashboard',
+  'settings',
+];
+
+const DEFAULT_NON_ADMIN_PAGES: PagePermissionKey[] = DEFAULT_ALLOWED_PAGES.filter((page) => page !== 'settings');
+
+const normalizePermissions = (permissions?: any, isClinicAdmin?: boolean, allowedPages?: any): User['permissions'] => {
+  const admin = Boolean(
+    permissions?.is_clinic_admin ??
+    isClinicAdmin ??
+    false
+  );
+
+  const pages = Array.isArray(permissions?.allowed_pages)
+    ? permissions.allowed_pages
+    : (Array.isArray(allowedPages) ? allowedPages : []);
+
+  const fallback = admin ? DEFAULT_ALLOWED_PAGES : DEFAULT_NON_ADMIN_PAGES;
+  const normalizedPages = (pages.length ? pages : fallback)
+    .filter((page: any) => typeof page === 'string')
+    .filter((page: string) => DEFAULT_ALLOWED_PAGES.includes(page as PagePermissionKey)) as PagePermissionKey[];
+
+  const finalPages = admin
+    ? Array.from(new Set([...normalizedPages, 'settings'])) as PagePermissionKey[]
+    : normalizedPages.filter((page) => page !== 'settings');
+
+  return {
+    is_clinic_admin: admin,
+    allowed_pages: finalPages.length ? finalPages : fallback,
+  };
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -36,7 +74,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const storedUser = getStoredUserData();
         if (storedUser) {
-          setUser(storedUser);
+          setUser({
+            ...storedUser,
+            permissions: normalizePermissions(
+              storedUser.permissions,
+              storedUser.is_clinic_admin,
+              storedUser.allowed_pages
+            ),
+          });
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -51,7 +96,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await apiLogin({ usr: email, pwd: password });
-
+      const permissions = normalizePermissions(
+        response.user.permissions,
+        response.user.is_clinic_admin,
+        response.user.allowed_pages
+      );
       // Convert API response to User format
       const userData: User = {
         id: response.user.practitioner_id || response.user.email,
@@ -64,6 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clinics: response.user.clinics || [],
         active_clinic: response.user.active_clinic,
         primary_clinic: response.user.primary_clinic,
+        permissions,
       };
 
       setUser(userData);
@@ -120,12 +170,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const canAccessPage = (pageKey: PagePermissionKey) => {
+    if (!user?.permissions) {
+      return false;
+    }
+
+    if (pageKey === 'settings' && !user.permissions.is_clinic_admin) {
+      return false;
+    }
+
+    return user.permissions.allowed_pages.includes(pageKey);
+  };
+
   const contextValue: AuthContextType = {
     user,
     login,
     register,
     logout,
     switchClinic,
+    canAccessPage,
     isLoading: !isInitialized || apiLoading,
   };
 

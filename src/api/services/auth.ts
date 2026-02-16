@@ -5,10 +5,42 @@ import {
   RegisterRequest,
   PractitionerProfile,
   ApiResponse,
+  ClinicPractitionerPermissionsResponse,
 } from '../types';
-import { setStoredToken, setStoredUserData, clearAllStoredData, setActiveClinic, setUserClinics, getStoredUserData, STORAGE_KEYS } from '../../utils/storage';
+import { setStoredUserData, clearAllStoredData, setActiveClinic, setUserClinics, getStoredUserData, STORAGE_KEYS } from '../../utils/storage';
 
 export class AuthService {
+  private defaultAllowedPages = [
+    'home',
+    'appointments',
+    'patients',
+    'prescriptions',
+    'invoice',
+    'financial_dashboard',
+    'settings',
+  ];
+
+  private defaultNonAdminPages = this.defaultAllowedPages.filter((page) => page !== 'settings');
+
+  private normalizePermissions(raw: any) {
+    const admin = Boolean(raw?.permissions?.is_clinic_admin ?? raw?.is_clinic_admin ?? false);
+    const pages = Array.isArray(raw?.permissions?.allowed_pages)
+      ? raw.permissions.allowed_pages
+      : (Array.isArray(raw?.allowed_pages) ? raw.allowed_pages : []);
+
+    const fallback = admin ? this.defaultAllowedPages : this.defaultNonAdminPages;
+    const allowed = (pages.length ? pages : fallback)
+      .filter((page: any) => typeof page === 'string')
+      .filter((page: string) => this.defaultAllowedPages.includes(page));
+
+    return {
+      is_clinic_admin: admin,
+      allowed_pages: admin
+        ? Array.from(new Set([...allowed, 'settings']))
+        : allowed.filter((page: string) => page !== 'settings'),
+    };
+  }
+
   /**
    * Login user with email and password using Frappe's standard login
    * This endpoint correctly handles stale session cookies
@@ -35,6 +67,7 @@ export class AuthService {
       try {
         const profileResponse = await apiClient.get<any>(API_ENDPOINTS.AUTH.PROFILE);
         const profile = profileResponse.data || {};
+        const permissions = this.normalizePermissions(profile);
 
         const userData = {
           email: profile.email || credentials.usr,
@@ -45,6 +78,9 @@ export class AuthService {
           clinics: profile.clinics || [],
           active_clinic: profile.active_clinic,
           primary_clinic: profile.primary_clinic,
+          permissions,
+          is_clinic_admin: permissions.is_clinic_admin,
+          allowed_pages: permissions.allowed_pages,
         };
 
         setStoredUserData(userData);
@@ -68,6 +104,12 @@ export class AuthService {
           mobile: '',
           practitioner_id: '',
           clinics: [],
+          permissions: {
+            is_clinic_admin: false,
+            allowed_pages: this.defaultNonAdminPages,
+          },
+          is_clinic_admin: false,
+          allowed_pages: this.defaultNonAdminPages,
         };
         setStoredUserData(basicUserData);
         return {
@@ -210,6 +252,40 @@ export class AuthService {
       console.error('Switch clinic error:', error);
       throw error;
     }
+  }
+
+  async getClinicPractitionerPermissions(clinic?: string): Promise<ClinicPractitionerPermissionsResponse> {
+    const endpoint = clinic
+      ? `${API_ENDPOINTS.AUTH.CLINIC_PRACTITIONER_PERMISSIONS}?clinic=${encodeURIComponent(clinic)}`
+      : API_ENDPOINTS.AUTH.CLINIC_PRACTITIONER_PERMISSIONS;
+
+    const response = await apiClient.get<ClinicPractitionerPermissionsResponse>(endpoint);
+    if (response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to fetch practitioner permissions');
+  }
+
+  async updatePractitionerPermissions(payload: {
+    clinic: string;
+    practitioner_id: string;
+    is_clinic_admin: boolean;
+    allowed_pages: string[];
+  }): Promise<{
+    clinic: string;
+    practitioner_id: string;
+    is_clinic_admin: boolean;
+    allowed_pages: string[];
+  }> {
+    const response = await apiClient.post<any>(
+      API_ENDPOINTS.AUTH.UPDATE_PRACTITIONER_PERMISSIONS,
+      payload
+    );
+
+    if (response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to update practitioner permissions');
   }
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ClinicSelector from './ClinicSelector';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
   className?: string;
@@ -9,6 +10,10 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+
+  const allowedPages = user?.permissions?.allowed_pages || [];
+  const isClinicAdmin = Boolean(user?.permissions?.is_clinic_admin);
 
   const menuItems = [
     {
@@ -19,7 +24,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
         </svg>
       ),
       path: '/home',
-      label: 'Dashboard'
+      label: 'Dashboard',
+      pageKey: 'home'
     },
     {
       id: 'appointments',
@@ -29,7 +35,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
         </svg>
       ),
       path: '/appointments',
-      label: 'Appointments'
+      label: 'Appointments',
+      pageKey: 'appointments'
     },
     {
       id: 'financials',
@@ -39,7 +46,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
         </svg>
       ),
       path: '/financial-dashboard',
-      label: 'Financials'
+      label: 'Financials',
+      pageKey: 'financial_dashboard'
     },
     {
       id: 'patients',
@@ -49,7 +57,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
         </svg>
       ),
       path: '/patients',
-      label: 'Patients'
+      label: 'Patients',
+      pageKey: 'patients'
     },
     {
       id: 'invoices',
@@ -59,7 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
         </svg>
       ),
       path: '/invoices',
-      label: 'Invoices'
+      label: 'Invoices',
+      pageKey: 'invoice'
     },
     {
       id: 'settings',
@@ -70,9 +80,20 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
         </svg>
       ),
       path: '/settings',
-      label: 'Settings'
+      label: 'Settings',
+      pageKey: 'settings'
     }
   ];
+
+  const visibleMenuItems = menuItems.filter((item: any) => {
+    if (!item.pageKey) {
+      return true;
+    }
+    if (item.pageKey === 'settings' && !isClinicAdmin) {
+      return false;
+    }
+    return allowedPages.includes(item.pageKey);
+  });
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -97,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
 
       {/* Navigation Items */}
       <nav className="flex-1 flex flex-col items-center py-6 space-y-1">
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <button
             key={item.id}
             onClick={() => navigate(item.path)}

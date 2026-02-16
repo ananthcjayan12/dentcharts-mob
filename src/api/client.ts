@@ -318,6 +318,8 @@ export const API_ENDPOINTS = {
     LOGOUT: '/api/method/logout',
     PROFILE: '/api/method/mob_clinic.mob_clinic.api.auth.get_practitioner_profile',
     UPDATE_PROFILE: '/api/method/mob_clinic.mob_clinic.api.auth.update_practitioner_profile',
+    CLINIC_PRACTITIONER_PERMISSIONS: '/api/method/mob_clinic.mob_clinic.api.role_access.get_clinic_practitioner_permissions',
+    UPDATE_PRACTITIONER_PERMISSIONS: '/api/method/mob_clinic.mob_clinic.api.role_access.update_practitioner_permissions',
   },
 
   // Patient Management

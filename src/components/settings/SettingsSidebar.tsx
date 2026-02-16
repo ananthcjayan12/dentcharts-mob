@@ -1,7 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const SettingsSidebar: React.FC = () => {
+    const { user } = useAuth();
+    const isClinicAdmin = Boolean(user?.permissions?.is_clinic_admin);
+
     const navItems = [
         {
             name: 'Profile',
@@ -66,6 +70,17 @@ const SettingsSidebar: React.FC = () => {
                 </svg>
             )
         },
+        ...(isClinicAdmin
+            ? [{
+                name: 'Roles Settings',
+                path: '/settings/roles',
+                icon: (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9l-5 4.87L18.18 21 12 17.77 5.82 21 7 13.87 2 9l6.91-.74L12 2zm0 8a2 2 0 100 4 2 2 0 000-4z" />
+                    </svg>
+                )
+            }]
+            : []),
     ];
 
     return (
