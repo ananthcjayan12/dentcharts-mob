@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { getStoredToken, clearStoredToken, clearAllStoredData } from '../utils/storage';
+import { clearAllStoredData } from '../utils/storage';
 
 // API Response wrapper interface
 export interface ApiResponse<T = any> {
@@ -36,21 +36,16 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor - Add auth token and ensure credentials
+    // Request interceptor - Ensure credentials are sent
     this.client.interceptors.request.use(
       (config) => {
         // CRITICAL: Ensure withCredentials is set for every request
+        // Frappe uses session cookies for authentication
         config.withCredentials = true;
 
-        const token = getStoredToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-
-        // Log request in development
+        // Log request in development (without cookies for security)
         if (process.env.NODE_ENV === 'development') {
           console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-          console.log(`🍪 Sending cookies:`, document.cookie);
         }
 
         return config;
@@ -85,9 +80,11 @@ class ApiClient {
         const { status, data } = error.response;
 
         // Handle authentication errors
-        if (status === 401) {
-          clearStoredToken();
-          window.location.href = '/login';
+        if (status === 401 || status === 403) {
+          // Clear ALL stored data to prevent zombie auth state
+          clearAllStoredData();
+          // Use replace to prevent back-button infinite redirect loops
+          window.location.replace('/login');
           return Promise.reject({
             message: 'Session expired. Please login again.',
             status_code: 401,

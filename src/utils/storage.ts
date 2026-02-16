@@ -201,4 +201,4 @@ export const clearClinicData = (): void => {
   } catch (error) {
     console.error('Error clearing clinic data:', error);
   }
-};;
+};

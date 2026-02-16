@@ -30,6 +30,7 @@ const AppRoutes = () => {
   return (
     <>
       <Routes location={background}>
+        {/* Public routes */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="/public/clinic/:clinicId" element={<PublicClinicPage />} />
         <Route path="/login" element={<LoginPage />} />

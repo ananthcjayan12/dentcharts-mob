@@ -663,6 +663,25 @@ const AppointmentsPage: React.FC = () => {
   // Grouping logic for Queue View
 
 
+  // Render Appointment Type with Icon
+  const renderAppointmentType = (type: string) => {
+    const isWalkIn = type === 'Walk In';
+    return (
+      <div className="flex items-center gap-2">
+        {isWalkIn ? (
+          <svg className="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.2L8 8v2h2.8l-1 1.9z" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        )}
+        <span className="text-sm font-medium text-gray-700">{type || 'Booking'}</span>
+      </div>
+    );
+  };
+
   // Map status to badge classes (desktop)
   const getStatusBadgeClass = (status: string) => {
     switch ((status || '').toLowerCase()) {
@@ -747,6 +766,7 @@ const AppointmentsPage: React.FC = () => {
                 <th className="px-4 py-3 text-center">Status</th>
                 <th className="px-4 py-3 text-center">Actions</th>
                 <th className="px-4 py-3 text-left">Appointment Time</th>
+                <th className="px-4 py-3 text-left">Type</th>
                 <th className="px-4 py-3 text-left">Doctor</th>
               </tr>
             </thead>
@@ -759,7 +779,7 @@ const AppointmentsPage: React.FC = () => {
                   onContextMenu={(e) => handleContextMenu(e, appointment)}
                 >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{appointment.patient_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || appointment.appointment_type || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.patient_mobile || '-'}</td>
                   <td className="px-4 py-3 text-center">
                     <ActionDropdown
@@ -805,6 +825,7 @@ const AppointmentsPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{renderAppointmentType(appointment.appointment_type)}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.practitioner_name || 'Dr Avinash'}</td>
                 </tr>
               ))}
@@ -823,7 +844,8 @@ const AppointmentsPage: React.FC = () => {
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0 mr-2">
                   <h4 className="font-semibold text-gray-900 text-sm truncate">{appointment.patient_name}</h4>
-                  <p className="text-xs text-gray-500 truncate">{appointment.chief_complaint || appointment.appointment_type || 'General Consultation'}</p>
+                  <p className="text-xs text-gray-500 truncate">{appointment.chief_complaint || 'General Consultation'}</p>
+                  <div className="mt-1">{renderAppointmentType(appointment.appointment_type)}</div>
                 </div>
                 <ActionDropdown
                   isOpen={openActionMenu === `queue-mobile-status-${appointment.name || appointment.appointment_id}`}
@@ -901,6 +923,7 @@ const AppointmentsPage: React.FC = () => {
                 <th className="px-4 py-3 text-center">Status</th>
                 <th className="px-4 py-3 text-center">Actions</th>
                 <th className="px-4 py-3 text-left">Appointment Time</th>
+                <th className="px-4 py-3 text-left">Type</th>
                 <th className="px-4 py-3 text-left">Doctor</th>
               </tr>
             </thead>
@@ -913,7 +936,7 @@ const AppointmentsPage: React.FC = () => {
                   onContextMenu={(e) => handleContextMenu(e, appointment)}
                 >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{appointment.patient_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || appointment.appointment_type || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.patient_mobile || '-'}</td>
                   <td className="px-4 py-3 text-center">
                     <ActionDropdown
@@ -959,6 +982,7 @@ const AppointmentsPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{renderAppointmentType(appointment.appointment_type)}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.practitioner_name || 'Dr Avinash'}</td>
                 </tr>
               ))}
@@ -977,7 +1001,8 @@ const AppointmentsPage: React.FC = () => {
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1 min-w-0 mr-2">
                   <h4 className="font-semibold text-gray-900 text-sm truncate">{appointment.patient_name}</h4>
-                  <p className="text-xs text-gray-500 truncate">{appointment.chief_complaint || appointment.appointment_type || 'General Consultation'}</p>
+                  <p className="text-xs text-gray-500 truncate">{appointment.chief_complaint || 'General Consultation'}</p>
+                  <div className="mt-1">{renderAppointmentType(appointment.appointment_type)}</div>
                 </div>
                 <ActionDropdown
                   isOpen={openActionMenu === `all-mobile-status-${appointment.name || appointment.appointment_id}`}

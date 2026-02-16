@@ -7,7 +7,7 @@ import {
   ApiResponse,
   ClinicPractitionerPermissionsResponse,
 } from '../types';
-import { setStoredUserData, clearAllStoredData, setActiveClinic, setUserClinics } from '../../utils/storage';
+import { setStoredUserData, clearAllStoredData, setActiveClinic, setUserClinics, getStoredUserData, STORAGE_KEYS } from '../../utils/storage';
 
 export class AuthService {
   private defaultAllowedPages = [
@@ -58,7 +58,11 @@ export class AuthService {
     // Frappe standard login returns { message: "Logged In", full_name: "...", home_page: "..." }
     const loginData = response.data || response;
 
-    if (loginData.message === 'Logged In') {
+    // Robust check: Frappe may return the message as a string or nested object
+    const loginMessage = typeof loginData === 'string' ? loginData : loginData?.message;
+    const isLoggedIn = loginMessage === 'Logged In' || loginMessage === 'No App';
+
+    if (isLoggedIn) {
       // Fetch profile to get full user/clinic data
       try {
         const profileResponse = await apiClient.get<any>(API_ENDPOINTS.AUTH.PROFILE);
@@ -67,7 +71,7 @@ export class AuthService {
 
         const userData = {
           email: profile.email || credentials.usr,
-          full_name: loginData.full_name || profile.name,
+          full_name: loginData.full_name || profile.name || credentials.usr,
           mobile: profile.phone,
           practitioner_id: profile.id,
           clinic: profile.clinic,
@@ -115,7 +119,7 @@ export class AuthService {
       }
     }
 
-    throw new Error('Login failed');
+    throw new Error(loginMessage || 'Login failed');
   }
 
   /**
@@ -203,10 +207,9 @@ export class AuthService {
    * Check if user is currently authenticated
    */
   isAuthenticated(): boolean {
-    // For Frappe, we might need to check session cookies
-    // For now, we'll check if we have stored user data
+    // Check if we have stored user data using the centralized storage key
     try {
-      const userData = localStorage.getItem('dentcharts_user_data');
+      const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA);
       return userData !== null;
     } catch {
       return false;
@@ -217,12 +220,7 @@ export class AuthService {
    * Get current user data from storage
    */
   getCurrentUser(): any | null {
-    try {
-      const userData = localStorage.getItem('dentcharts_user_data');
-      return userData ? JSON.parse(userData) : null;
-    } catch {
-      return null;
-    }
+    return getStoredUserData();
   }
 
   /**

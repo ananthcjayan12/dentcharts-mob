@@ -76,6 +76,8 @@ export interface PractitionerProfile {
     is_clinic_admin: boolean;
     allowed_pages: string[];
   };
+  start_time?: string;
+  end_time?: string;
 }
 
 export interface ClinicPractitionerPermission {

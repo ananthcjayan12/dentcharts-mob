@@ -6,9 +6,9 @@ import React from 'react';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Background refetch settings - NO CACHING by default
-      staleTime: 0, // Data is immediately stale
-      gcTime: 0, // No garbage collection time (no cache)
+      // Background refetch settings
+      staleTime: 0, // Data is immediately stale — always refetch on mount
+      gcTime: 5 * 60 * 1000, // Keep unused data in memory for 5 minutes to avoid re-fetch thrashing during navigation
 
       // Retry settings
       retry: (failureCount, error: any) => {
