@@ -16,7 +16,7 @@ This file defines mandatory behavior for GitHub Copilot coding agents working on
    - Permissions must be read from Auth context user payload.
    - Avoid ad-hoc local permission states.
 4. **Minimal UX changes**
-   - Do not redesign pages..
+   - Do not redesign pages.
    - Add only required controls/tabs.
 5. **Consistent page keys**
    - Use one shared page-key set across guard/sidebar/roles screen.
