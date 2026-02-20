@@ -91,9 +91,18 @@ class ApiClient {
           } as ApiError);
         }
 
+        const resolvedMessage =
+          typeof data?.message === 'string'
+            ? data.message
+            : typeof data?.message?.message === 'string'
+              ? data.message.message
+              : typeof data?.exc_type === 'string' && typeof data?.message === 'object'
+                ? `${data.exc_type}`
+                : 'An unexpected error occurred';
+
         // Handle other common errors
         const apiError: ApiError = {
-          message: data?.message || 'An unexpected error occurred',
+          message: resolvedMessage,
           status_code: status,
           error_details: data,
         };

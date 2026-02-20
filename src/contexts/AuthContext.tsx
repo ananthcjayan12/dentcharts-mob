@@ -12,6 +12,7 @@ const DEFAULT_ALLOWED_PAGES: PagePermissionKey[] = [
   'prescriptions',
   'invoice',
   'financial_dashboard',
+  'whatsapp-manager',
   'settings',
 ];
 

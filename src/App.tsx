@@ -13,6 +13,7 @@ import NewPatientPage from './pages/NewPatientPage';
 import InvoicePage from './pages/InvoicePage';
 import InvoicesPage from './pages/InvoicesPage';
 import SettingsPage from './pages/SettingsPage';
+import WhatsAppManagerPage from './pages/WhatsAppManagerPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryProvider } from './api/queryClient';
 import { ClinicProvider } from './contexts/ClinicContext';
@@ -47,6 +48,7 @@ const AppRoutes = () => {
         <Route path="/invoice" element={<PageAccessGuard pageKey="invoice"><InvoicePage /></PageAccessGuard>} />
         <Route path="/invoices" element={<PageAccessGuard pageKey="invoice"><InvoicesPage /></PageAccessGuard>} />
         <Route path="/settings/*" element={<PageAccessGuard pageKey="settings" requireAdmin><SettingsPage /></PageAccessGuard>} />
+        <Route path="/whatsapp-manager" element={<PageAccessGuard pageKey="whatsapp-manager"><WhatsAppManagerPage /></PageAccessGuard>} />
       </Routes>
 
       {state?.backgroundLocation && (

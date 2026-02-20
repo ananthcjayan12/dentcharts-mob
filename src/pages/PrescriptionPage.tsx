@@ -39,7 +39,7 @@ const PrescriptionPage: React.FC = () => {
   const location = useLocation();
   const { patientId: rawPatientId } = useParams<{ patientId: string }>();
   const { profile } = useClinic();
-  const { user } = useAuth();
+  const { user, canAccessPage } = useAuth();
 
   // Decode the patientId from URL (e.g., "Ananth.C%20Jayan" -> "Ananth.C Jayan")
   const patientId = rawPatientId ? decodeURIComponent(rawPatientId) : undefined;
@@ -1224,28 +1224,32 @@ const PrescriptionPage: React.FC = () => {
 
                     {/* Quick Actions */}
                     <div className="flex justify-center gap-6 lg:hidden py-2">
-                      <button
-                        onClick={handleNewAppointment}
-                        className="flex flex-col items-center gap-2 group"
-                      >
-                        <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
-                          <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Appointment</span>
-                      </button>
-                      <button
-                        onClick={() => setShowCreateInvoiceModal(true)}
-                        className="flex flex-col items-center gap-2 group"
-                      >
-                        <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
-                          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 4h6m-6 4h6M9 7h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </div>
-                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Invoice</span>
-                      </button>
+                      {canAccessPage('appointments') && (
+                        <button
+                          onClick={handleNewAppointment}
+                          className="flex flex-col items-center gap-2 group"
+                        >
+                          <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                            <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <span className="text-xs font-medium text-gray-700 text-center leading-tight">Appointment</span>
+                        </button>
+                      )}
+                      {canAccessPage('invoice') && (
+                        <button
+                          onClick={() => setShowCreateInvoiceModal(true)}
+                          className="flex flex-col items-center gap-2 group"
+                        >
+                          <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 4h6m-6 4h6M9 7h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <span className="text-xs font-medium text-gray-700 text-center leading-tight">Invoice</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowUpload(true)}
                         className="flex flex-col items-center gap-2 group"
@@ -1275,32 +1279,36 @@ const PrescriptionPage: React.FC = () => {
                         >
                           Upload Documents
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full justify-start"
-                          onClick={handleNewAppointment}
-                          leftIcon={
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          }
-                        >
-                          New Appointment
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full justify-start"
-                          onClick={() => setShowCreateInvoiceModal(true)}
-                          leftIcon={
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          }
-                        >
-                          Create Invoice
-                        </Button>
+                        {canAccessPage('appointments') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={handleNewAppointment}
+                            leftIcon={
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            }
+                          >
+                            New Appointment
+                          </Button>
+                        )}
+                        {canAccessPage('invoice') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={() => setShowCreateInvoiceModal(true)}
+                            leftIcon={
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            }
+                          >
+                            Create Invoice
+                          </Button>
+                        )}
                       </div>
                     </Card>
                   </div>

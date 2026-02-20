@@ -6,6 +6,7 @@ export type PagePermissionKey =
   | 'prescriptions'
   | 'invoice'
   | 'financial_dashboard'
+  | 'whatsapp-manager'
   | 'settings';
 
 export interface UserPermissions {

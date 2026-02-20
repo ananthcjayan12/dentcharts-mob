@@ -21,7 +21,7 @@ const ProfileTab: React.FC = () => {
         defaultValues: profile?.basic_info || {}
     });
 
-    const { register: registerAddress, handleSubmit: handleSubmitAddress, formState: { errors: addressErrors, isSubmitting: isAddressSubmitting }, reset: resetAddress } = useForm({
+    const { register: registerAddress, handleSubmit: handleSubmitAddress, formState: { isSubmitting: isAddressSubmitting }, reset: resetAddress } = useForm({
         defaultValues: profile?.address || {}
     });
 

@@ -20,6 +20,7 @@ const PAGE_OPTIONS: PageOption[] = [
   { key: 'prescriptions', label: 'Prescriptions' },
   { key: 'invoice', label: 'Invoice' },
   { key: 'financial_dashboard', label: 'Financial Dashboard' },
+  { key: 'whatsapp-manager', label: 'WhatsApp Manager' },
   { key: 'settings', label: 'Settings' },
 ];
 
