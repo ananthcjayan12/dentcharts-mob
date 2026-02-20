@@ -1126,6 +1126,22 @@ const AppointmentsPage: React.FC = () => {
                     onClick={async (e) => {
                       e.stopPropagation();
                       setOpenActionMenu(null);
+                      toast.loading('Sending invoice via WhatsApp...', { id: `wa-invoice-${invoiceId}` });
+                      const response = await whatsappService.sendInvoice(invoiceId);
+                      if (response.success) {
+                        toast.success('Invoice sent via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+                      } else {
+                        toast.error(response.error || 'Failed to send invoice via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-green-700 hover:bg-gray-50"
+                  >
+                    Send via WhatsApp
+                  </button>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setOpenActionMenu(null);
                       if (!window.confirm('Delete this invoice? This cannot be undone.')) return;
                       try {
                         await deleteInvoiceMutation.mutateAsync(invoiceId);
@@ -1192,6 +1208,22 @@ const AppointmentsPage: React.FC = () => {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                 >
                   View Invoice
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setOpenActionMenu(null);
+                    toast.loading('Sending invoice via WhatsApp...', { id: `wa-invoice-${invoiceId}` });
+                    const response = await whatsappService.sendInvoice(invoiceId);
+                    if (response.success) {
+                      toast.success('Invoice sent via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+                    } else {
+                      toast.error(response.error || 'Failed to send invoice via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-green-700 hover:bg-gray-50"
+                >
+                  Send via WhatsApp
                 </button>
                 <button
                   onClick={async (e) => {
@@ -1272,6 +1304,22 @@ const AppointmentsPage: React.FC = () => {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                 >
                   View Invoice
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setOpenActionMenu(null);
+                    toast.loading('Sending invoice via WhatsApp...', { id: `wa-invoice-${invoiceId}` });
+                    const response = await whatsappService.sendInvoice(invoiceId);
+                    if (response.success) {
+                      toast.success('Invoice sent via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+                    } else {
+                      toast.error(response.error || 'Failed to send invoice via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-green-700 hover:bg-gray-50"
+                >
+                  Send via WhatsApp
                 </button>
                 <button
                   onClick={async (e) => {

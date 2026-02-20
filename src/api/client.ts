@@ -91,9 +91,18 @@ class ApiClient {
           } as ApiError);
         }
 
+        const resolvedMessage =
+          typeof data?.message === 'string'
+            ? data.message
+            : typeof data?.message?.message === 'string'
+              ? data.message.message
+              : typeof data?.exc_type === 'string' && typeof data?.message === 'object'
+                ? `${data.exc_type}`
+                : 'An unexpected error occurred';
+
         // Handle other common errors
         const apiError: ApiError = {
-          message: data?.message || 'An unexpected error occurred',
+          message: resolvedMessage,
           status_code: status,
           error_details: data,
         };
@@ -318,6 +327,8 @@ export const API_ENDPOINTS = {
     LOGOUT: '/api/method/logout',
     PROFILE: '/api/method/mob_clinic.mob_clinic.api.auth.get_practitioner_profile',
     UPDATE_PROFILE: '/api/method/mob_clinic.mob_clinic.api.auth.update_practitioner_profile',
+    CLINIC_PRACTITIONER_PERMISSIONS: '/api/method/mob_clinic.mob_clinic.api.role_access.get_clinic_practitioner_permissions',
+    UPDATE_PRACTITIONER_PERMISSIONS: '/api/method/mob_clinic.mob_clinic.api.role_access.update_practitioner_permissions',
   },
 
   // Patient Management

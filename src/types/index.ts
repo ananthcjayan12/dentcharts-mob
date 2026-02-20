@@ -1,4 +1,19 @@
 // Updated types to match backend API responses
+export type PagePermissionKey =
+  | 'home'
+  | 'appointments'
+  | 'patients'
+  | 'prescriptions'
+  | 'invoice'
+  | 'financial_dashboard'
+  | 'whatsapp-manager'
+  | 'settings';
+
+export interface UserPermissions {
+  is_clinic_admin: boolean;
+  allowed_pages: PagePermissionKey[];
+}
+
 export interface User {
   id: string;
   name: string;
@@ -18,6 +33,7 @@ export interface User {
     logo?: string;
     working_hours?: any[];
   };
+  permissions: UserPermissions;
 }
 
 export interface Patient {
@@ -88,8 +104,9 @@ export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: Partial<User> & { password: string }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   switchClinic: (clinic: string) => Promise<void>;
+  canAccessPage: (pageKey: PagePermissionKey) => boolean;
   isLoading: boolean;
 }
 

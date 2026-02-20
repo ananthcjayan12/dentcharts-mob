@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import InputField from '../components/common/InputField';
 import { usePatientsWithSearch } from '../hooks/usePatients';
 import { useDebounce } from '../hooks/useDebounce';
 import { useCreateAppointment, useAvailableSlots, useAppointments } from '../hooks/useAppointments';
 import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
 import { usePractitioners } from '../hooks/usePractitioners';
 import { useClinic } from '../contexts/ClinicContext';
+import { whatsappService } from '../api/services/whatsapp';
 import toast from 'react-hot-toast';
 
 const NewAppointmentPage: React.FC = () => {
@@ -219,7 +218,7 @@ const NewAppointmentPage: React.FC = () => {
     }
 
     createAppointment(appointmentData, {
-      onSuccess: (res: any) => {
+      onSuccess: async (res: any) => {
         // Backend may return occupancy/warning fields; if present, surface a final warning
         const data = res?.data || res;
         if (data?.slot_existing_appointments && data.slot_existing_appointments > 0) {
@@ -229,7 +228,22 @@ const NewAppointmentPage: React.FC = () => {
 
         toast.success('Appointment created successfully!');
         if (sendWhatsApp) {
-          toast.success('WhatsApp confirmation sent!');
+          const appointmentId =
+            data?.appointment_id ||
+            data?.name ||
+            res?.appointment_id ||
+            res?.name;
+
+          if (appointmentId) {
+            const waResponse = await whatsappService.sendAppointmentReminder(appointmentId);
+            if (waResponse.success) {
+              toast.success('WhatsApp confirmation sent!');
+            } else {
+              toast.error(waResponse.error || 'Appointment created, but WhatsApp send failed');
+            }
+          } else {
+            toast.error('Appointment created, but WhatsApp send could not be triggered');
+          }
         }
         navigate('/appointments');
       },

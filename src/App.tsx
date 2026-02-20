@@ -13,6 +13,7 @@ import NewPatientPage from './pages/NewPatientPage';
 import InvoicePage from './pages/InvoicePage';
 import InvoicesPage from './pages/InvoicesPage';
 import SettingsPage from './pages/SettingsPage';
+import WhatsAppManagerPage from './pages/WhatsAppManagerPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryProvider } from './api/queryClient';
 import { ClinicProvider } from './contexts/ClinicContext';
@@ -20,8 +21,7 @@ import ToastProvider from './components/providers/ToastProvider';
 
 import FinancialDashboardPage from './pages/FinancialDashboardPage';
 import PublicClinicPage from './pages/PublicClinicPage';
-
-import ProtectedRoute from './components/ProtectedRoute';
+import PageAccessGuard from './components/auth/PageAccessGuard';
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -36,25 +36,24 @@ const AppRoutes = () => {
         <Route path="/public/clinic/:clinicId" element={<PublicClinicPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-
-        {/* Protected routes */}
-        <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-        <Route path="/financial-dashboard" element={<ProtectedRoute><FinancialDashboardPage /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/prescriptions/:patientId" element={<ProtectedRoute><PrescriptionPage /></ProtectedRoute>} />
-        <Route path="/appointments" element={<ProtectedRoute><AppointmentsPage /></ProtectedRoute>} />
-        <Route path="/appointments/new" element={<ProtectedRoute><NewAppointmentPage /></ProtectedRoute>} />
-        <Route path="/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
-        <Route path="/patients/new" element={<ProtectedRoute><NewPatientPage /></ProtectedRoute>} />
-        <Route path="/invoice" element={<ProtectedRoute><InvoicePage /></ProtectedRoute>} />
-        <Route path="/invoices" element={<ProtectedRoute><InvoicesPage /></ProtectedRoute>} />
-        <Route path="/settings/*" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+        <Route path="/home" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} />
+        <Route path="/dashboard" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} /> {/* Alias for home */}
+        <Route path="/financial-dashboard" element={<PageAccessGuard pageKey="financial_dashboard"><FinancialDashboardPage /></PageAccessGuard>} />
+        <Route path="/profile" element={<PageAccessGuard><ProfilePage /></PageAccessGuard>} />
+        <Route path="/prescriptions/:patientId" element={<PageAccessGuard pageKey="prescriptions"><PrescriptionPage /></PageAccessGuard>} />
+        <Route path="/appointments" element={<PageAccessGuard pageKey="appointments"><AppointmentsPage /></PageAccessGuard>} />
+        <Route path="/appointments/new" element={<PageAccessGuard pageKey="appointments"><NewAppointmentPage /></PageAccessGuard>} />
+        <Route path="/patients" element={<PageAccessGuard pageKey="patients"><PatientsPage /></PageAccessGuard>} />
+        <Route path="/patients/new" element={<PageAccessGuard pageKey="patients"><NewPatientPage /></PageAccessGuard>} />
+        <Route path="/invoice" element={<PageAccessGuard pageKey="invoice"><InvoicePage /></PageAccessGuard>} />
+        <Route path="/invoices" element={<PageAccessGuard pageKey="invoice"><InvoicesPage /></PageAccessGuard>} />
+        <Route path="/settings/*" element={<PageAccessGuard pageKey="settings" requireAdmin><SettingsPage /></PageAccessGuard>} />
+        <Route path="/whatsapp-manager" element={<PageAccessGuard pageKey="whatsapp-manager"><WhatsAppManagerPage /></PageAccessGuard>} />
       </Routes>
 
       {state?.backgroundLocation && (
         <Routes>
-          <Route path="/appointments/new" element={<ProtectedRoute><NewAppointmentPage /></ProtectedRoute>} />
+          <Route path="/appointments/new" element={<PageAccessGuard pageKey="appointments"><NewAppointmentPage /></PageAccessGuard>} />
         </Routes>
       )}
     </>

@@ -22,6 +22,24 @@ export interface WhatsAppTestResponse {
     error?: string;
 }
 
+export interface WhatsAppSettings {
+    clinic: string;
+    whatsapp_enabled: number;
+    whatsapp_phone_number_id: string;
+    whatsapp_business_account_id: string;
+    whatsapp_access_token_masked: string;
+    has_whatsapp_access_token: number;
+    whatsapp_appointment_template: string;
+    whatsapp_review_template: string;
+    whatsapp_prescription_template: string;
+    whatsapp_invoice_template: string;
+}
+
+export interface WhatsAppSettingsResponse {
+    message: string;
+    data: WhatsAppSettings;
+}
+
 export interface WhatsAppMessageLog {
     name: string;
     recipient_phone: string;
@@ -38,7 +56,89 @@ export interface WhatsAppLogsResponse {
     success: boolean;
     logs?: WhatsAppMessageLog[];
     total?: number;
+    clinic?: string;
     error?: string;
+}
+
+export interface WhatsAppConversationSummary {
+    name: string;
+    clinic: string;
+    wa_id: string;
+    customer_name?: string;
+    customer_phone?: string;
+    last_message_preview?: string;
+    last_message_at?: string;
+    last_message_direction?: 'Inbound' | 'Outbound';
+    last_message_status?: string;
+    unread_count: number;
+    session_expires_at?: string;
+    is_session_active?: number;
+}
+
+export interface WhatsAppConversationMessage {
+    name: string;
+    wa_message_id?: string;
+    direction: 'Inbound' | 'Outbound';
+    message_type?: string;
+    content?: string;
+    status?: string;
+    message_timestamp?: string;
+    sender_phone?: string;
+    recipient_phone?: string;
+    template_name?: string;
+    error_message?: string;
+}
+
+export interface WhatsAppConversationsResponse {
+    message: string;
+    data: {
+        clinic: string;
+        total: number;
+        conversations: WhatsAppConversationSummary[];
+    };
+}
+
+export interface WhatsAppConversationMessagesResponse {
+    message: string;
+    data: {
+        conversation: {
+            name: string;
+            customer_name?: string;
+            customer_phone?: string;
+            wa_id?: string;
+            session_expires_at?: string;
+            is_session_active?: number;
+        };
+        total: number;
+        messages: WhatsAppConversationMessage[];
+    };
+}
+
+export interface WhatsAppStatsResponse {
+    message: string;
+    data: {
+        clinic: string;
+        date_from: string;
+        date_to: string;
+        granularity: 'day' | 'week' | 'month';
+        kpis: {
+            total: number;
+            sent: number;
+            delivered: number;
+            read: number;
+            failed: number;
+        };
+        template_breakdown: Array<{ template_name?: string; total: number }>;
+        failure_reasons: Array<{ error_message?: string; total: number }>;
+        trends: Array<{
+            bucket: string;
+            total: number;
+            sent: number;
+            delivered: number;
+            read: number;
+            failed: number;
+        }>;
+    };
 }
 
 // API Endpoints
@@ -49,7 +149,14 @@ const WHATSAPP_ENDPOINTS = {
     SEND_PRESCRIPTION: '/api/method/mob_clinic.mob_clinic.api.whatsapp.send_prescription',
     SEND_INVOICE: '/api/method/mob_clinic.mob_clinic.api.whatsapp.send_invoice',
     TEST_CONNECTION: '/api/method/mob_clinic.mob_clinic.api.whatsapp.test_connection',
+    GET_SETTINGS: '/api/method/mob_clinic.mob_clinic.api.whatsapp.get_whatsapp_settings',
+    UPDATE_SETTINGS: '/api/method/mob_clinic.mob_clinic.api.whatsapp.update_whatsapp_settings',
     GET_LOGS: '/api/method/mob_clinic.mob_clinic.api.whatsapp.get_message_logs',
+    GET_CONVERSATIONS: '/api/method/mob_clinic.mob_clinic.api.whatsapp.get_conversations',
+    GET_CONVERSATION_MESSAGES: '/api/method/mob_clinic.mob_clinic.api.whatsapp.get_conversation_messages',
+    MARK_CONVERSATION_READ: '/api/method/mob_clinic.mob_clinic.api.whatsapp.mark_conversation_read',
+    SEND_CONVERSATION_REPLY: '/api/method/mob_clinic.mob_clinic.api.whatsapp.send_conversation_reply',
+    GET_STATS: '/api/method/mob_clinic.mob_clinic.api.whatsapp.get_whatsapp_stats',
 };
 
 // Helper to extract data from API response
@@ -62,6 +169,30 @@ function extractData<T>(response: any): T {
 }
 
 class WhatsAppService {
+    async getWhatsAppSettings(clinic?: string): Promise<WhatsAppSettings> {
+        try {
+            const query = clinic ? `?clinic=${encodeURIComponent(clinic)}` : '';
+            const response = await apiClient.get<WhatsAppSettings>(`${WHATSAPP_ENDPOINTS.GET_SETTINGS}${query}`);
+            return extractData<WhatsAppSettings>(response);
+        } catch (error: any) {
+            console.error('WhatsApp get settings error:', error);
+            throw error;
+        }
+    }
+
+    async updateWhatsAppSettings(payload: Partial<WhatsAppSettings> & { clinic?: string; whatsapp_access_token?: string }): Promise<WhatsAppSettings> {
+        try {
+            const response = await apiClient.post<WhatsAppSettings>(
+                WHATSAPP_ENDPOINTS.UPDATE_SETTINGS,
+                payload
+            );
+            return extractData<WhatsAppSettings>(response);
+        } catch (error: any) {
+            console.error('WhatsApp update settings error:', error);
+            throw error;
+        }
+    }
+
     /**
      * Send appointment reminder via WhatsApp
      */
@@ -156,25 +287,114 @@ class WhatsAppService {
      * Get message logs
      */
     async getMessageLogs(
-        clinic: string,
-        options?: { limit?: number; offset?: number; messageType?: string; status?: string }
+        clinic?: string,
+        options?: {
+            limit?: number;
+            offset?: number;
+            messageType?: string;
+            status?: string;
+            dateFrom?: string;
+            dateTo?: string;
+            recipientSearch?: string;
+        }
     ): Promise<WhatsAppLogsResponse> {
         try {
-            const params: Record<string, string | number> = { clinic };
-            if (options?.limit) params.limit = options.limit;
-            if (options?.offset) params.offset = options.offset;
-            if (options?.messageType) params.message_type = options.messageType;
-            if (options?.status) params.status = options.status;
+            const params = new URLSearchParams();
+            if (clinic) params.append('clinic', clinic);
+            if (options?.limit) params.append('limit', String(options.limit));
+            if (options?.offset) params.append('offset', String(options.offset));
+            if (options?.messageType) params.append('message_type', options.messageType);
+            if (options?.status) params.append('status', options.status);
+            if (options?.dateFrom) params.append('date_from', options.dateFrom);
+            if (options?.dateTo) params.append('date_to', options.dateTo);
+            if (options?.recipientSearch) params.append('recipient_search', options.recipientSearch);
 
-            const response = await apiClient.post<WhatsAppLogsResponse>(
-                WHATSAPP_ENDPOINTS.GET_LOGS,
-                params
+            const response = await apiClient.get<WhatsAppLogsResponse>(
+                `${WHATSAPP_ENDPOINTS.GET_LOGS}?${params.toString()}`
             );
             return extractData<WhatsAppLogsResponse>(response);
         } catch (error: any) {
             console.error('WhatsApp get logs error:', error);
             return { success: false, error: error.message || 'Failed to get logs' };
         }
+    }
+
+    async getConversations(options?: { clinic?: string; search?: string; unreadOnly?: boolean; limit?: number; offset?: number }): Promise<WhatsAppConversationsResponse> {
+        try {
+            const params = new URLSearchParams();
+            if (options?.clinic) params.append('clinic', options.clinic);
+            if (options?.search) params.append('search', options.search);
+            if (options?.unreadOnly) params.append('unread_only', '1');
+            if (options?.limit) params.append('limit', String(options.limit));
+            if (options?.offset) params.append('offset', String(options.offset));
+
+            const response = await apiClient.get<WhatsAppConversationsResponse>(
+                `${WHATSAPP_ENDPOINTS.GET_CONVERSATIONS}?${params.toString()}`
+            );
+            return extractData<WhatsAppConversationsResponse>(response);
+        } catch (error: any) {
+            console.error('WhatsApp get conversations error:', error);
+            throw error;
+        }
+    }
+
+    async getConversationMessages(conversationId: string, options?: { clinic?: string; limit?: number; offset?: number }): Promise<WhatsAppConversationMessagesResponse> {
+        try {
+            const params = new URLSearchParams();
+            params.append('conversation_id', conversationId);
+            if (options?.clinic) params.append('clinic', options.clinic);
+            if (options?.limit) params.append('limit', String(options.limit));
+            if (options?.offset) params.append('offset', String(options.offset));
+
+            const response = await apiClient.get<WhatsAppConversationMessagesResponse>(
+                `${WHATSAPP_ENDPOINTS.GET_CONVERSATION_MESSAGES}?${params.toString()}`
+            );
+            return extractData<WhatsAppConversationMessagesResponse>(response);
+        } catch (error: any) {
+            console.error('WhatsApp get conversation messages error:', error);
+            throw error;
+        }
+    }
+
+    async markConversationRead(conversationId: string, clinic?: string): Promise<{ message: string; data: { conversation_id: string; unread_count: number } }> {
+        const payload: Record<string, string> = { conversation_id: conversationId };
+        if (clinic) payload.clinic = clinic;
+        const response = await apiClient.post<{ message: string; data: { conversation_id: string; unread_count: number } }>(
+            WHATSAPP_ENDPOINTS.MARK_CONVERSATION_READ,
+            payload
+        );
+        return extractData(response);
+    }
+
+    async sendConversationReply(payload: {
+        conversation_id: string;
+        clinic?: string;
+        message_text?: string;
+        template_name?: string;
+        template_params?: string[];
+    }): Promise<any> {
+        const reqPayload: Record<string, any> = { ...payload };
+        if (payload.template_params) {
+            reqPayload.template_params = JSON.stringify(payload.template_params);
+        }
+        const response = await apiClient.post<any>(WHATSAPP_ENDPOINTS.SEND_CONVERSATION_REPLY, reqPayload);
+        return extractData(response);
+    }
+
+    async getWhatsAppStats(options?: {
+        clinic?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        granularity?: 'day' | 'week' | 'month';
+    }): Promise<WhatsAppStatsResponse> {
+        const params = new URLSearchParams();
+        if (options?.clinic) params.append('clinic', options.clinic);
+        if (options?.dateFrom) params.append('date_from', options.dateFrom);
+        if (options?.dateTo) params.append('date_to', options.dateTo);
+        if (options?.granularity) params.append('granularity', options.granularity);
+
+        const response = await apiClient.get<WhatsAppStatsResponse>(`${WHATSAPP_ENDPOINTS.GET_STATS}?${params.toString()}`);
+        return extractData(response);
     }
 
     /**
