@@ -154,6 +154,7 @@ const NewPatientPage: React.FC = () => {
                 <InputField
                   label="First Name *"
                   type="text"
+                  data-testid="new-patient-first-name"
                   value={formData.first_name}
                   onChange={(e) => handleInputChange('first_name', e.target.value)}
                   placeholder="Enter first name"
@@ -164,6 +165,7 @@ const NewPatientPage: React.FC = () => {
                 <InputField
                   label="Last Name *"
                   type="text"
+                  data-testid="new-patient-last-name"
                   value={formData.last_name}
                   onChange={(e) => handleInputChange('last_name', e.target.value)}
                   placeholder="Enter last name"
@@ -176,6 +178,7 @@ const NewPatientPage: React.FC = () => {
                 <InputField
                   label="Date of Birth *"
                   type="date"
+                  data-testid="new-patient-dob"
                   value={formData.dob}
                   onChange={(e) => handleInputChange('dob', e.target.value)}
                   error={errors.dob}
@@ -187,6 +190,7 @@ const NewPatientPage: React.FC = () => {
                     Sex *
                   </label>
                   <select
+                    data-testid="new-patient-sex"
                     value={formData.sex}
                     onChange={(e) => handleInputChange('sex', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg font-montserrat text-sm"
@@ -201,6 +205,7 @@ const NewPatientPage: React.FC = () => {
               <InputField
                 label="Mobile Number *"
                 type="tel"
+                data-testid="new-patient-mobile"
                 value={formData.mobile}
                 onChange={(e) => handleInputChange('mobile', e.target.value)}
                 placeholder="+91XXXXXXXXXX"
@@ -222,6 +227,7 @@ const NewPatientPage: React.FC = () => {
                   Address *
                 </label>
                 <textarea
+                  data-testid="new-patient-address"
                   value={formData.address}
                   onChange={(e) => handleInputChange('address', e.target.value)}
                   placeholder="Enter complete address"
@@ -354,6 +360,7 @@ const NewPatientPage: React.FC = () => {
           <div className="flex space-x-4 pb-6">
             <Button
               variant="outline"
+              data-testid="new-patient-cancel"
               onClick={() => navigate('/patients')}
               className="flex-1"
               disabled={isCreating}
@@ -361,6 +368,7 @@ const NewPatientPage: React.FC = () => {
               Cancel
             </Button>
             <Button
+              data-testid="new-patient-submit"
               onClick={handleSubmit}
               className="flex-1"
               disabled={isCreating}
