@@ -22,7 +22,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "test:release:smoke": "playwright test tests/e2e/auth/login.spec.ts",
+    "test:release:p0p1": "playwright test --grep-invert @manual",
+    "test:release:full": "playwright test",
+    "test:release:report": "playwright show-report"
   },
   "eslintConfig": {
     "extends": [
@@ -45,6 +49,7 @@
   "devDependencies": {
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6"
+    "tailwindcss": "^3.3.6",
+    "@playwright/test": "^1.55.0"
   }
 }

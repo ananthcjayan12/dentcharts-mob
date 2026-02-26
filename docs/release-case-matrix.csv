@@ -1,0 +1,62 @@
+csv_id,feature,priority,execution_mode,status,automation_spec,blocking_reason,owner
+1,Login,P0,automated,implemented,tests/e2e/auth/login.spec.ts,,qa-automation
+2,New Patient registration,P0,automated,implemented,tests/e2e/patients/new-patient.spec.ts,,qa-automation
+3,New Patient registration,P0,automated,implemented,tests/e2e/patients/new-patient.spec.ts,,qa-automation
+4,New Patient registration,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+5,New Patient registration,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+6,New Patient registration,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+7,New Patient registration,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+8,New Patient registration,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+9,New Patient registration,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+10,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+11,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+12,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+13,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+14,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+15,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+16,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+17,New Appointment,P0,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+18,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+19,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+20,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+21,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+22,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+23,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+24,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+25,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+26,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+27,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+28,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+29,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+30,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+31,Appointment Queue,P0,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+32,Patients Profile – View Patient Profile,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+33,Patients Profile – Edit Profile Details,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+34,Patients Profile – Edit Profile Mandatory Validation,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+35,Patients Profile – Edit Profile Invalid Mobile,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+36,Patients Profile – Edit Medical History,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+37,Patients Profile – Medical History NRMH Toggle,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+38,Patients Profile – Upload Document,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+39,Patients Profile – Upload Invalid File,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+40,Patients Profile – View Uploaded Document,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+41,Patients Profile – Delete Uploaded Document,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+42,Patients Profile – Document Tag & Date Verification,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+43,Patients Profile – Add Clinical Note,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+44,Patients Profile – Clinical Note Special Characters,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+45,Patients Profile – Search Medicine in Prescription,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+46,Patients Profile – Set Dosage & Instructions,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+47,Patients Profile – Add Multiple Medicines,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+48,Patients Profile – Zero Dosage Validation,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+49,Patients Profile – Save Prescription,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+50,Patients Profile – Download Prescription PDF,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+51,Patients Profile – Share Prescription,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+52,Patients Profile – Delete Prescription,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+53,Patients Profile – Dental Chart Type Selection,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+54,Patients Profile – Dental Multi-Tooth Selection,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+55,Patients Profile – Add Treatment to Teeth,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+56,Patients Profile – Dental Chart Switch After Mapping,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+57,Patients Profile – Create Invoice,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+58,Patients Profile – Excess Discount Validation,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa
+59,Patients Profile – Record Payment,P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+60,Patients Profile – Delete Payment Record (Admin),P1,blocked,blocked,N/A,Feature flow is not fully available in current mobile UI/API integration.,product+engineering
+61,Patients Profile – Quick Action New Appointment,P1,manual,pending-automation,manual-checklist,Covered in release checklist until deterministic selectors and stable assertions are added.,qa

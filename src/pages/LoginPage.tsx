@@ -89,6 +89,7 @@ const LoginPage: React.FC = () => {
                 label="Login ID or Phone Number"
                 name="email"
                 type="text"
+                data-testid="login-email"
                 placeholder="id-xxxxxx / 8801xxxxxx"
                 value={formData.email}
                 onChange={handleInputChange}
@@ -100,6 +101,7 @@ const LoginPage: React.FC = () => {
                 label="Password"
                 name="password"
                 type="password"
+                data-testid="login-password"
                 placeholder="..........."
                 value={formData.password}
                 onChange={handleInputChange}
@@ -111,6 +113,7 @@ const LoginPage: React.FC = () => {
                 type="submit"
                 variant="primary"
                 size="lg"
+                data-testid="login-submit"
                 className="w-full font-montserrat"
                 isLoading={isLoading}
               >
