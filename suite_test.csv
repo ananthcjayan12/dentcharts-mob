@@ -1,0 +1,207 @@
+Sl No,Feature Name,Description,Pre Condition,Test Steps,Expected Results
+1,Login,User can login to their account ,Account and proper internet,"1. Go to the login page url and click on login as Doctor
+2. Login page will be loaded and enter the user name and password and click on the Sign In",User is logged in to their account
+2,New Patient registration,Verify if the mandatory field set on the new patient registration is working or not,Account and proper internet,"Test that the form enforces required inputs.
+>Verify error is shown when First Name is empty or Last Name
+or  Gender or Mobile Number or Address is empty",Error will come when one of the mandatory input is missing in the create patient details
+3,New Patient registration,Verify if the Mobile number field only accepts 10 digit mobile number or not,Account and proper internet,"1. Login to the application
+2. Navigate to New Patient registration
+3. Enter mobile number with less than 10 digits
+4. Enter mobile number with more than 10 digits
+5. Enter mobile number with alphabets or special characters",System does not accept invalid mobile numbers and shows appropriate validation error
+4,New Patient registration,Check if the mobile number field only accepts the 10 digit number or not,Account and proper internet,"1. Login to the application
+2. Navigate to New Patient registration
+3. Enter a valid 10-digit mobile number
+4. Complete remaining mandatory fields
+5. Save the patient",Patient is successfully created when a valid 10-digit mobile number is entered
+5,New Patient registration,Option to cancel the new patient registration any time and will be redirected to the Patients Section,Account and proper internet,"1. Login to the application
+2. Navigate to New Patient registration
+3. Enter partial patient details
+4. Click on Cancel",User is redirected to the Patients Section and patient details are not saved
+6,New Patient registration,"Option to toggle the Medical history - BP in a drop down settings, Diabetic, Cardiac, Known Allergies, Family Heart Disease, Other Medical History as a text, No Relevant Medical History (NRMH) ",Account and proper internet,"1. After login click on New Patient
+2. Add other relevant details and under Medical history check if we can change between - Normal, High, Low and Moderate High. Default should be Normal
+3. Select one value and complete the creation
+4. After creation go to patients section and find this patient using the Name or check the last patient created
+5. Check if the Values matches with the values added",Medical history values selected during registration are correctly saved and displayed in patient details
+7,New Patient registration,Age and DOB check in the registration,Account and proper internet,"1. Login and open New Patient registration
+2. Enter Age without DOB and save
+3. Enter DOB without Age and save
+4. Enter both Age and DOB with mismatch
+5. Observe system behavior","If age entered and no DOB - then only add the age alone 
+if age not entered but DOB added, calculate the age automatically
+If age entered and DOB added, but if it doesn’t match the calculation change the age value"
+8,New Patient registration,Option to add the new patient to Todays que as Walkin,Account and proper internet,"1. Login to the application
+2. Navigate to New Patient registration and add all madatory fields
+3. Select option Add to Today’s Queue
+4. Click Save
+5. Add the reason for the appoinment
+4. Complete patient creation",Patient is created and immediately added to Today’s Walk-in Queue
+9,New Patient registration,Option to book a appointment for the the new patient to any date,Account and proper internet,"1. Login to the application
+2. Navigate to New Patient registration and add all madatory fields
+3. Select option Add to Today’s Queue as Walk-in
+4. Complete patient creation
+5. After creating the 
+6. Check if the Values matches with the values added",Patient is created and appointment is successfully booked for the selected date and time. 
+10,New Appointment,User can create a new appointment for an existing patient for a particular day,Account and proper internet,"1. Login and click on new Appointment
+2. Search and select an existing patient from the list
+3. Select a reason for the visti (this is optional) 
+4. Select a date and time slot
+6. Toggle the option Walk in or Booking
+7. Tick the Whatsapp confirmation (Optional)
+8. Select Book Appointment
+9. Go to that specific date on Appointments and check if the appontment created or not",Appointment created for the specific date
+11,New Appointment,User can create a new appointment for an existing patient for the same day,Account and proper internet,"1. Login and click on new Appointment
+2. Search and select an existing patient from the list
+3. Select a reason for the visti (this is optional) 
+4. Select a date and time slot
+6. Toggle the option Walk in or Booking
+7. Tick the Whatsapp confirmation (Optional)
+8. Select Book Appointment
+9. Go to that specific date on Appointments and check if the appontment created or not",Appointment created for the specific date
+12,New Appointment,User can create a new appointment for an new user,Account and proper internet,"1. Login and click on new Appointment
+2. Select Create new Appointment
+3. Enter all the mandatory fields for the new patients creation
+4. Select a date and time slot
+5. Select a reason for the visti (this is optional) 
+6. Toggle the option Walk in or Booking
+7. Tick the Whatsapp confirmation (Optional)
+8. Select Book Appointment
+9. Go to that specific date on Appointments and check if the appontment created or not",Appointment created for the specific date
+13,New Appointment,Verify appointment cannot be created for past date,Account and proper internet,"1. Login and click on new Appointment
+2. Search and select an existing patient from the list
+3. Select a reason for the visti (this is optional) 
+4. Verify if we can select a past date and time slot and book a slot",System restricts booking for past date and shows error message
+14,New Appointment,Verify time slot availability validation,Account and proper internet,"1. Login and create an appointment for a specific date and time
+2. Try creating another appointment for the same doctor, same date and same time slot",System should show slot already booked message 
+15,New Appointment,Verify appointment duration follows configured slot timing,Account and proper internet and Slot configuration available,"1. Ensure slot duration is configured (e.g., 15 mins)
+2. Create appointment for a date
+3. Check available time slots",Appointment start and end 
+16,New Appointment,Verify appointment notes selection and add field,Account and proper internet and Slot configuration available,"1. Login and open New Appointment
+2. Add in the Notes fieldnotes or select a reason for visit 
+3. Save appointment
+4. Reopen the created appointment and verify if the notes or the appointment field matches with what ",Notes entered during booking are saved and displayed correctly
+17,New Appointment,Verify walk-in vs booked appointment differentiation,Account and proper internet. Make a appointment,"1. Create one appointment using Book Appointment (future date)
+2. Add one patient to Today’s Queue as Walk-in
+3. Go to Appointment/Queue list and verify",Walk-in and Booked appointments should be there to differentiate
+18,Appointment Queue,Verify the user can view and filter appointments in the queue,"User logged in, internet connectivity available","1. Navigate to the Appointment Section.
+2. Click on Today's Queue.
+3. Click on All Appointments.
+4. Apply filters such as Date, Status, Health Practitioner, and Procedure.
+5. Select a future date using the date picker.",User is able to switch between Today's Queue and All Appointments. The appointment list updates correctly based on applied filters and selected date.
+19,Appointment Queue,Verify booking status counters display accurate counts,"User logged in, appointments exist in different statuses","1. Navigate to the Appointment Section.
+2. Observe the counters displayed at the top (Booked, Waiting, Completed, etc.).
+3. Cross-check the count with the actual number of appointments in each status.",The counters accurately reflect the number of appointments under each status category.
+20,Appointment Queue,Verify user can book an appointment for a patient,Account and proper internet,"1. Click on Add Patient / Book Appointment.
+2. Search for an existing patient or create a new patient.
+3. Select procedure (e.g., Consultation).
+4. Choose date and available time slot.
+5. Click Book Appointment.",Appointment is successfully booked for the selected slot and patient appears under the Booked list.
+21,Appointment Queue,Verify user can check in a patient who has arrived,"User logged in, patient exists in Booked list","1. Navigate to the Booked list.
+2. Identify a scheduled patient.
+3. Click on Check In.
+4. Navigate to the Waiting list and verify if patient moved","Patient status changes from Booked to Waiting, and appears in the Waiting queue."
+22,Appointment Queue,Verify user can start a patient visit,"User logged in, patient exists in Waiting list","exists in Waiting list
+1. Navigate to the Waiting list.
+2. Identify the patient.
+3. Click on Start Visit.","Patient status changes to In Progress, indicating the consultation has started."
+23,Appointment Queue,Verify visit can be marked as complete,"User logged in, patient status is In Progress","1. Navigate to patient with status In Progress.
+2. Click on Complete Visit.
+3. Confirm the action if prompted.",Patient status changes to Pending Payment. Visit is successfully marked as completed.
+24,Appointment Queue,Verify user can create invoice with items and discounts,"User logged in, patient status is Pending Payment","1. Click on Create Invoice.
+2. Add service item (e.g., MR RCT).
+3. Modify item price if required.
+4. Apply discount percentage or amount.
+5. Click Create Invoice.",Invoice is successfully generated with correct total calculation after applying price changes and discount.
+25,Appointment Queue,Verify user can record payment for invoice,"User logged in, invoice exists, Ptient status is pending payment","1. Click on Make Payment.
+2. Verify payable amount.
+3. Select payment mode (Cash/Card/UPI/etc.).
+4. Click Record Payment.",Payment is successfully recorded and patient status updates to Payment Completed.
+26,Appointment Queue,Verify user can upload medical documents for a patient,"User logged in, patient profile accessible","1. Open patient profile.
+2. Click on Upload Files.
+3. Select file from device.
+4. Choose category (Clinical, X-ray, Prescription, etc.).
+5. Confirm upload.",File is successfully uploaded and displayed under the selected category in patient records.
+27,Appointment Queue,Verify user can view final invoice details,"User logged in, payment completed","1. Navigate to completed patient record.
+2. Click on View Invoice.
+3. Review invoice details.","System displays complete invoice details including items, discounts, total amount, payment received, and balance (if any)."
+28,Appointment Queue,Verify user can delete invoice before payment,"User logged in, patient status is Pending Payment","1. Navigate to patient in Pending Payment.
+2. Click on Delete Invoice from the Actions available
+3. check te status of the patinet statu",Invoice is deleted and userwill be moved to create invoice action state
+29,Appointment Queue,Verify user cannot delete or remove the user once payment received,"User logged in, patient status is Completed","1. Navigate to patient in Completed state
+2. Check if we can delete the user from the que"," visit is completed and payment is completed, user should not be able to delete the entry"
+30,Appointment Queue,Verify user can cancel a patient visit from Waiting state,"User logged in, patient exists in Waiting list","1. Navigate to the Waiting list.
+2. Select the patient.
+3. Click on Cancel Visit.
+4. Confirm cancellation.",Patient is removed from the Waiting queue. Status updates to Cancelled and patient no longer appears in clinic queue.
+31,Appointment Queue,Verify user can cancel an appointment from Booked state,"User logged in, patient exists in Booked list","1. Navigate to the Booked list.
+2. Click on Cancel fromany of the booked user section.
+3 Confirm cancellation.",Appointment is removed from the Booked list. Status updates to Cancelled and it no longer appears in the clinic queue.
+32,Patients Profile – View Patient Profile,Verify patient demographics and summary are displayed correctly,User is on Patient Profile page,"1. Open a patient profile.
+2. Observe Name, Patient ID, Mobile, Age, Gender, DOB.
+3. Observe Medical History summary.",All patient details match registration data and load correctly.
+33,Patients Profile – Edit Profile Details,Verify user can edit patient profile details,User is on Patient Profile page,"1. Click Edit Profile.
+2. Modify Name, Mobile, Gender, DOB, Blood Group, Occupation, Address.
+3. Click Save.",Updated profile details are saved and reflected immediately.
+34,Patients Profile – Edit Profile Mandatory Validation,Verify mandatory fields cannot be left empty,User is in Edit Profile mode,"1. Clear Name or Mobile Number.
+2. Click Save.",System shows validation error and prevents saving.
+35,Patients Profile – Edit Profile Invalid Mobile,Verify invalid mobile number is rejected,User is in Edit Profile mode,"1. Enter mobile number with less/more than 10 digits.
+2. Click Save.",System shows validation error for invalid mobile number.
+36,Patients Profile – Edit Medical History,Verify user can update medical history details,User is on Patient Profile page,"1. Open Medical History section.
+2. Click Edit.
+3. Toggle Allergies, Diabetes, Cardiac, BP levels.
+4. Save.",Medical history tags and values are updated successfully.
+37,Patients Profile – Medical History NRMH Toggle,Verify No Relevant Medical History overrides other conditions,User is editing Medical History,"1. Select multiple conditions.
+2. Enable NRMH.
+3. Save.",Other medical conditions are cleared and only NRMH is saved.
+38,Patients Profile – Upload Document,Verify user can upload patient documents,User is in Upload Files section,"1. Click Upload File.
+2. Select category.
+3. Add description.
+4. Choose file.
+5. Save.",File uploads successfully and appears with category tag and date.
+39,Patients Profile – Upload Invalid File,Verify unsupported files are blocked,User is in Upload Files section,1. Attempt to upload unsupported file (.exe / empty file).,System blocks upload and shows error message.
+40,Patients Profile – View Uploaded Document,Verify user can preview uploaded files,Uploaded document exists,1. Click on uploaded document.,Document opens in preview or new tab.
+41,Patients Profile – Delete Uploaded Document,Verify user can delete uploaded files,Uploaded document exists,"1. Click Delete icon.
+2. Confirm deletion.",File is removed from patient records.
+42,Patients Profile – Document Tag & Date Verification,Verify uploaded files display correct metadata,Uploaded document exists,"1. Observe document category tag.
+2. Verify upload date.",Correct tag and upload date are displayed.
+43,Patients Profile – Add Clinical Note,Verify user can add free-text clinical note,User is in Medical Records section,"1. Click Clinical Note.
+2. Enter text.3. Save.",Clinical note is saved with timestamp and delete option.
+44,Patients Profile – Clinical Note Special Characters,Verify system handles long text and special characters,User adding note,"1. Enter long text with symbols/emojis.
+2. Save.",Note saves correctly without formatting issues.
+45,Patients Profile – Search Medicine in Prescription,Verify medicine search functionality,User is in Prescription section,"1. Search medicine name.
+2. Select from dropdown.",Medicine is added to prescription draft.
+46,Patients Profile – Set Dosage & Instructions,Verify dosage and conditions can be set,Medicine added,"1. Set dosage (Morning/Lunch/Evening/Night).
+2. Select Before/After Food.
+3. Enter duration.
+4. Save draft.",Dosage details are captured accurately.
+47,Patients Profile – Add Multiple Medicines,Verify multiple medicines can be added,One medicine added,"1. Add additional medicines.
+2. Set dosage.
+3. Save.",All medicines are saved in the prescription.
+48,Patients Profile – Zero Dosage Validation,Verify system behavior when dosage is zero,Medicine added,"1. Set dosage to 0-0-0-0.
+2. Save.",System warns user or prevents invalid prescription save.
+49,Patients Profile – Save Prescription,Verify prescription can be saved successfully,Prescription drafted,1. Click Save Prescription.,Prescription is saved and appears in prescription list.
+50,Patients Profile – Download Prescription PDF,Verify generated PDF contains correct details,Saved prescription exists,"1. Click Download.
+2. Open PDF.","PDF shows patient details, medicines, dosage, and doctor seal/signature."
+51,Patients Profile – Share Prescription,Verify prescription can be shared,Saved prescription exists,1. Click Share (WhatsApp) on the prescription created,Prescription is shared successfully.
+52,Patients Profile – Delete Prescription,Verify user can delete prescription,Saved prescription exists,"1. Click Delete.
+2. Confirm.",Prescription is removed from patient records.
+53,Patients Profile – Dental Chart Type Selection,Verify Adult vs Pediatric chart selection,User is in Dental Chart section,1. Switch between Adult and Pediatric chart types.,Correct tooth layout loads based on selection.
+54,Patients Profile – Dental Multi-Tooth Selection,Verify multi-select tooth functionality,User is in Dental Chart,"1. Select multiple teeth using Ctrl/Shift.
+2. Observe highlight.",All selected teeth remain highlighted.
+55,Patients Profile – Add Treatment to Teeth,Verify treatment mapping to selected teeth,Teeth selected,"1. Click Add Treatment.
+2. Search  for a condition
+3. Select procedure from the list or search from the option provide
+4. Save.",Treatment is mapped visually and cost calculated correctly on the create procedure page.
+56,Patients Profile – Dental Chart Switch After Mapping,Verify chart switching does not corrupt data,Treatment mapped,1. Switch chart type after mapping treatment.,System clears or handles mapping without data inconsistency.
+57,Patients Profile – Create Invoice,Verify invoice can be generated from profile,Treatments exist,"1. Click Quick Actions → Create Invoice.
+2. Add items.
+3. Apply discount/tax.
+4. Save.",Invoice is created with Unpaid status.
+58,Patients Profile – Excess Discount Validation,Verify discount cannot exceed total,Invoice draft exists,1. Enter discount greater than total.2. Save.,System prevents invoice creation and shows validation error.
+59,Patients Profile – Record Payment,Verify payment can be recorded,Unpaid invoice exists,"1. Click Pay Now.
+2. Select payment mode.
+3. Record payment.",Invoice status changes to Paid and entry moves to payment history.
+60,Patients Profile – Delete Payment Record (Admin),Verify erroneous payment deletion handling,Payment exists,1. Delete payment record.2. Confirm.,Payment removed and invoice reverts to Unpaid (as per business logic).
+61,Patients Profile – Quick Action New Appointment,Verify follow-up booking from patient profile,User is on Patient Profile,"1. Click Quick Action → New Appointment.
+2. Select reason, date, slot.
+3. Book.",Appointment is successfully created with patient pre-selected.
