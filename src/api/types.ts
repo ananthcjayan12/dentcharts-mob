@@ -94,6 +94,21 @@ export interface ClinicPractitionerPermissionsResponse {
   practitioners: ClinicPractitionerPermission[];
 }
 
+export interface ClinicPractitionerSchedule {
+  practitioner_id: string;
+  practitioner_name: string;
+  user_id?: string;
+  primary_company: string;
+  start_time?: string | null;
+  end_time?: string | null;
+}
+
+export interface ClinicPractitionerSchedulesResponse {
+  clinic: string;
+  default_slot_duration?: number | null;
+  practitioners: ClinicPractitionerSchedule[];
+}
+
 // Practitioner list response type
 export interface PractitionerResponse {
   name: string; // Practitioner ID from Frappe

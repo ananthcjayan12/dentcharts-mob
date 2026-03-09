@@ -425,6 +425,8 @@ export const API_ENDPOINTS = {
     UPDATE_NOTIFICATIONS: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_notification_templates',
     UPDATE_SOCIAL: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_social_media',
     UPDATE_ADDITIONAL: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_additional_settings',
+    PRACTITIONER_SCHEDULES: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.get_clinic_practitioner_schedules',
+    UPDATE_PRACTITIONER_SCHEDULE: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_practitioner_schedule',
     UPLOAD_LOGO: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.upload_logo',
     UPLOAD_DOCUMENT: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.upload_document',
   },
