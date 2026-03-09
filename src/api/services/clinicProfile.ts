@@ -59,6 +59,21 @@ export interface ClinicProfile {
     };
 }
 
+export interface ClinicPractitionerSchedule {
+    practitioner_id: string;
+    practitioner_name: string;
+    user_id?: string;
+    primary_company: string;
+    start_time?: string | null;
+    end_time?: string | null;
+}
+
+export interface ClinicPractitionerSchedulesResponse {
+    clinic: string;
+    default_slot_duration?: number | null;
+    practitioners: ClinicPractitionerSchedule[];
+}
+
 export const clinicProfileService = {
     async getClinicProfile(clinic: string): Promise<ClinicProfile> {
         const response = await apiClient.get<{ profile: ClinicProfile }>(
@@ -94,6 +109,26 @@ export const clinicProfileService = {
 
     async updateAdditionalSettings(data: any): Promise<any> {
         return apiClient.post(API_ENDPOINTS.CLINIC_PROFILE.UPDATE_ADDITIONAL, data);
+    },
+
+    async getPractitionerSchedules(clinic: string): Promise<ClinicPractitionerSchedulesResponse> {
+        const response = await apiClient.get<ClinicPractitionerSchedulesResponse>(
+            `${API_ENDPOINTS.CLINIC_PROFILE.PRACTITIONER_SCHEDULES}?clinic=${encodeURIComponent(clinic)}`
+        );
+        return response.data!;
+    },
+
+    async updatePractitionerSchedule(data: {
+        clinic: string;
+        practitioner_id: string;
+        start_time?: string;
+        end_time?: string;
+    }): Promise<ClinicPractitionerSchedule> {
+        const response = await apiClient.post<ClinicPractitionerSchedule>(
+            API_ENDPOINTS.CLINIC_PROFILE.UPDATE_PRACTITIONER_SCHEDULE,
+            data
+        );
+        return response.data!;
     },
 
     async uploadLogo(clinic: string, file: File): Promise<{ logo_url: string }> {
