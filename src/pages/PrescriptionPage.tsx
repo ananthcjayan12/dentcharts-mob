@@ -138,6 +138,7 @@ const PrescriptionPage: React.FC = () => {
   const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(new Set());
   const [invoiceDetails, setInvoiceDetails] = useState<Record<string, any>>({});
   const [loadingInvoiceDetails, setLoadingInvoiceDetails] = useState<Set<string>>(new Set());
+  const [sendingInvoiceWhatsApp, setSendingInvoiceWhatsApp] = useState<Set<string>>(new Set());
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
@@ -953,6 +954,37 @@ const PrescriptionPage: React.FC = () => {
       toast.dismiss();
       console.error('Print invoice error:', error);
       toast.error(error?.message || 'Failed to generate invoice');
+    }
+  };
+
+  const handleSendInvoiceWhatsApp = async (invoice: any) => {
+    const invoiceId = invoice.invoice_id || invoice.name;
+    if (!invoiceId) {
+      toast.error('Invoice ID not found');
+      return;
+    }
+
+    setSendingInvoiceWhatsApp(prev => new Set(prev).add(invoiceId));
+    toast.loading('Sending invoice via WhatsApp...', { id: `wa-invoice-${invoiceId}` });
+
+    try {
+      const { whatsappService } = await import('../api/services/whatsapp');
+      const response = await whatsappService.sendInvoice(invoiceId);
+
+      if (response.success) {
+        toast.success('Invoice sent via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+      } else {
+        toast.error(response.error || 'Failed to send invoice via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+      }
+    } catch (error: any) {
+      console.error('Send invoice WhatsApp error:', error);
+      toast.error(error?.message || 'Failed to send invoice via WhatsApp', { id: `wa-invoice-${invoiceId}` });
+    } finally {
+      setSendingInvoiceWhatsApp(prev => {
+        const next = new Set(prev);
+        next.delete(invoiceId);
+        return next;
+      });
     }
   };
 
@@ -2121,7 +2153,7 @@ const PrescriptionPage: React.FC = () => {
                                 )}
 
                                 {/* Action Buttons */}
-                                <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2">
                                   {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) ? (
                                     <Button
                                       size="sm"
@@ -2141,6 +2173,26 @@ const PrescriptionPage: React.FC = () => {
                                     onClick={() => toggleInvoiceExpansion(invoice.invoice_id || invoice.name)}
                                   >
                                     {expandedInvoices.has(invoice.invoice_id || invoice.name) ? 'Hide' : 'History'}
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="px-3 text-green-700 border-green-200 hover:bg-green-50"
+                                    onClick={() => handleSendInvoiceWhatsApp(invoice)}
+                                    disabled={sendingInvoiceWhatsApp.has(invoice.invoice_id || invoice.name)}
+                                    title="Send Invoice via WhatsApp"
+                                  >
+                                    {sendingInvoiceWhatsApp.has(invoice.invoice_id || invoice.name) ? (
+                                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21l1.65-4.95A8.96 8.96 0 013 12a9 9 0 1118 0 9 9 0 01-9 9 8.96 8.96 0 01-4.05-.95L3 21z" />
+                                      </svg>
+                                    )}
                                   </Button>
 
                                   <Button
