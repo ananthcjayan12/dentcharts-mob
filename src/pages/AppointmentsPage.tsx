@@ -411,6 +411,7 @@ const AppointmentsPage: React.FC = () => {
     const invoiceRequest: any = {
       patient_id: patientId,
       appointment_id: invoiceModalAppointment.name || invoiceModalAppointment.appointment_id,
+      practitioner_id: data.practitioner_id || undefined,
       items: items.map(({ id, ...rest }: any) => ({ ...rest, qty: Number(rest.qty) || 1, rate: Number(rest.rate) || 0 })),
       posting_date: data.date,
       due_date: data.dueDate,

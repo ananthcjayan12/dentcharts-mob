@@ -427,6 +427,9 @@ export const API_ENDPOINTS = {
     UPDATE_ADDITIONAL: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_additional_settings',
     PRACTITIONER_SCHEDULES: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.get_clinic_practitioner_schedules',
     UPDATE_PRACTITIONER_SCHEDULE: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_practitioner_schedule',
+    CONSULTANTS: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.get_clinic_consultants',
+    SAVE_CONSULTANT: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.save_clinic_consultant',
+    DELETE_CONSULTANT: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.delete_clinic_consultant',
     UPLOAD_LOGO: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.upload_logo',
     UPLOAD_DOCUMENT: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.upload_document',
   },
@@ -455,6 +458,7 @@ export const API_ENDPOINTS = {
   DASHBOARD: {
     GET_STATS: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_financial_stats',
     GET_COLLECTION: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_collection_summary',
+    GET_CONSULTANT_PAYOUTS: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_consultant_payout_report',
   },
 } as const;
 
