@@ -151,8 +151,8 @@ const InvoiceTab: React.FC = () => {
 
                     <div className="pt-4 border-t border-gray-100">
                         <label className="block text-sm font-bold text-gray-700 mb-3">Invoice Template</label>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {['standard', 'modern', 'minimal'].map((templateId) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {['standard', 'modern', 'minimal', 'elegant'].map((templateId) => (
                                 <label
                                     key={templateId}
                                     className={`
@@ -173,6 +173,7 @@ const InvoiceTab: React.FC = () => {
                                         {templateId === 'standard' && 'Classic professional look with blue accents.'}
                                         {templateId === 'modern' && 'Clean, contemporary design with whitespace.'}
                                         {templateId === 'minimal' && 'Ink-saving, print-friendly black & white.'}
+                                        {templateId === 'elegant' && 'Creative design with stylish sidebar and accents.'}
                                     </p>
                                 </label>
                             ))}

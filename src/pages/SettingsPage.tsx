@@ -7,6 +7,7 @@ import ProceduresTab from '../components/settings/ProceduresTab';
 import ConditionsTab from '../components/settings/ConditionsTab';
 import BrandingTab from '../components/settings/BrandingTab';
 import InvoiceTab from '../components/settings/InvoiceTab';
+import ConsultantsSettingsTab from '../components/settings/ConsultantsSettingsTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
 import SocialMediaTab from '../components/settings/SocialMediaTab';
 import RolesSettingsTab from '../components/settings/RolesSettingsTab';
@@ -24,6 +25,7 @@ const SettingsPage: React.FC = () => {
                         <Route path="conditions" element={<ConditionsTab key="conditions" />} />
                         <Route path="branding" element={<BrandingTab key="branding" />} />
                         <Route path="invoice" element={<InvoiceTab key="invoice" />} />
+                        <Route path="consultants" element={<ConsultantsSettingsTab key="consultants" />} />
                         <Route path="notifications" element={<NotificationsTab key="notifications" />} />
                         <Route path="social" element={<SocialMediaTab key="social" />} />
                         <Route path="roles" element={<RolesSettingsTab key="roles" />} />

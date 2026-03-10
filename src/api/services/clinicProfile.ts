@@ -74,6 +74,23 @@ export interface ClinicPractitionerSchedulesResponse {
     practitioners: ClinicPractitionerSchedule[];
 }
 
+export interface ClinicConsultant {
+    consultant_id: string;
+    consultant_type: 'Internal' | 'External';
+    practitioner?: string | null;
+    consultant_name: string;
+    mobile?: string | null;
+    commission_type: 'Percentage' | 'Fixed';
+    commission_value: number;
+    is_active: number;
+    notes?: string | null;
+}
+
+export interface ClinicConsultantsResponse {
+    clinic: string;
+    consultants: ClinicConsultant[];
+}
+
 export const clinicProfileService = {
     async getClinicProfile(clinic: string): Promise<ClinicProfile> {
         const response = await apiClient.get<{ profile: ClinicProfile }>(
@@ -127,6 +144,40 @@ export const clinicProfileService = {
         const response = await apiClient.post<ClinicPractitionerSchedule>(
             API_ENDPOINTS.CLINIC_PROFILE.UPDATE_PRACTITIONER_SCHEDULE,
             data
+        );
+        return response.data!;
+    },
+
+    async getClinicConsultants(clinic: string): Promise<ClinicConsultantsResponse> {
+        const response = await apiClient.get<ClinicConsultantsResponse>(
+            `${API_ENDPOINTS.CLINIC_PROFILE.CONSULTANTS}?clinic=${encodeURIComponent(clinic)}`
+        );
+        return response.data!;
+    },
+
+    async saveClinicConsultant(data: {
+        clinic: string;
+        consultant_id?: string;
+        consultant_type: 'Internal' | 'External';
+        practitioner?: string;
+        consultant_name?: string;
+        mobile?: string;
+        commission_type: 'Percentage' | 'Fixed';
+        commission_value: number;
+        is_active?: number;
+        notes?: string;
+    }): Promise<ClinicConsultant> {
+        const response = await apiClient.post<ClinicConsultant>(
+            API_ENDPOINTS.CLINIC_PROFILE.SAVE_CONSULTANT,
+            data
+        );
+        return response.data!;
+    },
+
+    async deleteClinicConsultant(clinic: string, consultant_id: string): Promise<{ consultant_id: string }> {
+        const response = await apiClient.post<{ consultant_id: string }>(
+            API_ENDPOINTS.CLINIC_PROFILE.DELETE_CONSULTANT,
+            { clinic, consultant_id }
         );
         return response.data!;
     },
