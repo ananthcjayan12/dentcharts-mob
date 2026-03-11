@@ -75,6 +75,14 @@ export class PaymentService {
         params.append('status', filters.status);
       }
 
+      if (filters.date_from) {
+        params.append('start_date', filters.date_from);
+      }
+
+      if (filters.date_to) {
+        params.append('end_date', filters.date_to);
+      }
+
       const response = await apiClient.get<any>(
         `${API_ENDPOINTS.PAYMENTS.LIST_INVOICES}?${params.toString()}`
       );

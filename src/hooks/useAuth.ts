@@ -57,12 +57,12 @@ export const useLogout = () => {
     onSuccess: () => {
       // Clear all queries from cache
       queryClient.clear();
-      toast.success('Logged out successfully');
+      window.location.replace('/login');
     },
     onError: (error: any) => {
       // Still perform local logout even if API fails
       queryClient.clear();
-      toast.error(error.message || 'Logout failed');
+      window.location.replace('/login');
     },
   });
 };

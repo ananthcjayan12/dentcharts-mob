@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { usePatientsWithSearch } from '../hooks/usePatients';
@@ -56,8 +56,8 @@ const NewAppointmentPage: React.FC = () => {
     }
   );
 
-  const patients = patientsData?.data || [];
-  const practitioners = practitionersData?.data || [];
+  const patients = useMemo(() => patientsData?.data || [], [patientsData]);
+  const practitioners = useMemo(() => practitionersData?.data || [], [practitionersData]);
   const slots = availableSlots || [];
   const dateAppointments = dateAppointmentsData?.data || [];
   const todayDate = new Date().toISOString().split('T')[0];
@@ -75,6 +75,21 @@ const NewAppointmentPage: React.FC = () => {
       setFormData(prev => ({ ...prev, duration: slotDuration }));
     }
   }, [profile?.additional?.appointment_slot_duration]);
+
+  useEffect(() => {
+    if (!selectedDoctor) {
+      return;
+    }
+
+    const selectedPractitioner = practitioners.find((practitioner) => practitioner.name === selectedDoctor);
+    const practitionerDuration = Number(selectedPractitioner?.appointment_slot_duration || 0);
+    const clinicDuration = Number(profile?.additional?.appointment_slot_duration || 0);
+    const nextDuration = practitionerDuration > 0 ? practitionerDuration : (clinicDuration > 0 ? clinicDuration : 30);
+
+    setFormData((prev) => (
+      prev.duration === nextDuration ? prev : { ...prev, duration: nextDuration }
+    ));
+  }, [selectedDoctor, practitioners, profile?.additional?.appointment_slot_duration]);
 
   useEffect(() => {
     if (appointmentType === 'today') {

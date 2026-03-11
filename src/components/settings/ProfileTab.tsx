@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useClinicProfile } from '../../hooks/useClinicProfile';
 import { useClinic } from '../../contexts/ClinicContext';
@@ -56,15 +56,24 @@ const ProfileTab: React.FC = () => {
         await updateProfile('additional', data);
     };
 
-    const handleScheduleChange = (practitionerId: string, field: 'start_time' | 'end_time', value: string) => {
+    const handleScheduleChange = (
+        practitionerId: string,
+        field: 'start_time' | 'end_time' | 'slot_duration',
+        value: string
+    ) => {
         setScheduleRows((previous) =>
             previous.map((row) =>
-                row.practitioner_id === practitionerId ? { ...row, [field]: value } : row
+                row.practitioner_id === practitionerId
+                    ? {
+                        ...row,
+                        [field]: field === 'slot_duration' ? (value === '' ? null : Number(value)) : value,
+                    }
+                    : row
             )
         );
     };
 
-    const loadSchedules = async () => {
+    const loadSchedules = useCallback(async () => {
         if (!clinicId || !isClinicAdmin) return;
 
         try {
@@ -82,7 +91,7 @@ const ProfileTab: React.FC = () => {
         } finally {
             setSchedulesLoading(false);
         }
-    };
+    }, [clinicId, isClinicAdmin]);
 
     const savePractitionerSchedule = async (row: ClinicPractitionerSchedule) => {
         if (!clinicId) return;
@@ -94,6 +103,7 @@ const ProfileTab: React.FC = () => {
                 practitioner_id: row.practitioner_id,
                 start_time: formatTimeForApi(row.start_time || undefined),
                 end_time: formatTimeForApi(row.end_time || undefined),
+                slot_duration: row.slot_duration || undefined,
             });
 
             setScheduleRows((previous) =>
@@ -103,6 +113,7 @@ const ProfileTab: React.FC = () => {
                             ...current,
                             start_time: formatTimeForInput(updated.start_time || undefined) || '',
                             end_time: formatTimeForInput(updated.end_time || undefined) || '',
+                            slot_duration: updated.slot_duration ?? current.slot_duration ?? null,
                         }
                         : current
                 )
@@ -139,7 +150,7 @@ const ProfileTab: React.FC = () => {
 
     useEffect(() => {
         loadSchedules();
-    }, [clinicId, isClinicAdmin]);
+    }, [loadSchedules]);
 
     if (!profile) return (
         <div className="flex items-center justify-center p-12">
@@ -378,7 +389,7 @@ const ProfileTab: React.FC = () => {
                                         </Button>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <InputField
                                             label="Opening Time"
                                             type="time"
@@ -390,6 +401,13 @@ const ProfileTab: React.FC = () => {
                                             type="time"
                                             value={row.end_time || ''}
                                             onChange={(event) => handleScheduleChange(row.practitioner_id, 'end_time', event.target.value)}
+                                        />
+                                        <InputField
+                                            label="Slot Duration (Minutes)"
+                                            type="number"
+                                            min="1"
+                                            value={row.slot_duration || ''}
+                                            onChange={(event) => handleScheduleChange(row.practitioner_id, 'slot_duration', event.target.value)}
                                         />
                                     </div>
                                 </div>

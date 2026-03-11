@@ -101,6 +101,7 @@ export interface ClinicPractitionerSchedule {
   primary_company: string;
   start_time?: string | null;
   end_time?: string | null;
+  slot_duration?: number | null;
 }
 
 export interface ClinicPractitionerSchedulesResponse {
@@ -137,6 +138,7 @@ export interface PractitionerResponse {
   specialization?: string;
   status?: string;
   available?: boolean;
+  appointment_slot_duration?: number | null;
 }
 
 // Patient related types
@@ -412,6 +414,8 @@ export interface CreateInvoiceRequest {
   posting_date: string;
   due_date: string;
   remarks?: string;
+  discount_amount?: number;
+  tax_amount?: number;
 }
 
 export interface InvoiceResponse {

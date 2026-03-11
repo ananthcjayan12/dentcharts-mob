@@ -6,19 +6,20 @@ import BottomNav from '../components/common/BottomNav';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import InputField from '../components/common/InputField';
-import { useProfile, useUpdateProfile, useLogout } from '../hooks/useAuth';
+import { useProfile, useUpdateProfile } from '../hooks/useAuth';
 import { PractitionerProfile } from '../api/types';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const { logout } = useAuth();
 
   // API hooks
   const { data: profile, isLoading: profileLoading, error: profileError } = useProfile();
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
-  const { mutate: logout } = useLogout();
 
   // Local state for editing
   const [editFormData, setEditFormData] = useState<Partial<PractitionerProfile>>({});
@@ -67,9 +68,8 @@ const ProfilePage: React.FC = () => {
     setEditFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   if (profileLoading) {

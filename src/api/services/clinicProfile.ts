@@ -66,6 +66,7 @@ export interface ClinicPractitionerSchedule {
     primary_company: string;
     start_time?: string | null;
     end_time?: string | null;
+    slot_duration?: number | null;
 }
 
 export interface ClinicPractitionerSchedulesResponse {
@@ -140,6 +141,7 @@ export const clinicProfileService = {
         practitioner_id: string;
         start_time?: string;
         end_time?: string;
+        slot_duration?: number | null;
     }): Promise<ClinicPractitionerSchedule> {
         const response = await apiClient.post<ClinicPractitionerSchedule>(
             API_ENDPOINTS.CLINIC_PROFILE.UPDATE_PRACTITIONER_SCHEDULE,

@@ -79,8 +79,10 @@ class ApiClient {
 
         const { status, data } = error.response;
 
-        // Handle authentication errors
-        if (status === 401 || status === 403) {
+        // Handle authentication errors.
+        // 403 is also used for page-level permission denials in this app, so
+        // only force logout on an actual unauthenticated session (401).
+        if (status === 401) {
           // Clear ALL stored data to prevent zombie auth state
           clearAllStoredData();
           // Use replace to prevent back-button infinite redirect loops

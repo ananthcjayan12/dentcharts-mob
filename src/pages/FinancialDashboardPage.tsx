@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, Container, Typography, Grid, Button } from '../components';
+import { Card, Container, Typography, Button } from '../components';
 import {
     BanknotesIcon,
     ArrowTrendingUpIcon,
     CreditCardIcon,
-    DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
 import Sidebar from '../components/common/Sidebar';
 import TopBar from '../components/common/TopBar';
@@ -162,6 +161,8 @@ const FinancialDashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { clinicId } = useClinic();
     const [dateRange, setDateRange] = useState('This Month');
+    const [customFromDate, setCustomFromDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+    const [customToDate, setCustomToDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedConsultantId, setSelectedConsultantId] = useState('');
     const [selectedPractitionerId, setSelectedPractitionerId] = useState('');
     const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
@@ -174,7 +175,15 @@ const FinancialDashboardPage: React.FC = () => {
         let from_date = to_date;
         const d = new Date(); 
 
-        if (dateRange === 'Today') {
+        if (dateRange === 'Custom') {
+            from_date = customFromDate || to_date;
+            return {
+                from_date,
+                to_date: customToDate || to_date,
+                clinic: clinicId || undefined,
+                practitioner_id: selectedPractitionerId || undefined,
+            };
+        } else if (dateRange === 'Today') {
         } else if (dateRange === 'This Week') {
             const day = d.getDay(); 
             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -193,7 +202,7 @@ const FinancialDashboardPage: React.FC = () => {
             clinic: clinicId || undefined,
             practitioner_id: selectedPractitionerId || undefined,
         };
-    }, [dateRange, clinicId, selectedPractitionerId]);
+    }, [dateRange, customFromDate, customToDate, clinicId, selectedPractitionerId]);
 
     const { data: dashboardData, isLoading, error } = useDashboardStats(dateParams);
     const { data: consultantOptions = { consultants: [] } } = useQuery({
@@ -243,6 +252,67 @@ const FinancialDashboardPage: React.FC = () => {
     };
     const practitionerOptions = practitionersData?.data || [];
     const selectedPractitioner = practitionerOptions.find((item) => item.name === selectedPractitionerId);
+
+    const buildInvoiceQuery = (extraParams: Record<string, string | undefined> = {}) => {
+        const params = new URLSearchParams();
+        params.set('date_from', dateParams.from_date);
+        params.set('date_to', dateParams.to_date);
+        Object.entries(extraParams).forEach(([key, value]) => {
+            if (value) {
+                params.set(key, value);
+            }
+        });
+        return `/invoices?${params.toString()}`;
+    };
+
+    const exportConsultantPayoutCsv = () => {
+        const rows = consultantPayoutData?.rows || [];
+        if (!rows.length) {
+            toast.error('No consultant payout data to export');
+            return;
+        }
+
+        const header = [
+            'Date',
+            'Invoice ID',
+            'Patient ID',
+            'Patient Name',
+            'Consultant',
+            'Procedure',
+            'Total Invoiced',
+            'Amount Received',
+            'Commission Type',
+            'Commission Value',
+            'Commission Amount',
+            'Commission Source',
+            'Payment Status',
+        ];
+        const csvRows = rows.map((row: any) => ([
+            row.date,
+            row.invoice_id,
+            row.patient,
+            row.patient_name,
+            row.consultant_name,
+            row.procedure_name,
+            row.total_invoiced,
+            row.amount_received,
+            row.commission_type,
+            row.commission_value,
+            row.commission_amount,
+            row.commission_source,
+            row.payment_status,
+        ]));
+        const csvContent = [header, ...csvRows]
+            .map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `consultant-payouts-${dateParams.from_date}-to-${dateParams.to_date}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
 
     const openTransactionDetail = async (invoiceId: string) => {
         try {
@@ -311,10 +381,34 @@ const FinancialDashboardPage: React.FC = () => {
                                     <option>This Week</option>
                                     <option>This Month</option>
                                     <option>This Year</option>
+                                    <option>Custom</option>
                                 </select>
                             </div>
                         </div>
                     </div>
+
+                    {dateRange === 'Custom' && (
+                        <div className="bg-white border border-gray-200/60 rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
+                            <label className="flex-1 text-sm font-medium text-gray-700">
+                                <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">From</span>
+                                <input
+                                    type="date"
+                                    value={customFromDate}
+                                    onChange={(event) => setCustomFromDate(event.target.value)}
+                                    className="w-full h-10 px-3 border border-gray-300 rounded-xl"
+                                />
+                            </label>
+                            <label className="flex-1 text-sm font-medium text-gray-700">
+                                <span className="block text-[11px] uppercase tracking-wider text-gray-400 mb-1">To</span>
+                                <input
+                                    type="date"
+                                    value={customToDate}
+                                    onChange={(event) => setCustomToDate(event.target.value)}
+                                    className="w-full h-10 px-3 border border-gray-300 rounded-xl"
+                                />
+                            </label>
+                        </div>
+                    )}
 
                     {isLoading ? (
                         <div className="h-96 flex items-center justify-center">
@@ -339,7 +433,7 @@ const FinancialDashboardPage: React.FC = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-gray-900">Low Collection Rate</p>
                                                 <p className="text-xs text-gray-600 mt-0.5">Only {data.summary.collection_rate}% collected.</p>
-                                                <button className="text-xs font-semibold text-orange-700 mt-2 hover:underline" onClick={() => navigate('/invoices')}>Review pending →</button>
+                                                <button className="text-xs font-semibold text-orange-700 mt-2 hover:underline" onClick={() => navigate(buildInvoiceQuery({ status: 'Unpaid' }))}>Review pending →</button>
                                             </div>
                                         </div>
                                     )}
@@ -352,7 +446,7 @@ const FinancialDashboardPage: React.FC = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-gray-900">Overdue Payments</p>
                                                 <p className="text-xs text-gray-600 mt-0.5">{formatCurrency(data.summary.aging_analysis["60_plus_days"])} pending 60+ days.</p>
-                                                <button className="text-xs font-semibold text-red-700 mt-2 hover:underline" onClick={() => navigate('/invoices')}>Send reminders →</button>
+                                                <button className="text-xs font-semibold text-red-700 mt-2 hover:underline" onClick={() => navigate(buildInvoiceQuery({ status: 'Overdue' }))}>Send reminders →</button>
                                             </div>
                                         </div>
                                     )}
@@ -646,6 +740,10 @@ const FinancialDashboardPage: React.FC = () => {
                                                         <p className="text-gray-500 font-medium mb-0.5">Collected</p>
                                                         <p className="font-bold text-gray-900">{formatCurrency(row.total_collected)}</p>
                                                     </div>
+                                                    <div className="rounded-xl bg-gray-50/80 p-2.5 border border-gray-100/50 col-span-2">
+                                                        <p className="text-gray-500 font-medium mb-0.5">Commission Payout</p>
+                                                        <p className="font-bold text-emerald-700">{formatCurrency(row.total_commission || 0)}</p>
+                                                    </div>
                                                 </div>
                                             </button>
                                         ))
@@ -662,6 +760,7 @@ const FinancialDashboardPage: React.FC = () => {
                                                 <th className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest py-3 px-2">Practitioner</th>
                                                 <th className="text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest py-3 px-2">Invoiced</th>
                                                 <th className="text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest py-3 px-2">Collected</th>
+                                                <th className="text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest py-3 px-2">Commission</th>
                                                 <th className="text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest py-3 px-2">Outstanding</th>
                                                 <th className="text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest py-3 px-2">Invoices</th>
                                                 <th className="text-right text-[11px] font-bold text-gray-400 uppercase tracking-widest py-3 px-2 w-[120px]">Coll. Rate</th>
@@ -683,6 +782,7 @@ const FinancialDashboardPage: React.FC = () => {
                                                         </td>
                                                         <td className="py-4 px-2 text-sm font-semibold text-gray-700 text-right">{formatCurrency(row.total_invoiced)}</td>
                                                         <td className="py-4 px-2 text-sm font-bold text-gray-900 text-right">{formatCurrency(row.total_collected)}</td>
+                                                        <td className="py-4 px-2 text-sm font-bold text-emerald-700 text-right">{formatCurrency(row.total_commission || 0)}</td>
                                                         <td className="py-4 px-2 text-sm font-semibold text-gray-600 text-right">{formatCurrency(row.outstanding_amount)}</td>
                                                         <td className="py-4 px-2 text-sm font-semibold text-gray-600 text-right">{row.invoice_count}</td>
                                                         <td className="py-4 px-2 text-sm text-right">
@@ -696,7 +796,7 @@ const FinancialDashboardPage: React.FC = () => {
                                                 )})
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={6} className="py-8 text-center text-sm font-medium text-gray-400">
+                                                    <td colSpan={7} className="py-8 text-center text-sm font-medium text-gray-400">
                                                         No performance data available.
                                                     </td>
                                                 </tr>
@@ -733,6 +833,9 @@ const FinancialDashboardPage: React.FC = () => {
                                                 ))}
                                             </select>
                                         </div>
+                                        <Button variant="outline" size="sm" onClick={exportConsultantPayoutCsv}>
+                                            Export CSV
+                                        </Button>
                                     </div>
                                 </div>
 
@@ -837,7 +940,7 @@ const FinancialDashboardPage: React.FC = () => {
                             <Card className="p-6 rounded-[24px] border border-gray-100/50 shadow-sm bg-white">
                                 <div className="flex items-center justify-between mb-6">
                                     <h4 className="text-sm font-bold text-gray-900 tracking-wide">Recent Transactions</h4>
-                                    <Button variant="ghost" size="sm" className="text-blue-600 text-xs font-bold hover:bg-blue-50" onClick={() => navigate('/invoices')}>
+                                    <Button variant="ghost" size="sm" className="text-blue-600 text-xs font-bold hover:bg-blue-50" onClick={() => navigate(buildInvoiceQuery())}>
                                         View All →
                                     </Button>
                                 </div>

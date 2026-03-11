@@ -6,6 +6,7 @@ import { useProcedures } from '../../hooks/useProcedures';
 import { useClinic } from '../../contexts/ClinicContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePractitioners } from '../../hooks/usePractitioners';
+import { usePatientsForSelect } from '../../hooks/usePatients';
 import { clinicProfileService, ClinicConsultant } from '../../api/services/clinicProfile';
 import { XMarkIcon, TrashIcon } from '@heroicons/react/24/outline';
 
@@ -25,10 +26,11 @@ interface InvoiceItem {
 interface CreateInvoiceModalProps {
     isOpen: boolean;
     onClose: () => void;
-    appointment: any;
+    appointment?: any;
     completedProcedures?: any[];
     onSubmit: (data: any) => void;
     isCreating: boolean;
+    allowPatientSelection?: boolean;
 }
 
 const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
@@ -37,7 +39,8 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     appointment,
     completedProcedures = [],
     onSubmit,
-    isCreating
+    isCreating,
+    allowPatientSelection = false,
 }) => {
     const { procedures } = useProcedures();
     const { clinicId } = useClinic();
@@ -64,6 +67,9 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     const [consultants, setConsultants] = useState<ClinicConsultant[]>([]);
     const [associatedPractitionerId, setAssociatedPractitionerId] = useState('');
     const initializedAppointmentKeyRef = useRef<string | null>(null);
+    const [patientSearch, setPatientSearch] = useState('');
+    const [selectedPatient, setSelectedPatient] = useState<{ patient_id: string; patient_name: string } | null>(null);
+    const { data: patientSearchResults = [] } = usePatientsForSelect(patientSearch);
 
     const [items, setItems] = useState<InvoiceItem[]>([{
         id: Date.now().toString(),
@@ -107,6 +113,8 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
         if (!isOpen) {
             initializedAppointmentKeyRef.current = null;
             setAssociatedPractitionerId('');
+            setPatientSearch('');
+            setSelectedPatient(null);
             return;
         }
 
@@ -169,6 +177,26 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
             initializedAppointmentKeyRef.current = appointmentKey;
         }
     }, [appointment, practitioners, isOpen, user?.practitioner_id, user?.name, user?.full_name]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        if (appointment?.patient) {
+            setSelectedPatient({
+                patient_id: appointment.patient,
+                patient_name: appointment.patient_name || appointment.patient,
+            });
+            setPatientSearch(appointment.patient_name || appointment.patient || '');
+            return;
+        }
+
+        if (!allowPatientSelection) {
+            setSelectedPatient(null);
+            setPatientSearch('');
+        }
+    }, [appointment, allowPatientSelection, isOpen]);
 
     const addItem = () => {
         setItems([...items, {
@@ -306,6 +334,11 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     const total = taxableAmount + taxAmount;
 
     const handleSubmit = () => {
+        if (!selectedPatient?.patient_id) {
+            alert('Please select the patient for this invoice');
+            return;
+        }
+
         if (!associatedPractitionerId) {
             alert('Please select the doctor associated with this invoice');
             return;
@@ -323,6 +356,8 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
 
         onSubmit({
             ...invoiceData,
+            patient_id: selectedPatient.patient_id,
+            patient_name: selectedPatient.patient_name,
             practitioner_id: associatedPractitionerId,
             discount: discountValue, // Provide clean numbers to parent
             tax: taxValue,
@@ -358,7 +393,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Create Invoice</h2>
                             <p className="text-gray-500 text-sm mt-0.5 max-w-[200px] truncate sm:max-w-none">
-                                {appointment?.patient_name || appointment?.patient}
+                                {selectedPatient?.patient_name || appointment?.patient_name || appointment?.patient || 'Select patient'}
                             </p>
                         </div>
                         <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -383,6 +418,46 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                                 onChange={(e) => setInvoiceData(prev => ({ ...prev, dueDate: e.target.value }))}
                             />
                         </div>
+
+                        {(allowPatientSelection || !appointment?.patient) && (
+                            <div className="relative">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Patient</label>
+                                <input
+                                    type="text"
+                                    value={patientSearch}
+                                    onChange={(event) => {
+                                        setPatientSearch(event.target.value);
+                                        if (!event.target.value.trim()) {
+                                            setSelectedPatient(null);
+                                        }
+                                    }}
+                                    placeholder="Search patient by name or ID"
+                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                                />
+                                {patientSearch.trim().length >= 2 && patientSearchResults.length > 0 && (
+                                    <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-y-auto">
+                                        {patientSearchResults.map((patient: any) => {
+                                            const patientId = patient.patient_id || patient.name;
+                                            const patientName = patient.patient_name || patient.name;
+                                            return (
+                                                <button
+                                                    key={patientId}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedPatient({ patient_id: patientId, patient_name: patientName });
+                                                        setPatientSearch(patientName);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-left hover:bg-gray-50"
+                                                >
+                                                    <div className="text-sm font-semibold text-gray-900">{patientName}</div>
+                                                    <div className="text-xs text-gray-500">{patientId}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Associated Doctor</label>

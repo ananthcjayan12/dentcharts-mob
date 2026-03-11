@@ -5,6 +5,7 @@ import Sidebar from '../components/common/Sidebar';
 import TopBar from '../components/common/TopBar';
 import WhatsAppHelpTab from '../components/settings/WhatsAppHelpTab';
 import { useClinic } from '../contexts/ClinicContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   whatsappService,
   WhatsAppConversationMessage,
@@ -39,6 +40,8 @@ const emptySettings: WhatsAppSettings = {
 
 const WhatsAppManagerPage: React.FC = () => {
   const { clinicId } = useClinic();
+  const { user } = useAuth();
+  const isClinicAdmin = Boolean(user?.permissions?.is_clinic_admin);
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [isLoading, setIsLoading] = useState(false);
@@ -69,6 +72,11 @@ const WhatsAppManagerPage: React.FC = () => {
   const [statsFrom, setStatsFrom] = useState('');
   const [statsTo, setStatsTo] = useState('');
   const [statsGranularity, setStatsGranularity] = useState<'day' | 'week' | 'month'>('day');
+
+  const visibleTabs = useMemo(
+    () => TABS.filter((tab) => (isClinicAdmin ? true : tab.key !== 'settings')),
+    [isClinicAdmin]
+  );
 
   const pageCount = useMemo(() => Math.max(1, Math.ceil(logsTotal / logsLimit)), [logsTotal, logsLimit]);
 
@@ -158,11 +166,17 @@ const WhatsAppManagerPage: React.FC = () => {
   }, [clinicId, statsFrom, statsTo, statsGranularity]);
 
   useEffect(() => {
-    if (!clinicId) {
+    if (!clinicId || !isClinicAdmin) {
       return;
     }
     loadSettings();
-  }, [clinicId, loadSettings]);
+  }, [clinicId, isClinicAdmin, loadSettings]);
+
+  useEffect(() => {
+    if (!isClinicAdmin && activeTab === 'settings') {
+      setActiveTab('overview');
+    }
+  }, [activeTab, isClinicAdmin]);
 
   useEffect(() => {
     if (activeTab === 'logs' && clinicId) {
@@ -287,7 +301,7 @@ const WhatsAppManagerPage: React.FC = () => {
         <div className="overflow-y-auto pb-20 lg:pb-4 flex-1" style={{ height: 'calc(100vh - 64px)' }}>
           <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-4">
         <div className="bg-white rounded-xl border border-gray-200 p-2 flex flex-wrap gap-2">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}

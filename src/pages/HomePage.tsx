@@ -1,12 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Container, Grid, Stack, Flex, Card, Button, Typography, Badge, Avatar, Divider, InputField, Sidebar } from '../components';
+import { Grid, Stack, Flex, Card, Button, Typography, Badge, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
+import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
 import { useAppointmentsDashboard, useUpdateAppointment } from '../hooks/useAppointments';
 import { usePatientStats, usePatientsForSelect } from '../hooks/usePatients';
+import { useCreateInvoice } from '../hooks/usePayments';
 import { ChevronRightIcon, CalendarIcon, UserIcon, MagnifyingGlassIcon, PlusIcon, UserGroupIcon, ClockIcon, CurrencyDollarIcon, CalendarDaysIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +19,7 @@ const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [openTypeMenuId, setOpenTypeMenuId] = useState<string | null>(null);
+  const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
 
   // Real API data
   const {
@@ -26,10 +30,10 @@ const HomePage: React.FC = () => {
     pendingCount,
     confirmedCount,
     isLoading: appointmentsLoading,
-    refetchTodays,
   } = useAppointmentsDashboard();
 
   const { mutate: updateAppointment } = useUpdateAppointment();
+  const { mutate: createInvoice, isPending: isCreatingInvoice } = useCreateInvoice();
 
   const {
     data: patientStats,
@@ -81,6 +85,35 @@ const HomePage: React.FC = () => {
   const handleAppointmentTypeSelect = (appointmentId: string, type: 'Booking' | 'Walk In') => {
     updateAppointment({ appointment_id: appointmentId, appointment_type: type });
     setOpenTypeMenuId(null);
+  };
+
+  const handleCreateInvoiceSubmit = (data: any) => {
+    if (!data.patient_id) {
+      toast.error('Please select a patient');
+      return;
+    }
+
+    const items = data.items || [];
+    if (items.some((item: any) => !item.description || Number(item.rate) <= 0)) {
+      toast.error('Please fill item description and rate');
+      return;
+    }
+
+    createInvoice({
+      patient_id: data.patient_id,
+      practitioner_id: data.practitioner_id || undefined,
+      items: items.map(({ id, ...rest }: any) => ({ ...rest, qty: Number(rest.qty) || 1, rate: Number(rest.rate) || 0 })),
+      posting_date: data.date,
+      due_date: data.dueDate,
+      remarks: data.notes || undefined,
+      discount_amount: data.discount_amount || 0,
+      tax_amount: data.tax_amount || 0,
+    }, {
+      onSuccess: () => {
+        setShowCreateInvoiceModal(false);
+        toast.success('Invoice created successfully');
+      }
+    });
   };
 
   // Filter appointments based on search query
@@ -438,7 +471,7 @@ const HomePage: React.FC = () => {
                       <span className="text-xs font-semibold text-gray-700">Patients</span>
                     </button>
                     <button
-                      onClick={() => navigate('/invoice')}
+                      onClick={() => setShowCreateInvoiceModal(true)}
                       className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:shadow-md transition-all group"
                     >
                       <div className="p-2 bg-orange-50 text-orange-600 rounded-lg mb-2 group-hover:scale-110 transition-transform">
@@ -495,6 +528,15 @@ const HomePage: React.FC = () => {
 
         {/* Fixed Bottom Navigation */}
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+
+        <CreateInvoiceModal
+          isOpen={showCreateInvoiceModal}
+          onClose={() => setShowCreateInvoiceModal(false)}
+          appointment={undefined}
+          onSubmit={handleCreateInvoiceSubmit}
+          isCreating={isCreatingInvoice}
+          allowPatientSelection
+        />
       </div>
     </div>
   );

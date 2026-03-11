@@ -11,6 +11,8 @@ export interface SelectedItem {
   procedure: Procedure;
   teeth: number[];
   condition: string | null;
+  conditionLabel?: string | null;
+  conditionIcon?: string | null;
   cost: number;
 }
 
@@ -112,9 +114,9 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
 
   const handleToggleProcedure = (procedure: Procedure) => {
     const existingIndex = selectedItems.findIndex(item =>
-      item.procedure.code === procedure.code &&
-      JSON.stringify(item.teeth.sort()) === JSON.stringify(currentTeeth.sort()) &&
-      item.condition === selectedCondition
+            item.procedure.code === procedure.code &&
+            JSON.stringify(item.teeth.sort()) === JSON.stringify(currentTeeth.sort()) &&
+            item.condition === selectedCondition
     );
 
     if (existingIndex >= 0) {
@@ -127,6 +129,8 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
         procedure,
         teeth: [...currentTeeth],
         condition: selectedCondition,
+        conditionLabel: availableConditions.find((condition) => condition.type === selectedCondition)?.condition_name || selectedCondition,
+        conditionIcon: availableConditions.find((condition) => condition.type === selectedCondition)?.icon || '🦷',
         cost: (procedure.cost || 0) * Math.max(currentTeeth.length, 1)
       };
       setSelectedItems([...selectedItems, newItem]);
@@ -150,6 +154,8 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
           procedure: { code: 'condition-only', procedure_name: 'Condition Only', cost: 0, category: 'General', is_custom: false, source: 'template_default' } as Procedure,
           teeth: [...currentTeeth],
           condition: selectedCondition,
+          conditionLabel: availableConditions.find((condition) => condition.type === selectedCondition)?.condition_name || selectedCondition,
+          conditionIcon: availableConditions.find((condition) => condition.type === selectedCondition)?.icon || '🦷',
           cost: 0
         };
         onSave([conditionOnlyItem]);
@@ -264,7 +270,9 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
                           // Update condition for all selected items
                           setSelectedItems(prevItems => prevItems.map(item => ({
                             ...item,
-                            condition: condition.type
+                            condition: condition.type,
+                            conditionLabel: condition.condition_name,
+                            conditionIcon: condition.icon || '🦷',
                           })));
                         }}
                         className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
@@ -296,7 +304,9 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
                               // Update condition for all selected items
                               setSelectedItems(prevItems => prevItems.map(item => ({
                                 ...item,
-                                condition: null
+                                condition: null,
+                                conditionLabel: null,
+                                conditionIcon: null,
                               })));
                             }}
                             className="ml-auto text-primary-400 hover:text-primary-600"
@@ -405,7 +415,7 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
                         {item.condition && (
                           <div className="text-xs text-gray-500">
                             <span className="font-medium text-gray-700">Condition: </span>
-                            {availableConditions.find(c => c.type === item.condition)?.condition_name || item.condition}
+                            {item.conditionLabel || availableConditions.find(c => c.type === item.condition)?.condition_name || item.condition}
                           </div>
                         )}
                       </div>

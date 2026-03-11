@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { queryClient, invalidateQueriesHelper } from '../api/queryClient';
 import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar, Button, AppointmentActions, ActionDropdown, Portal } from '../components';
 import Autocomplete from '../components/common/Autocomplete';
 import TopBar from '../components/common/TopBar';
@@ -486,6 +487,10 @@ const AppointmentsPage: React.FC = () => {
       // Use FIFO payment for patient's pending invoices (handles both single and multi-invoice scenarios)
       try {
         const res = await paymentService.payPatientPendingInvoices(paymentPatientId, amount, paymentMode, paymentDate, paymentReference || undefined, paymentDate);
+        invalidateQueriesHelper.invalidatePayments();
+        invalidateQueriesHelper.invalidateDashboard();
+        invalidateQueriesHelper.invalidateAppointments();
+        queryClient.refetchQueries({ queryKey: ['appointments'] });
         toast.success('Payment processed successfully');
         setShowPaymentModal(false);
         setPaymentInvoiceId(null);
@@ -521,6 +526,10 @@ const AppointmentsPage: React.FC = () => {
     if (paymentPatientId) {
       try {
         const res = await paymentService.payPatientPendingInvoices(paymentPatientId, amount, paymentMode, paymentDate, paymentReference || undefined, paymentDate);
+        invalidateQueriesHelper.invalidatePayments();
+        invalidateQueriesHelper.invalidateDashboard();
+        invalidateQueriesHelper.invalidateAppointments();
+        queryClient.refetchQueries({ queryKey: ['appointments'] });
         toast.success('Payments processed');
         setShowPaymentModal(false);
         setPaymentPatientId(null);

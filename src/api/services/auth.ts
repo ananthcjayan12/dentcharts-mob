@@ -7,7 +7,16 @@ import {
   ApiResponse,
   ClinicPractitionerPermissionsResponse,
 } from '../types';
-import { setStoredUserData, clearAllStoredData, setActiveClinic, setUserClinics, getStoredUserData, STORAGE_KEYS } from '../../utils/storage';
+import {
+  setStoredUserData,
+  clearAllStoredData,
+  setActiveClinic,
+  setUserClinics,
+  getStoredUserData,
+  setStoredToken,
+  isSessionExpired,
+  STORAGE_KEYS,
+} from '../../utils/storage';
 
 export class AuthService {
   private defaultAllowedPages = [
@@ -83,6 +92,7 @@ export class AuthService {
           allowed_pages: permissions.allowed_pages,
         };
 
+        setStoredToken('session');
         setStoredUserData(userData);
 
         if (userData.clinics?.length > 0) {
@@ -111,6 +121,7 @@ export class AuthService {
           is_clinic_admin: false,
           allowed_pages: this.defaultNonAdminPages,
         };
+        setStoredToken('session');
         setStoredUserData(basicUserData);
         return {
           message: 'Logged In',
@@ -168,6 +179,7 @@ export class AuthService {
       );
 
       if (response.data) {
+        setStoredToken('session');
         // Update stored user data with latest profile
         setStoredUserData(response.data);
         return response.data;
@@ -176,6 +188,9 @@ export class AuthService {
       throw new Error(response.message || 'Failed to fetch profile');
     } catch (error) {
       console.error('Get profile error:', error);
+      if ((error as any)?.status_code === 401) {
+        clearAllStoredData();
+      }
       throw error;
     }
   }
@@ -207,8 +222,11 @@ export class AuthService {
    * Check if user is currently authenticated
    */
   isAuthenticated(): boolean {
-    // Check if we have stored user data using the centralized storage key
     try {
+      if (isSessionExpired()) {
+        clearAllStoredData();
+        return false;
+      }
       const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA);
       return userData !== null;
     } catch {
