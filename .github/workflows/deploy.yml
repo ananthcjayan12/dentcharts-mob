@@ -5,7 +5,7 @@ on:
     branches:
       - br-v1
       - main
-      - prod
+      - production
       - stg
   workflow_dispatch:
 
@@ -50,7 +50,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project create ${{ env.PROJECT_NAME }} --production-branch=prod
+          command: pages project create ${{ env.PROJECT_NAME }} --production-branch=production
         continue-on-error: true
 
       - name: Deploy to Cloudflare Pages
