@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -116,6 +116,10 @@ const HomePage: React.FC = () => {
     });
   };
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   // Filter appointments based on search query
   const filteredTodaysAppointments = searchQuery.length >= 2
     ? todaysAppointments.filter(apt =>
@@ -178,10 +182,20 @@ const HomePage: React.FC = () => {
                   Here's what's happening today at your clinic.
                 </Typography>
               </Stack>
-              <div className="hidden sm:block text-right">
-                <Typography variant="body1" className="font-medium text-gray-900">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </Typography>
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:block text-right">
+                  <Typography variant="body1" className="font-medium text-gray-900">
+                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </Typography>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                >
+                  Logout
+                </Button>
               </div>
             </Flex>
 

@@ -174,14 +174,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    // Clear local auth state first so protected routes react immediately.
+    setUser(null);
+    clearAllStoredData();
+
+    if (window.location.pathname !== '/login') {
+      window.location.replace('/login');
+    }
+
     try {
       await apiLogout();
     } catch (error) {
       console.error('Logout error in context:', error);
-    } finally {
-      // Always clear local state and redirect, even if API call fails
-      setUser(null);
-      window.location.replace('/login');
     }
   };
 
