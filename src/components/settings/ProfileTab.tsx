@@ -1,12 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useClinicProfile } from '../../hooks/useClinicProfile';
+import { useClinic } from '../../contexts/ClinicContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { clinicProfileService, ClinicPractitionerSchedule } from '../../api/services/clinicProfile';
 import Button from '../common/Button';
 import InputField from '../common/InputField';
 import Card from '../common/Card';
+import toast from 'react-hot-toast';
 
 const ProfileTab: React.FC = () => {
     const { profile, updateProfile, uploadLogo, isUploadingLogo } = useClinicProfile();
+    const { clinicId } = useClinic();
+    const { user } = useAuth();
+    const isClinicAdmin = Boolean(user?.permissions?.is_clinic_admin);
+    const [scheduleRows, setScheduleRows] = useState<ClinicPractitionerSchedule[]>([]);
+    const [schedulesLoading, setSchedulesLoading] = useState(false);
+    const [savingById, setSavingById] = useState<Record<string, boolean>>({});
 
     const formatTimeForInput = (value?: string) => {
         if (!value) return value;
@@ -15,6 +25,11 @@ const ProfileTab: React.FC = () => {
         const hours = parts[0].padStart(2, '0');
         const minutes = parts[1].padStart(2, '0');
         return `${hours}:${minutes}`;
+    };
+
+    const formatTimeForApi = (value?: string | null) => {
+        if (!value) return undefined;
+        return value.length === 5 ? `${value}:00` : value;
     };
 
     const { register: registerBasic, handleSubmit: handleSubmitBasic, formState: { errors: basicErrors, isSubmitting: isBasicSubmitting }, reset: resetBasic } = useForm({
@@ -41,6 +56,76 @@ const ProfileTab: React.FC = () => {
         await updateProfile('additional', data);
     };
 
+    const handleScheduleChange = (
+        practitionerId: string,
+        field: 'start_time' | 'end_time' | 'slot_duration',
+        value: string
+    ) => {
+        setScheduleRows((previous) =>
+            previous.map((row) =>
+                row.practitioner_id === practitionerId
+                    ? {
+                        ...row,
+                        [field]: field === 'slot_duration' ? (value === '' ? null : Number(value)) : value,
+                    }
+                    : row
+            )
+        );
+    };
+
+    const loadSchedules = useCallback(async () => {
+        if (!clinicId || !isClinicAdmin) return;
+
+        try {
+            setSchedulesLoading(true);
+            const response = await clinicProfileService.getPractitionerSchedules(clinicId);
+            setScheduleRows(
+                (response.practitioners || []).map((row) => ({
+                    ...row,
+                    start_time: formatTimeForInput(row.start_time || undefined) || '',
+                    end_time: formatTimeForInput(row.end_time || undefined) || '',
+                }))
+            );
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to load practitioner schedules');
+        } finally {
+            setSchedulesLoading(false);
+        }
+    }, [clinicId, isClinicAdmin]);
+
+    const savePractitionerSchedule = async (row: ClinicPractitionerSchedule) => {
+        if (!clinicId) return;
+
+        try {
+            setSavingById((previous) => ({ ...previous, [row.practitioner_id]: true }));
+            const updated = await clinicProfileService.updatePractitionerSchedule({
+                clinic: clinicId,
+                practitioner_id: row.practitioner_id,
+                start_time: formatTimeForApi(row.start_time || undefined),
+                end_time: formatTimeForApi(row.end_time || undefined),
+                slot_duration: row.slot_duration || undefined,
+            });
+
+            setScheduleRows((previous) =>
+                previous.map((current) =>
+                    current.practitioner_id === row.practitioner_id
+                        ? {
+                            ...current,
+                            start_time: formatTimeForInput(updated.start_time || undefined) || '',
+                            end_time: formatTimeForInput(updated.end_time || undefined) || '',
+                            slot_duration: updated.slot_duration ?? current.slot_duration ?? null,
+                        }
+                        : current
+                )
+            );
+            toast.success('Practitioner schedule updated');
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to update practitioner schedule');
+        } finally {
+            setSavingById((previous) => ({ ...previous, [row.practitioner_id]: false }));
+        }
+    };
+
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             await uploadLogo(e.target.files[0]);
@@ -62,6 +147,10 @@ const ProfileTab: React.FC = () => {
             });
         }
     }, [profile, resetBasic, resetAddress, resetAdditional]);
+
+    useEffect(() => {
+        loadSchedules();
+    }, [loadSchedules]);
 
     if (!profile) return (
         <div className="flex items-center justify-center p-12">
@@ -199,22 +288,9 @@ const ProfileTab: React.FC = () => {
                                 placeholder="30"
                                 error={additionalErrors.appointment_slot_duration?.message as string}
                             />
-                            <div className="grid grid-cols-2 gap-4">
-                                <InputField
-                                    label="Opening Time"
-                                    type="time"
-                                    {...registerAdditional('start_time')}
-                                    placeholder="09:00"
-                                    error={additionalErrors.start_time?.message as string}
-                                />
-                                <InputField
-                                    label="Closing Time"
-                                    type="time"
-                                    {...registerAdditional('end_time')}
-                                    placeholder="17:00"
-                                    error={additionalErrors.end_time?.message as string}
-                                />
-                            </div>
+                            <p className="text-sm text-gray-500">
+                                This slot duration is the clinic default. Practitioner-specific opening and closing times are managed below.
+                            </p>
                         </div>
                         <div className="flex justify-end pt-4">
                             <Button type="submit" isLoading={isAdditionalSubmitting}>Update Schedule</Button>
@@ -278,6 +354,70 @@ const ProfileTab: React.FC = () => {
                     </form>
                 </Card>
             </div>
+
+            {isClinicAdmin && (
+                <Card>
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                        <div className="p-2 bg-amber-50 rounded-lg text-amber-600">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900">Practitioner Schedules</h3>
+                            <p className="text-sm text-gray-500">Clinic admins can update working hours for each doctor from one place.</p>
+                        </div>
+                    </div>
+
+                    {schedulesLoading ? (
+                        <p className="text-sm text-gray-600">Loading practitioner schedules...</p>
+                    ) : scheduleRows.length > 0 ? (
+                        <div className="space-y-4">
+                            {scheduleRows.map((row) => (
+                                <div key={row.practitioner_id} className="border border-gray-200 rounded-lg p-4">
+                                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-900">{row.practitioner_name}</p>
+                                            <p className="text-xs text-gray-500">{row.practitioner_id}</p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => savePractitionerSchedule(row)}
+                                            isLoading={Boolean(savingById[row.practitioner_id])}
+                                        >
+                                            Save Schedule
+                                        </Button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <InputField
+                                            label="Opening Time"
+                                            type="time"
+                                            value={row.start_time || ''}
+                                            onChange={(event) => handleScheduleChange(row.practitioner_id, 'start_time', event.target.value)}
+                                        />
+                                        <InputField
+                                            label="Closing Time"
+                                            type="time"
+                                            value={row.end_time || ''}
+                                            onChange={(event) => handleScheduleChange(row.practitioner_id, 'end_time', event.target.value)}
+                                        />
+                                        <InputField
+                                            label="Slot Duration (Minutes)"
+                                            type="number"
+                                            min="1"
+                                            value={row.slot_duration || ''}
+                                            onChange={(event) => handleScheduleChange(row.practitioner_id, 'slot_duration', event.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-600">No practitioners found for the active clinic.</p>
+                    )}
+                </Card>
+            )}
         </div>
     );
 };

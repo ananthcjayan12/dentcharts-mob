@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, AuthContextType, PagePermissionKey } from '../types';
 import { useAuthActions } from '../hooks/useAuth';
-import { getStoredUserData } from '../utils/storage';
+import { clearAllStoredData, getStoredUserData } from '../utils/storage';
 import { authService } from '../api/services/auth';
 import toast from 'react-hot-toast';
 
@@ -46,6 +46,28 @@ const normalizePermissions = (permissions?: any, isClinicAdmin?: boolean, allowe
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const mapProfileToUser = (profile: any): User => {
+  const permissions = normalizePermissions(
+    profile.permissions,
+    profile.is_clinic_admin,
+    profile.allowed_pages
+  );
+
+  return {
+    id: profile.id || profile.practitioner_id || profile.email,
+    name: profile.name || profile.full_name || profile.email,
+    email: profile.email,
+    phone: profile.phone || profile.mobile,
+    role: 'doctor',
+    practitioner_id: profile.id || profile.practitioner_id,
+    clinic: profile.clinic,
+    clinics: profile.clinics || [],
+    active_clinic: profile.active_clinic,
+    primary_clinic: profile.primary_clinic,
+    permissions,
+  };
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -71,27 +93,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize user from stored data on app start
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
         const storedUser = getStoredUserData();
-        if (storedUser) {
-          setUser({
-            ...storedUser,
-            permissions: normalizePermissions(
-              storedUser.permissions,
-              storedUser.is_clinic_admin,
-              storedUser.allowed_pages
-            ),
-          });
+        if (!storedUser) {
+          setUser(null);
+          return;
+        }
+
+        try {
+          const latestProfile = await authService.getProfile();
+          setUser(mapProfileToUser(latestProfile));
+        } catch (error: any) {
+          if (error?.status_code === 401) {
+            clearAllStoredData();
+            setUser(null);
+            if (window.location.pathname !== '/login') {
+              window.location.replace('/login');
+              return;
+            }
+          } else {
+            setUser(mapProfileToUser(storedUser));
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        clearAllStoredData();
+        setUser(null);
       } finally {
         setIsInitialized(true);
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -140,14 +174,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    // Clear local auth state first so protected routes react immediately.
+    setUser(null);
+    clearAllStoredData();
+
+    if (window.location.pathname !== '/login') {
+      window.location.replace('/login');
+    }
+
     try {
       await apiLogout();
     } catch (error) {
       console.error('Logout error in context:', error);
-    } finally {
-      // Always clear local state and redirect, even if API call fails
-      setUser(null);
-      window.location.replace('/login');
     }
   };
 

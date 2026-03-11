@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Sidebar, Container, Card, Typography, Badge, Button, InputField, Flex, Stack, TopBar, BottomNav } from '../components';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Sidebar, Card, Typography, Badge, Button, Flex, Stack, TopBar, BottomNav } from '../components';
 import { paymentService } from '../api/services/payment';
 import { InvoiceResponse } from '../api/types';
 import { useClinic } from '../contexts/ClinicContext';
@@ -10,16 +10,13 @@ import { printHTML } from '../utils/printUtils';
 import toast from 'react-hot-toast';
 import {
     CurrencyDollarIcon,
-    CalendarIcon,
-    FunnelIcon,
     MagnifyingGlassIcon,
-    ChevronLeftIcon,
-    ChevronRightIcon,
     PlusIcon
 } from '@heroicons/react/24/outline';
 
 const InvoicesPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { profile } = useClinic();
     const { user } = useAuth();
     const [invoices, setInvoices] = useState<InvoiceResponse[]>([]);
@@ -38,16 +35,36 @@ const InvoicesPage: React.FC = () => {
     const limitPageLength = 20;
 
     useEffect(() => {
-        fetchInvoices();
-    }, [limitStart, statusFilter, dateFrom, dateTo]); // Add dependencies for auto-refresh on filter change
+        const params = new URLSearchParams(location.search);
+        const status = params.get('status');
+        const incomingDateFrom = params.get('date_from');
+        const incomingDateTo = params.get('date_to');
 
-    const fetchInvoices = async () => {
+        if (status) {
+            setStatusFilter(status);
+        }
+        if (incomingDateFrom) {
+            setDateFrom(incomingDateFrom);
+        }
+        if (incomingDateTo) {
+            setDateTo(incomingDateTo);
+        }
+    }, [location.search]);
+
+    const fetchInvoices = useCallback(async () => {
         try {
             setIsLoading(true);
             const filters: any = {};
 
             if (statusFilter !== 'all') {
                 filters.status = statusFilter;
+            }
+
+            if (dateFrom) {
+                filters.date_from = dateFrom;
+            }
+            if (dateTo) {
+                filters.date_to = dateTo;
             }
 
             // Note: Backend might need specific filter keys for date range (e.g., from_date, to_date)
@@ -68,16 +85,11 @@ const InvoicesPage: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [dateFrom, dateTo, limitStart, statusFilter]);
 
-    const handleSearch = () => {
-        // Ideally trigger reload or filter existing list if client-side
-        // If we want server side search, we need to update fetchInvoices to use searchTerm
-        // For now, let's filter client side for better UX on small datasets or implement strict patient search
-        // Since API doesn't explicitly list 'search' param in interface, we will fetch & filter or rely on paymentService updates.
-        // Let's assume fetchInvoices handles it or we filter the `invoices` array in render.
-        // RE-FETCHING is safer for pagination consistency.
-    };
+    useEffect(() => {
+        fetchInvoices();
+    }, [fetchInvoices]);
 
     const handleViewInvoice = async (invoice: InvoiceResponse) => {
         try {

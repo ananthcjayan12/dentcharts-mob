@@ -22,6 +22,7 @@ import Stack from '../components/layout/Stack';
 import Flex from '../components/layout/Flex';
 import DentalChart, { ToothData } from '../components/common/DentalChart';
 import { usePatient } from '../hooks/usePatients';
+import { useAppointment } from '../hooks/useAppointments';
 import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
 import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoice, useCreateInvoice } from '../hooks/usePayments';
 import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
@@ -98,6 +99,7 @@ const PrescriptionPage: React.FC = () => {
 
   // API hooks
   const { data: patient, isLoading: patientLoading } = usePatient(patientId || '', !!patientId);
+  const { data: appointmentDetails } = useAppointment(appointmentId || '', Boolean(appointmentId));
   const { data: prescriptions, isLoading: prescriptionsLoading, refetch: refetchPrescriptions } = usePatientPrescriptions(patientId || '');
   const { data: invoices, isLoading: invoicesLoading } = usePatientInvoices(patientId || '');
   const { data: paymentSummary, isLoading: paymentSummaryLoading } = usePaymentSummary(patientId || '');
@@ -116,6 +118,29 @@ const PrescriptionPage: React.FC = () => {
   const { mutate: createInvoice, isPending: isCreatingInvoice } = useCreateInvoice();
 
   const isLoading = patientLoading || prescriptionsLoading || invoicesLoading || paymentSummaryLoading;
+
+  const invoiceModalAppointment = React.useMemo(() => {
+    if (!appointmentId) {
+      return undefined;
+    }
+
+    if (appointmentDetails) {
+      return {
+        name: appointmentDetails.appointment_id || appointmentId,
+        patient: appointmentDetails.patient_id || patientId,
+        patient_name: appointmentDetails.patient_name || patient?.patient_name || patient?.name,
+        practitioner: appointmentDetails.practitioner,
+        practitioner_id: appointmentDetails.practitioner,
+        practitioner_name: appointmentDetails.practitioner_name,
+      };
+    }
+
+    return {
+      name: appointmentId,
+      patient: patientId,
+      patient_name: patient?.patient_name || patient?.name,
+    };
+  }, [appointmentDetails, appointmentId, patientId, patient]);
 
   // Parse medical_history JSON from patient (if present)
   const medicalHistory = React.useMemo(() => {
@@ -915,6 +940,7 @@ const PrescriptionPage: React.FC = () => {
     const invoiceRequest: any = {
       patient_id: patientId,
       appointment_id: appointmentId || undefined,
+      practitioner_id: data.practitioner_id || undefined,
       items: items.map(({ id, ...rest }: any) => ({ ...rest, qty: Number(rest.qty) || 1, rate: Number(rest.rate) || 0 })),
       posting_date: data.date,
       due_date: data.dueDate,
@@ -2538,11 +2564,11 @@ const PrescriptionPage: React.FC = () => {
             <CreateInvoiceModal
               isOpen={showCreateInvoiceModal}
               onClose={() => setShowCreateInvoiceModal(false)}
-              appointment={appointmentId ? {
-                name: appointmentId,
-                patient: patientId,
-                patient_name: patient?.patient_name || patient?.name
-              } : undefined}
+              appointment={invoiceModalAppointment}
+              initialPatient={patientId ? {
+                patient_id: patientId,
+                patient_name: patient?.patient_name || patient?.name || patientId,
+              } : null}
               onSubmit={handleCreateInvoiceSubmit}
               isCreating={isCreatingInvoice}
             />

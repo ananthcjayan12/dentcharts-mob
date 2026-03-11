@@ -122,6 +122,7 @@ export const queryKeys = {
   dashboard: {
     stats: (params?: any) => ['dashboard', 'stats', params],
     collection: (params?: any) => ['dashboard', 'collection', params],
+    consultantPayouts: (params?: any) => ['dashboard', 'consultantPayouts', params],
   },
 } as const;
 

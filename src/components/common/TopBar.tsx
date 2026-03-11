@@ -23,7 +23,7 @@ const TopBar: React.FC<TopBarProps> = ({
   showClinicSelector = false,
   enableGlobalMenu = true
 }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const hasMultipleClinics = user?.clinics && user.clinics.length > 1;
   const allowedPages = user?.permissions?.allowed_pages || [];
@@ -71,6 +71,11 @@ const TopBar: React.FC<TopBarProps> = ({
     } else {
       setIsMenuOpen(!isMenuOpen);
     }
+  };
+
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    await logout();
   };
 
   const buttonClass = `p-2.5 rounded-full transition-all duration-200 active:scale-95 ${variant === 'gradient'
@@ -165,6 +170,15 @@ const TopBar: React.FC<TopBarProps> = ({
                 </div>
               </>
             )}
+            <div onClick={() => { void handleLogout(); }} className="px-4 py-3 hover:bg-red-50/50 cursor-pointer flex items-center gap-3 border-t border-gray-100/50 transition-colors">
+              <div className="p-2 bg-red-50 rounded-lg text-red-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h10a2 2 0 002-2v-2m0-10V5a2 2 0 00-2-2H3" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Logout</p>
+                <p className="text-[10px] font-medium text-gray-500">Sign out of this session</p>
+              </div>
+            </div>
           </div>
         </Portal>
       )}

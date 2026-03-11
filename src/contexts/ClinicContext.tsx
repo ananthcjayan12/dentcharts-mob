@@ -29,13 +29,8 @@ interface ClinicProviderProps {
 }
 
 export const ClinicProvider: React.FC<ClinicProviderProps> = ({ children }) => {
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const queryClient = useQueryClient();
-
-    console.log('👤 ClinicProvider - user:', user);
-    console.log('👤 ClinicProvider - user.active_clinic:', user?.active_clinic);
-    console.log('👤 ClinicProvider - user.primary_clinic:', user?.primary_clinic);
-    console.log('👤 ClinicProvider - user.clinics:', user?.clinics);
 
     // Extract clinic ID safely
     // Priorities: 
@@ -44,22 +39,22 @@ export const ClinicProvider: React.FC<ClinicProviderProps> = ({ children }) => {
     // 3. clinics[0] from user object
     // 4. FALLBACK: getActiveClinic() from localStorage
     // 5. FALLBACK: getUserClinics()[0] from localStorage
-    let clinicId = user?.active_clinic || user?.primary_clinic || (user?.clinics && user.clinics.length > 0 ? user.clinics[0] : null);
+    let clinicId: string | null = null;
+    if (user) {
+        clinicId = user.active_clinic || user.primary_clinic || (user.clinics && user.clinics.length > 0 ? user.clinics[0] : null);
+    }
 
-    // Fallback to localStorage if user object doesn't have clinic data
-    if (!clinicId) {
+    // Only allow storage fallback for an authenticated user whose clinic payload is incomplete.
+    if (user && !clinicId) {
         const storedActiveClinic = getActiveClinic();
         const storedClinics = getUserClinics();
         clinicId = storedActiveClinic || (storedClinics && storedClinics.length > 0 ? storedClinics[0] : null);
-        console.log('🔄 Using fallback from localStorage - active:', storedActiveClinic, 'clinics:', storedClinics);
     }
-
-    console.log('🏥 ClinicProvider - extracted clinicId:', clinicId);
 
     const { data: profile, isLoading, error, refetch } = useQuery({
         queryKey: ['clinicProfile', clinicId],
         queryFn: () => clinicId ? clinicProfileService.getClinicProfile(clinicId) : null,
-        enabled: !!clinicId,
+        enabled: !!clinicId && !!user && !authLoading,
         staleTime: 0, // Always fetch fresh data
         gcTime: 0, // Don't cache
         refetchOnMount: 'always', // Always refetch when mounted
@@ -106,7 +101,7 @@ export const ClinicProvider: React.FC<ClinicProviderProps> = ({ children }) => {
     const value = {
         clinicId,
         profile: profile || null,
-        isLoading,
+        isLoading: authLoading || isLoading,
         error,
         updateProfile,
         refetchProfile: refetch

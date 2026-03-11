@@ -13,14 +13,33 @@ import { useCreateInvoice } from '../hooks/usePayments';
 import { useClinicProfile } from '../hooks/useClinicProfile';
 import { useClinic } from '../contexts/ClinicContext';
 import { PatientResponse, InvoiceItem as APIInvoiceItem } from '../api/types';
+import { clinicProfileService, ClinicConsultant } from '../api/services/clinicProfile';
 import toast from 'react-hot-toast';
 
 // Local type for invoice items that allows empty strings for editing
-type LocalInvoiceItem = Omit<APIInvoiceItem, 'qty' | 'rate'> & {
+type LocalInvoiceItem = Omit<APIInvoiceItem, 'qty' | 'rate' | 'consultant_commission_value'> & {
   id: string;
   qty: number | '';
   rate: number | '';
+  consultant_enabled?: boolean;
+  consultant_id?: string;
+  consultant_commission_type?: 'Percentage' | 'Fixed';
+  consultant_commission_value?: number | '';
+  consultant_override?: boolean;
 };
+
+const createEmptyInvoiceItem = (id: string): LocalInvoiceItem => ({
+  id,
+  item_code: '',
+  description: '',
+  qty: '',
+  rate: '',
+  consultant_enabled: false,
+  consultant_id: '',
+  consultant_commission_type: 'Percentage',
+  consultant_commission_value: '',
+  consultant_override: false,
+});
 
 const InvoicePage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,9 +47,8 @@ const InvoicePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [selectedPatient, setSelectedPatient] = useState<PatientResponse | null>(null);
   const [showPatientList, setShowPatientList] = useState(false);
-  const [invoiceItems, setInvoiceItems] = useState<LocalInvoiceItem[]>([
-    { id: '1', item_code: '', description: '', qty: '' as const, rate: '' as const }
-  ]);
+  const [invoiceItems, setInvoiceItems] = useState<LocalInvoiceItem[]>([createEmptyInvoiceItem('1')]);
+  const [clinicConsultants, setClinicConsultants] = useState<ClinicConsultant[]>([]);
   const [invoiceData, setInvoiceData] = useState({
     invoiceNumber: `INV-${Date.now()}`,
     date: new Date().toISOString().split('T')[0],
@@ -68,6 +86,32 @@ const InvoicePage: React.FC = () => {
     }
   }, [location.state, selectedPatient]);
 
+  useEffect(() => {
+    if (!clinicId) {
+      setClinicConsultants([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    clinicProfileService
+      .getClinicConsultants(clinicId)
+      .then((response) => {
+        if (isMounted) {
+          setClinicConsultants((response.consultants || []).filter((consultant) => consultant.is_active));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setClinicConsultants([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [clinicId]);
+
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
     switch (tab) {
@@ -89,7 +133,7 @@ const InvoicePage: React.FC = () => {
   const addInvoiceItem = () => {
     setInvoiceItems(prev => [
       ...prev,
-      { id: Date.now().toString(), item_code: '', description: '', qty: '' as const, rate: '' as const }
+      createEmptyInvoiceItem(Date.now().toString())
     ]);
   };
 
@@ -108,9 +152,62 @@ const InvoicePage: React.FC = () => {
         const num = field === 'qty' ? parseInt(input, 10) : parseFloat(input);
         return { ...item, [field]: isNaN(num) ? ('' as const) : num };
       }
+      if (field === 'consultant_commission_value') {
+        const input = String(value);
+        if (input === '') return { ...item, consultant_commission_value: '' as const };
+        const num = parseFloat(input);
+        return { ...item, consultant_commission_value: isNaN(num) ? ('' as const) : num };
+      }
       return { ...item, [field]: value };
     }));
   };
+
+  const getConsultantById = (consultantId?: string) =>
+    clinicConsultants.find((consultant) => consultant.consultant_id === consultantId);
+
+  const applyConsultantDefaults = (itemId: string, consultantId: string) => {
+    const consultant = getConsultantById(consultantId);
+    setInvoiceItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              consultant_enabled: Boolean(consultantId),
+              consultant_id: consultantId,
+              consultant_override: false,
+              consultant_commission_type: consultant?.commission_type || 'Percentage',
+              consultant_commission_value: consultant ? consultant.commission_value : '',
+            }
+          : item
+      )
+    );
+  };
+
+  const calculateLineAmount = (item: LocalInvoiceItem) => {
+    const qty = typeof item.qty === 'number' ? item.qty : parseFloat(String(item.qty)) || 0;
+    const rate = typeof item.rate === 'number' ? item.rate : parseFloat(String(item.rate)) || 0;
+    return qty * rate;
+  };
+
+  const calculateLineCommission = (item: LocalInvoiceItem) => {
+    if (!item.consultant_enabled || !item.consultant_id) {
+      return 0;
+    }
+
+    const commissionValue =
+      typeof item.consultant_commission_value === 'number'
+        ? item.consultant_commission_value
+        : parseFloat(String(item.consultant_commission_value)) || 0;
+
+    if ((item.consultant_commission_type || 'Percentage') === 'Fixed') {
+      return commissionValue;
+    }
+
+    return (calculateLineAmount(item) * commissionValue) / 100;
+  };
+
+  const calculateTotalConsultantCommission = () =>
+    invoiceItems.reduce((sum, item) => sum + calculateLineCommission(item), 0);
 
   const calculateSubtotal = () => {
     return invoiceItems.reduce((sum, item) => {
@@ -124,10 +221,6 @@ const InvoicePage: React.FC = () => {
     return applyGST ? calculateSubtotal() * 0.18 : 0;
   };
 
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
-  };
-
   const handleSubmit = () => {
     if (!selectedPatient) {
       toast.error('Please select a patient');
@@ -139,6 +232,16 @@ const InvoicePage: React.FC = () => {
       return;
     }
 
+    if (invoiceItems.some(item => item.consultant_enabled && !item.consultant_id)) {
+      toast.error('Please select a consultant for each enabled commission row');
+      return;
+    }
+
+    if (invoiceItems.some(item => item.consultant_enabled && (Number(item.consultant_commission_value) < 0 || item.consultant_commission_value === ''))) {
+      toast.error('Please enter a valid consultant commission value');
+      return;
+    }
+
     if (!invoiceData.dueDate) {
       toast.error('Please set a due date');
       return;
@@ -147,10 +250,19 @@ const InvoicePage: React.FC = () => {
     const invoiceRequest = {
       patient_id: selectedPatient.patient_id || selectedPatient.name, // Use patient_id if available, fallback to name (which might be the ID)
       appointment_id: appointmentId,
-      items: invoiceItems.map(({ id, qty, rate, ...rest }) => ({
+      items: invoiceItems.map(({ id, qty, rate, consultant_enabled, consultant_id, consultant_commission_type, consultant_commission_value, consultant_override, ...rest }) => ({
         ...rest,
         qty: Number(qty) || 0,
         rate: Number(rate) || 0,
+        consultant:
+          consultant_enabled && consultant_id
+            ? {
+                consultant_id,
+                commission_type: consultant_commission_type || 'Percentage',
+                commission_value: Number(consultant_commission_value) || 0,
+                override: Boolean(consultant_override),
+              }
+            : undefined,
       })), // Remove local id field and coerce numerics
       posting_date: invoiceData.date,
       due_date: invoiceData.dueDate,
@@ -370,11 +482,134 @@ const InvoicePage: React.FC = () => {
                               <div className="flex items-end">
                                 <div className="w-full p-2 bg-primary-50 border border-primary-200 rounded text-right">
                                   <span className="text-xs text-gray-600 block">Amount</span>
-                                  <span className="text-sm font-bold text-primary-600">
-                                    ₹{(((typeof item.qty === 'number' ? item.qty : parseFloat(String(item.qty)) || 0) * (typeof item.rate === 'number' ? item.rate : parseFloat(String(item.rate)) || 0))).toFixed(2)}
-                                  </span>
+                                  <span className="text-sm font-bold text-primary-600">₹{calculateLineAmount(item).toFixed(2)}</span>
                                 </div>
                               </div>
+                            </div>
+
+                            <div className="border rounded-lg bg-white p-3 space-y-3">
+                              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                    checked={Boolean(item.consultant_enabled)}
+                                    onChange={(e) => {
+                                      if (!e.target.checked) {
+                                        setInvoiceItems((prev) =>
+                                          prev.map((row) =>
+                                            row.id === item.id
+                                              ? {
+                                                  ...row,
+                                                  consultant_enabled: false,
+                                                  consultant_id: '',
+                                                  consultant_override: false,
+                                                  consultant_commission_type: 'Percentage',
+                                                  consultant_commission_value: '' as const,
+                                                }
+                                              : row
+                                          )
+                                        );
+                                        return;
+                                      }
+
+                                      const firstConsultant = clinicConsultants[0];
+                                      applyConsultantDefaults(item.id, firstConsultant?.consultant_id || '');
+                                      updateInvoiceItem(item.id, 'consultant_enabled', true);
+                                    }}
+                                    disabled={clinicConsultants.length === 0}
+                                  />
+                                  <span>Add Consultant Commission</span>
+                                </label>
+                                {clinicConsultants.length === 0 && (
+                                  <span className="text-xs text-gray-500">
+                                    No active consultants configured in Settings
+                                  </span>
+                                )}
+                              </div>
+
+                              {item.consultant_enabled && (
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                                    <div className="lg:col-span-2">
+                                      <label className="block text-xs font-semibold text-gray-700 mb-1">Consultant *</label>
+                                      <select
+                                        value={item.consultant_id || ''}
+                                        onChange={(e) => applyConsultantDefaults(item.id, e.target.value)}
+                                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                      >
+                                        <option value="">Select consultant</option>
+                                        {clinicConsultants.map((consultant) => (
+                                          <option key={consultant.consultant_id} value={consultant.consultant_id}>
+                                            {consultant.consultant_name}
+                                            {consultant.practitioner ? ' (Internal)' : ' (External)'}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-700 mb-1">Commission Type</label>
+                                      <select
+                                        value={item.consultant_commission_type || 'Percentage'}
+                                        onChange={(e) => updateInvoiceItem(item.id, 'consultant_commission_type', e.target.value as 'Percentage' | 'Fixed')}
+                                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                        disabled={!item.consultant_override}
+                                      >
+                                        <option value="Percentage">Percentage</option>
+                                        <option value="Fixed">Fixed</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                        {item.consultant_commission_type === 'Fixed' ? 'Commission (₹)' : 'Commission (%)'}
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.consultant_commission_value === '' ? '' : item.consultant_commission_value}
+                                        onChange={(e) => updateInvoiceItem(item.id, 'consultant_commission_value', e.target.value)}
+                                        className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                        disabled={!item.consultant_override}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                        checked={Boolean(item.consultant_override)}
+                                        onChange={(e) => {
+                                          const isOverride = e.target.checked;
+                                          const consultant = getConsultantById(item.consultant_id);
+                                          setInvoiceItems((prev) =>
+                                            prev.map((row) =>
+                                              row.id === item.id
+                                                ? {
+                                                    ...row,
+                                                    consultant_override: isOverride,
+                                                    consultant_commission_type: isOverride
+                                                      ? row.consultant_commission_type || consultant?.commission_type || 'Percentage'
+                                                      : consultant?.commission_type || 'Percentage',
+                                                    consultant_commission_value: isOverride
+                                                      ? row.consultant_commission_value === '' ? (consultant?.commission_value ?? '') : row.consultant_commission_value
+                                                      : (consultant?.commission_value ?? ''),
+                                                  }
+                                                : row
+                                            )
+                                          );
+                                        }}
+                                      />
+                                      <span>Override default commission</span>
+                                    </label>
+                                    <div className="rounded-md bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
+                                      Calculated Commission: ₹{calculateLineCommission(item).toFixed(2)}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -410,6 +645,12 @@ const InvoicePage: React.FC = () => {
                           <span className="text-gray-600">Subtotal:</span>
                           <span className="font-semibold">₹{calculateSubtotal().toFixed(2)}</span>
                         </div>
+                        {calculateTotalConsultantCommission() > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Consultant commission:</span>
+                            <span className="font-semibold text-amber-600">₹{calculateTotalConsultantCommission().toFixed(2)}</span>
+                          </div>
+                        )}
                         {applyGST && (
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">GST (18%):</span>

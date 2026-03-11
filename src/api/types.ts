@@ -94,6 +94,39 @@ export interface ClinicPractitionerPermissionsResponse {
   practitioners: ClinicPractitionerPermission[];
 }
 
+export interface ClinicPractitionerSchedule {
+  practitioner_id: string;
+  practitioner_name: string;
+  user_id?: string;
+  primary_company: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  slot_duration?: number | null;
+}
+
+export interface ClinicPractitionerSchedulesResponse {
+  clinic: string;
+  default_slot_duration?: number | null;
+  practitioners: ClinicPractitionerSchedule[];
+}
+
+export interface ClinicConsultant {
+  consultant_id: string;
+  consultant_type: 'Internal' | 'External';
+  practitioner?: string | null;
+  consultant_name: string;
+  mobile?: string | null;
+  commission_type: 'Percentage' | 'Fixed';
+  commission_value: number;
+  is_active: number;
+  notes?: string | null;
+}
+
+export interface ClinicConsultantsResponse {
+  clinic: string;
+  consultants: ClinicConsultant[];
+}
+
 // Practitioner list response type
 export interface PractitionerResponse {
   name: string; // Practitioner ID from Frappe
@@ -105,6 +138,7 @@ export interface PractitionerResponse {
   specialization?: string;
   status?: string;
   available?: boolean;
+  appointment_slot_duration?: number | null;
 }
 
 // Patient related types
@@ -356,15 +390,32 @@ export interface InvoiceItem {
   qty: number;
   rate: number;
   description: string;
+  consultant?: {
+    consultant_id: string;
+    commission_type: 'Percentage' | 'Fixed';
+    commission_value: number;
+    override?: boolean;
+  };
+  consultant_id?: string;
+  consultant_name?: string;
+  consultant_type?: string;
+  consultant_practitioner?: string | null;
+  consultant_commission_type?: string;
+  consultant_commission_value?: number;
+  consultant_commission_amount?: number;
+  consultant_commission_source?: string;
 }
 
 export interface CreateInvoiceRequest {
   patient_id: string;
   appointment_id?: string;
+  practitioner_id?: string;
   items: InvoiceItem[];
   posting_date: string;
   due_date: string;
   remarks?: string;
+  discount_amount?: number;
+  tax_amount?: number;
 }
 
 export interface InvoiceResponse {
@@ -373,6 +424,7 @@ export interface InvoiceResponse {
   patient: string; // Frappe Patient ID
   patient_id?: string; // Alias
   patient_name: string;
+  healthcare_practitioner?: string;
   posting_date: string;
   due_date: string;
   grand_total: number;
@@ -381,6 +433,7 @@ export interface InvoiceResponse {
   is_overdue: boolean;
   status: string; // 'Paid' | 'Unpaid' | 'Partially Paid' | 'Overdue' logic often dynamic in backend
   items?: InvoiceItem[];
+  total_consultant_commission?: number;
 }
 
 export interface UpdatePaymentRequest {
@@ -419,6 +472,55 @@ export interface SendPaymentReminderRequest {
   invoice_id: string;
   reminder_type: 'email' | 'sms';
   message?: string;
+}
+
+export interface ConsultantPayoutSummaryCard {
+  consultant_id: string;
+  consultant_name: string;
+  consultant_type?: string | null;
+  consultant_practitioner?: string | null;
+  total_revenue: number;
+  total_collected: number;
+  total_commission: number;
+  invoice_count: number;
+  item_count: number;
+  override_count: number;
+}
+
+export interface ConsultantPayoutRow {
+  invoice_id: string;
+  date: string;
+  patient?: string;
+  patient_name: string;
+  procedure_name: string;
+  item_code?: string;
+  qty: number;
+  total_invoiced: number;
+  amount_received: number;
+  consultant_id: string;
+  consultant_name: string;
+  commission_type: string;
+  commission_value: number;
+  commission_amount: number;
+  commission_source?: string;
+  payment_status: 'Paid' | 'Partly Paid' | 'Unpaid' | string;
+}
+
+export interface ConsultantPayoutReport {
+  clinic?: string;
+  from_date: string;
+  to_date: string;
+  selected_consultant_id?: string;
+  summary: {
+    total_revenue: number;
+    total_collected: number;
+    total_commission: number;
+    consultant_count: number;
+    item_count: number;
+    invoice_count: number;
+  };
+  consultants: ConsultantPayoutSummaryCard[];
+  rows: ConsultantPayoutRow[];
 }
 
 // File upload related types

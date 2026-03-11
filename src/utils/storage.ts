@@ -66,6 +66,11 @@ export const clearStoredToken = (): void => {
 // User data management
 export const getStoredUserData = (): any | null => {
   try {
+    if (isSessionExpired()) {
+      clearAllStoredData();
+      return null;
+    }
+
     const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA);
     return userData ? JSON.parse(userData) : null;
   } catch (error) {

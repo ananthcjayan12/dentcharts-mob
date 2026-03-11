@@ -352,7 +352,7 @@ export function generatePrescriptionHTML(data: PrescriptionPrintData): string {
       </div>
       
       <div class="doctor-card">
-        <h1 class="dr-name">Dr. ${doctorName}</h1>
+        <h1 class="dr-name">${doctorName}</h1>
         <div class="dr-qual">
             ${doctorQualification ? `${doctorQualification}<br>` : ''}
             ${doctorRegNo ? `REG NO: ${doctorRegNo}` : ''}
@@ -429,7 +429,7 @@ export function generatePrescriptionHTML(data: PrescriptionPrintData): string {
         <div class="signature-box">
             <!-- Space for signature -->
             <div style="height: 30px;"></div>
-            <div class="dr-sig-name">Dr. ${doctorName}</div>
+            <div class="dr-sig-name">${doctorName}</div>
             <div style="font-size: 8pt; color: #6b7280;">(Authorized Signatory)</div>
         </div>
     </footer>

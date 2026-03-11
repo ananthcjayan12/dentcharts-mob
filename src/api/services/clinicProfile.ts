@@ -59,6 +59,39 @@ export interface ClinicProfile {
     };
 }
 
+export interface ClinicPractitionerSchedule {
+    practitioner_id: string;
+    practitioner_name: string;
+    user_id?: string;
+    primary_company: string;
+    start_time?: string | null;
+    end_time?: string | null;
+    slot_duration?: number | null;
+}
+
+export interface ClinicPractitionerSchedulesResponse {
+    clinic: string;
+    default_slot_duration?: number | null;
+    practitioners: ClinicPractitionerSchedule[];
+}
+
+export interface ClinicConsultant {
+    consultant_id: string;
+    consultant_type: 'Internal' | 'External';
+    practitioner?: string | null;
+    consultant_name: string;
+    mobile?: string | null;
+    commission_type: 'Percentage' | 'Fixed';
+    commission_value: number;
+    is_active: number;
+    notes?: string | null;
+}
+
+export interface ClinicConsultantsResponse {
+    clinic: string;
+    consultants: ClinicConsultant[];
+}
+
 export const clinicProfileService = {
     async getClinicProfile(clinic: string): Promise<ClinicProfile> {
         const response = await apiClient.get<{ profile: ClinicProfile }>(
@@ -94,6 +127,61 @@ export const clinicProfileService = {
 
     async updateAdditionalSettings(data: any): Promise<any> {
         return apiClient.post(API_ENDPOINTS.CLINIC_PROFILE.UPDATE_ADDITIONAL, data);
+    },
+
+    async getPractitionerSchedules(clinic: string): Promise<ClinicPractitionerSchedulesResponse> {
+        const response = await apiClient.get<ClinicPractitionerSchedulesResponse>(
+            `${API_ENDPOINTS.CLINIC_PROFILE.PRACTITIONER_SCHEDULES}?clinic=${encodeURIComponent(clinic)}`
+        );
+        return response.data!;
+    },
+
+    async updatePractitionerSchedule(data: {
+        clinic: string;
+        practitioner_id: string;
+        start_time?: string;
+        end_time?: string;
+        slot_duration?: number | null;
+    }): Promise<ClinicPractitionerSchedule> {
+        const response = await apiClient.post<ClinicPractitionerSchedule>(
+            API_ENDPOINTS.CLINIC_PROFILE.UPDATE_PRACTITIONER_SCHEDULE,
+            data
+        );
+        return response.data!;
+    },
+
+    async getClinicConsultants(clinic: string): Promise<ClinicConsultantsResponse> {
+        const response = await apiClient.get<ClinicConsultantsResponse>(
+            `${API_ENDPOINTS.CLINIC_PROFILE.CONSULTANTS}?clinic=${encodeURIComponent(clinic)}`
+        );
+        return response.data!;
+    },
+
+    async saveClinicConsultant(data: {
+        clinic: string;
+        consultant_id?: string;
+        consultant_type: 'Internal' | 'External';
+        practitioner?: string;
+        consultant_name?: string;
+        mobile?: string;
+        commission_type: 'Percentage' | 'Fixed';
+        commission_value: number;
+        is_active?: number;
+        notes?: string;
+    }): Promise<ClinicConsultant> {
+        const response = await apiClient.post<ClinicConsultant>(
+            API_ENDPOINTS.CLINIC_PROFILE.SAVE_CONSULTANT,
+            data
+        );
+        return response.data!;
+    },
+
+    async deleteClinicConsultant(clinic: string, consultant_id: string): Promise<{ consultant_id: string }> {
+        const response = await apiClient.post<{ consultant_id: string }>(
+            API_ENDPOINTS.CLINIC_PROFILE.DELETE_CONSULTANT,
+            { clinic, consultant_id }
+        );
+        return response.data!;
     },
 
     async uploadLogo(clinic: string, file: File): Promise<{ logo_url: string }> {

@@ -8,6 +8,7 @@ import {
 } from '../api/types';
 import { queryKeys, mutationKeys } from '../api/queryClient';
 import toast from 'react-hot-toast';
+import { clearAllStoredData } from '../utils/storage';
 
 /**
  * Hook for login functionality
@@ -55,14 +56,14 @@ export const useLogout = () => {
     mutationKey: mutationKeys.auth.logout(),
     mutationFn: () => authService.logout(),
     onSuccess: () => {
-      // Clear all queries from cache
+      clearAllStoredData();
       queryClient.clear();
-      toast.success('Logged out successfully');
+      window.location.replace('/login');
     },
-    onError: (error: any) => {
-      // Still perform local logout even if API fails
+    onError: () => {
+      clearAllStoredData();
       queryClient.clear();
-      toast.error(error.message || 'Logout failed');
+      window.location.replace('/login');
     },
   });
 };

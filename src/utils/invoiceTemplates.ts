@@ -1,6 +1,6 @@
 import { ClinicProfile } from '../api/services/clinicProfile';
 
-export type InvoiceTemplateId = 'standard' | 'modern' | 'minimal';
+export type InvoiceTemplateId = 'standard' | 'modern' | 'minimal' | 'elegant';
 
 interface InvoiceItem {
   item_name?: string;
@@ -32,6 +32,7 @@ export const invoiceTemplates = [
   { id: 'standard', name: 'Standard (Blue Accent)', description: 'Classic professional look with blue accents' },
   { id: 'modern', name: 'Modern (Clean)', description: 'Contemporary design with plenty of whitespace' },
   { id: 'minimal', name: 'Minimal (Print Friendly)', description: 'Ink-saving design optimized for black & white printing' },
+  { id: 'elegant', name: 'Elegant (Creative)', description: 'Stylish design with side accents and a warm aesthetic' },
 ];
 
 export const generateInvoiceHTML = (
@@ -274,12 +275,298 @@ export const generateInvoiceHTML = (
     </style>
   `;
 
+  // Elegant Template (Inspired by provided design)
+  const elegantTemplate = `
+    <style>
+      ${baseCss}
+      body { background-color: #f5f5f5; padding: 40px 0; font-family: 'Arial', sans-serif; }
+      .invoice-container { 
+        background: white; 
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); 
+        padding: 60px 40px 60px 220px; 
+        max-width: 850px;
+        margin: 0 auto;
+        position: relative;
+        min-height: 800px;
+        box-sizing: border-box;
+      }
+      
+      .binder-rings {
+        position: absolute;
+        left: 5px;
+        top: 60px;
+        bottom: 60px;
+        width: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        z-index: 10;
+      }
+      .binder-ring {
+        width: 30px;
+        height: 12px;
+        background: linear-gradient(to right, #ecca70, #fff7bd, #dca341);
+        border-radius: 6px;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+        position: relative;
+      }
+      .binder-ring::after {
+        content: '';
+        position: absolute;
+        right: 4px;
+        top: 2px;
+        width: 6px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.5);
+      }
+
+      .content-wrapper {
+        position: relative;
+        z-index: 5;
+      }
+
+      table { width: 100%; border-collapse: collapse; }
+      td { vertical-align: top; }
+
+      .header-title {
+        color: #A6785D;
+        font-size: 38px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        margin: 0;
+        line-height: 1;
+      }
+      
+      .bill-to h3 { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #111; letter-spacing: 1px; }
+      .bill-to p { margin: 3px 0; font-size: 13px; color: #444; }
+      .invoice-meta p { margin: 4px 0; font-size: 13px; color: #444; }
+      
+      .items-table {
+        border-top: 1px solid #111;
+        border-bottom: 1px solid #111;
+        margin-bottom: 30px;
+        margin-top: 30px;
+      }
+      .items-table th {
+        padding: 12px 5px;
+        font-size: 12px;
+        color: #111;
+        font-weight: bold;
+        text-transform: uppercase;
+        border-bottom: 1px solid #ddd;
+      }
+      .items-table td {
+        padding: 12px 5px;
+        font-size: 13px;
+        color: #444;
+        border-bottom: 1px solid #efefef;
+      }
+      .items-table tr:last-child td { border-bottom: none; }
+      
+      .totals-table td { padding: 8px 5px; font-size: 13px; color: #333; }
+      
+      .thank-you {
+        font-family: 'Brush Script MT', cursive, 'Georgia';
+        font-size: 48px;
+        color: #111;
+      }
+      
+      .phone-icon {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        background: #333;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 18px;
+        font-size: 10px;
+        margin-right: 5px;
+      }
+
+      @media print {
+        body { background: white; padding: 0; }
+        .invoice-container { box-shadow: none; margin: 0; border: none; padding: 40px 40px 40px 220px; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      }
+    </style>
+  `;
+
   // Select CSS based on template
-  const selectedCss = templateId === 'modern' ? modernTemplate : templateId === 'minimal' ? minimalTemplate : standardTemplate;
+  const selectedCss = templateId === 'modern' ? modernTemplate : templateId === 'minimal' ? minimalTemplate : templateId === 'elegant' ? elegantTemplate : standardTemplate;
 
   const isOutstanding = fullInvoiceData.outstanding_amount > 0;
 
   // HTML Structure Construction
+  if (templateId === 'elegant') {
+    const rings = Array.from({ length: 12 }).map(() => '<div class="binder-ring"></div>').join('');
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Invoice ${fullInvoiceData.invoice_id}</title>
+          ${selectedCss}
+        </head>
+        <body>
+          <button class="print-button no-print" onclick="window.print()">🖨️ Print Invoice</button>
+          
+          <div class="invoice-container">
+            <!-- Background Graphic -->
+            <svg style="position: absolute; top: 0; left: 0; width: 190px; height: 100%; z-index: 1;" preserveAspectRatio="none" viewBox="0 0 190 1000">
+              <path d="M0,0 L180,0 C120,80 160,200 130,350 C100,500 180,700 120,850 C100,950 150,1000 0,1000 Z" fill="#A6785D" />
+            </svg>
+            <!-- White abstract symbol overlaid -->
+            <svg style="position: absolute; top: 60px; left: -10px; width: 180px; height: 300px; z-index: 2;" viewBox="0 0 200 300">
+              <path d="M70,30 C 130,30 150,80 150,110 C 150,170 70,220 70,260 C 70,220 10,180 10,110 C 10,80 30,30 70,30 Z" fill="#ffffff" />
+              <rect x="55" y="10" width="30" height="260" fill="#ffffff" />
+              <rect x="15" y="120" width="110" height="30" fill="#ffffff" />
+            </svg>
+
+            <div class="binder-rings">${rings}</div>
+            
+            <div class="content-wrapper">
+              <table style="margin-bottom: 50px;">
+                <tr>
+                  <td style="width: 40%; vertical-align: top;">
+                    <h1 class="header-title">INVOICE</h1>
+                  </td>
+                  <td style="width: 60%; text-align: right; vertical-align: top;">
+                    <div style="display: inline-block; text-align: right;">
+                      ${logoUrl ? `
+                        <img src="${logoUrl}" alt="Logo" style="max-height: 80px; max-width: 250px; margin-bottom: 10px;">
+                      ` : `
+                        <h2 style="margin: 0 0 5px 0; color: #A6785D; font-weight: 300; font-size: 32px; font-family: 'Arial', sans-serif;">
+                          <span style="font-size: 42px;">${clinicName.charAt(0)}</span>${clinicName.slice(1)}
+                        </h2>
+                        ${clinicAddress ? `
+                          <p style="margin: 0; font-size: 10px; color: #b59f91; letter-spacing: 1px; text-transform: uppercase;">
+                            ${clinicAddress.substring(0, 70)}
+                          </p>
+                        ` : ''}
+                      `}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <table class="meta-table" style="margin-bottom: 40px; width: 100%;">
+                <tr>
+                  <td style="width: 50%;" class="bill-to">
+                    <h3>INVOICE TO :</h3>
+                    <p style="color: #111;">${patientName}</p>
+                    <p>Details / Patient ID: ${patientId}</p>
+                    ${patientPhone ? `<p>${patientPhone}</p>` : ''}
+                  </td>
+                  <td style="width: 50%; text-align: right;" class="invoice-meta">
+                    <p>Date : ${formatDate(fullInvoiceData.posting_date)}</p>
+                    <p>Invoice No: ${fullInvoiceData.invoice_id}</p>
+                    ${isOutstanding && fullInvoiceData.due_date ? `<p>Due Date : ${formatDate(fullInvoiceData.due_date)}</p>` : ''}
+                  </td>
+                </tr>
+              </table>
+
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th style="text-align: left; width: 45%;">DESCRIPTION</th>
+                    <th style="text-align: center; width: 20%;">PRICE</th>
+                    <th style="text-align: center; width: 15%;">QTY</th>
+                    <th style="text-align: right; width: 20%;">TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${fullInvoiceData.items && fullInvoiceData.items.length > 0
+                    ? fullInvoiceData.items.map((item) => `
+                        <tr>
+                          <td style="text-align: left;">${item.item_name || item.description}</td>
+                          <td style="text-align: center;">${formatCurrency(item.rate)}/-</td>
+                          <td style="text-align: center;">${item.qty}</td>
+                          <td style="text-align: right;">${formatCurrency(item.amount)}/-</td>
+                        </tr>
+                      `).join('')
+                    : '<tr><td colspan="4" style="text-align: center;">No items</td></tr>'}
+                </tbody>
+              </table>
+
+              <table style="margin-top: 30px; width: 100%;">
+                <tr>
+                  <td style="width: 55%; vertical-align: top;">
+                    <h4 style="font-size: 14px; text-transform: uppercase; color: #222; margin: 0 0 10px 0;">PAYMENT METHOD</h4>
+                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #444;">${doctorName || clinicName}</p>
+                    ${invoiceSettings.terms_conditions 
+                      ? `<p style="margin: 0; max-width: 250px; font-size: 11px; color: #666; line-height: 1.4;">${invoiceSettings.terms_conditions}</p>` 
+                      : `<p style="margin: 0; font-size: 12px; color: #666;">Status: ${fullInvoiceData.status}</p>`}
+                  </td>
+                  <td style="width: 45%; vertical-align: top;">
+                    <table class="totals-table">
+                      <tr>
+                        <td style="text-align: left;">Sub Total</td>
+                        <td style="text-align: right;">${formatCurrency(fullInvoiceData.grand_total - (fullInvoiceData.total_taxes_and_charges || 0))}/-</td>
+                      </tr>
+                      ${fullInvoiceData.discount_amount && fullInvoiceData.discount_amount > 0 ? `
+                      <tr>
+                        <td style="text-align: left;">Discount</td>
+                        <td style="text-align: right;">-${formatCurrency(fullInvoiceData.discount_amount)}/-</td>
+                      </tr>` : ''}
+                      ${fullInvoiceData.total_taxes_and_charges && fullInvoiceData.total_taxes_and_charges > 0 ? `
+                      <tr>
+                        <td style="text-align: left;">Tax</td>
+                        <td style="text-align: right;">${formatCurrency(fullInvoiceData.total_taxes_and_charges)}/-</td>
+                      </tr>` : ''}
+                      <tr>
+                        <td style="text-align: left; padding-top: 15px; font-size: 16px; font-weight: bold;">TOTAL</td>
+                        <td style="text-align: right; padding-top: 15px; font-size: 16px; font-weight: bold;">${formatCurrency(fullInvoiceData.grand_total)}/-</td>
+                      </tr>
+                      ${isOutstanding ? `
+                      <tr>
+                        <td style="text-align: left; font-weight: bold; color: #ef4444; padding-top: 10px;">Balance Due</td>
+                        <td style="text-align: right; font-weight: bold; color: #ef4444; padding-top: 10px;">${formatCurrency(fullInvoiceData.outstanding_amount)}/-</td>
+                      </tr>` : ''}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              ${fullInvoiceData.remarks && fullInvoiceData.remarks !== 'No Remarks' ? `
+                <div style="margin-top: 30px; font-size: 12px; color: #555;">
+                  <strong>Notes:</strong> ${fullInvoiceData.remarks}
+                </div>
+              ` : ''}
+
+              <table style="margin-top: 50px; width: 100%;">
+                <tr>
+                  <td style="width: 60%; vertical-align: middle;">
+                    <div class="thank-you">Thank You</div>
+                  </td>
+                  <td style="width: 40%; text-align: right; vertical-align: bottom;">
+                    ${invoiceSettings.show_seal && invoiceSettings.seal_url ? `
+                      <img src="${invoiceSettings.seal_url}" alt="Seal" style="max-height: 80px; margin-right: 15px; vertical-align: bottom; opacity: 0.8; display: inline-block;">
+                    ` : ''}
+                    ${invoiceSettings.signature_url ? `
+                      <div style="display: inline-block; text-align: center; vertical-align: bottom;">
+                        <img src="${invoiceSettings.signature_url}" alt="Signature" style="max-height: 60px; margin-bottom: 5px; display: block;">
+                        <div style="font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 5px;">Authorized Signatory</div>
+                      </div>
+                    ` : ''}
+                  </td>
+                </tr>
+              </table>
+
+              <div style="text-align: right; margin-top: 30px; font-size: 14px; color: #333;">
+                <span class="phone-icon">&#9990;</span>
+                ${clinicPhone ? clinicPhone : '0000 000 000'}
+                ${clinicEmail ? ` <span style="margin-left: 10px;">✉️ ${clinicEmail}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
   const headerContent = templateId === 'modern'
     ? `
       <div class="header-bg">
