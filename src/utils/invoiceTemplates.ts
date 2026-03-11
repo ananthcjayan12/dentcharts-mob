@@ -441,10 +441,12 @@ export const generateInvoiceHTML = (
                         <h2 style="margin: 0 0 5px 0; color: #A6785D; font-weight: 300; font-size: 32px; font-family: 'Arial', sans-serif;">
                           <span style="font-size: 42px;">${clinicName.charAt(0)}</span>${clinicName.slice(1)}
                         </h2>
+                        ${clinicAddress ? `
+                          <p style="margin: 0; font-size: 10px; color: #b59f91; letter-spacing: 1px; text-transform: uppercase;">
+                            ${clinicAddress.substring(0, 70)}
+                          </p>
+                        ` : ''}
                       `}
-                      <p style="margin: 0; font-size: 10px; color: #b59f91; letter-spacing: 1px; text-transform: uppercase;">
-                        ${(clinicAddress || 'ORTHODONTIC CENTRE & ADVANCED DENTAL CARE').substring(0, 70)}
-                      </p>
                     </div>
                   </td>
                 </tr>

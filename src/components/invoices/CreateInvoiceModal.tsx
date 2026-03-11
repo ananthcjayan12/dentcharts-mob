@@ -27,6 +27,7 @@ interface CreateInvoiceModalProps {
     isOpen: boolean;
     onClose: () => void;
     appointment?: any;
+    initialPatient?: { patient_id: string; patient_name?: string } | null;
     completedProcedures?: any[];
     onSubmit: (data: any) => void;
     isCreating: boolean;
@@ -37,6 +38,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     isOpen,
     onClose,
     appointment,
+    initialPatient = null,
     completedProcedures = [],
     onSubmit,
     isCreating,
@@ -69,6 +71,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     const initializedAppointmentKeyRef = useRef<string | null>(null);
     const [patientSearch, setPatientSearch] = useState('');
     const [selectedPatient, setSelectedPatient] = useState<{ patient_id: string; patient_name: string } | null>(null);
+    const [showPatientDropdown, setShowPatientDropdown] = useState(false);
     const { data: patientSearchResults = [] } = usePatientsForSelect(patientSearch);
 
     const [items, setItems] = useState<InvoiceItem[]>([{
@@ -115,6 +118,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
             setAssociatedPractitionerId('');
             setPatientSearch('');
             setSelectedPatient(null);
+            setShowPatientDropdown(false);
             return;
         }
 
@@ -183,20 +187,36 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
             return;
         }
 
-        if (appointment?.patient) {
+        const appointmentPatientId = appointment?.patient || appointment?.patient_id;
+        const appointmentPatientName = appointment?.patient_name || appointmentPatientId;
+
+        if (appointmentPatientId) {
             setSelectedPatient({
-                patient_id: appointment.patient,
-                patient_name: appointment.patient_name || appointment.patient,
+                patient_id: appointmentPatientId,
+                patient_name: appointmentPatientName,
             });
-            setPatientSearch(appointment.patient_name || appointment.patient || '');
+            setPatientSearch(appointmentPatientName || '');
+            setShowPatientDropdown(false);
+            return;
+        }
+
+        if (initialPatient?.patient_id) {
+            const patientName = initialPatient.patient_name || initialPatient.patient_id;
+            setSelectedPatient({
+                patient_id: initialPatient.patient_id,
+                patient_name: patientName,
+            });
+            setPatientSearch(patientName);
+            setShowPatientDropdown(false);
             return;
         }
 
         if (!allowPatientSelection) {
             setSelectedPatient(null);
             setPatientSearch('');
+            setShowPatientDropdown(false);
         }
-    }, [appointment, allowPatientSelection, isOpen]);
+    }, [appointment, allowPatientSelection, initialPatient, isOpen]);
 
     const addItem = () => {
         setItems([...items, {
@@ -419,22 +439,36 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                             />
                         </div>
 
-                        {(allowPatientSelection || !appointment?.patient) && (
+                        {(allowPatientSelection || !selectedPatient?.patient_id) && (
                             <div className="relative">
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Patient</label>
                                 <input
                                     type="text"
                                     value={patientSearch}
                                     onChange={(event) => {
-                                        setPatientSearch(event.target.value);
-                                        if (!event.target.value.trim()) {
+                                        const nextValue = event.target.value;
+                                        setPatientSearch(nextValue);
+                                        setShowPatientDropdown(true);
+                                        if (!nextValue.trim()) {
+                                            setSelectedPatient(null);
+                                            return;
+                                        }
+                                        if (selectedPatient && nextValue !== selectedPatient.patient_name) {
                                             setSelectedPatient(null);
                                         }
+                                    }}
+                                    onFocus={() => {
+                                        if (patientSearch.trim().length >= 2) {
+                                            setShowPatientDropdown(true);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        window.setTimeout(() => setShowPatientDropdown(false), 150);
                                     }}
                                     placeholder="Search patient by name or ID"
                                     className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                                 />
-                                {patientSearch.trim().length >= 2 && patientSearchResults.length > 0 && (
+                                {showPatientDropdown && patientSearch.trim().length >= 2 && patientSearchResults.length > 0 && (
                                     <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-y-auto">
                                         {patientSearchResults.map((patient: any) => {
                                             const patientId = patient.patient_id || patient.name;
@@ -446,6 +480,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                                                     onClick={() => {
                                                         setSelectedPatient({ patient_id: patientId, patient_name: patientName });
                                                         setPatientSearch(patientName);
+                                                        setShowPatientDropdown(false);
                                                     }}
                                                     className="w-full px-3 py-2 text-left hover:bg-gray-50"
                                                 >

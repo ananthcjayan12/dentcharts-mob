@@ -2565,6 +2565,10 @@ const PrescriptionPage: React.FC = () => {
               isOpen={showCreateInvoiceModal}
               onClose={() => setShowCreateInvoiceModal(false)}
               appointment={invoiceModalAppointment}
+              initialPatient={patientId ? {
+                patient_id: patientId,
+                patient_name: patient?.patient_name || patient?.name || patientId,
+              } : null}
               onSubmit={handleCreateInvoiceSubmit}
               isCreating={isCreatingInvoice}
             />
