@@ -205,5 +205,13 @@ export const clinicProfileService = {
             formData
         );
         return response.data!;
+    },
+
+    async getEmbeddedAsset(fileUrl: string): Promise<{ file_url: string; data_url: string }> {
+        const response = await apiClient.get<{ file_url: string; data_url: string }>(
+            API_ENDPOINTS.CLINIC_PROFILE.EMBED_ASSET,
+            { params: { file_url: fileUrl } }
+        );
+        return response.data!;
     }
 };

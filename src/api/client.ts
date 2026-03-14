@@ -420,6 +420,7 @@ export const API_ENDPOINTS = {
   // Clinic Settings & Profile
   CLINIC_PROFILE: {
     GET: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.get_clinic_profile',
+    EMBED_ASSET: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.get_embedded_asset',
     UPDATE_BASIC: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_basic_info',
     UPDATE_ADDRESS: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_address',
     UPDATE_BRANDING: '/api/method/mob_clinic.mob_clinic.api.clinic_profile.update_branding',

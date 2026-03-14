@@ -5,7 +5,7 @@ import { printPrescription, PrescriptionPrintData, downloadPrescriptionPDF } fro
 import { printHTML } from '../utils/printUtils';
 import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
-import { PrescriptionMedicine } from '../api/services/medicine';
+import { PrescriptionDraft } from '../api/services/medicine';
 import { prescriptionService } from '../api/services/prescription';
 import { useClinic } from '../contexts/ClinicContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,16 +24,81 @@ import DentalChart, { ToothData } from '../components/common/DentalChart';
 import { usePatient } from '../hooks/usePatients';
 import { useAppointment } from '../hooks/useAppointments';
 import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription } from '../hooks/usePrescriptions';
+import { usePractitioners } from '../hooks/usePractitioners';
 import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoice, useCreateInvoice } from '../hooks/usePayments';
 import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
+import { appointmentService } from '../api/services/appointment';
 import { fileUploadService } from '../api/services/fileUpload';
 import toast from 'react-hot-toast';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import ImageViewerModal from '../components/common/ImageViewerModal';
 import EditPatientModal from '../components/patients/EditPatientModal';
+import { clinicProfileService } from '../api/services/clinicProfile';
 
 // Get API base URL from environment variable (same as API client)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
+
+const extractMedicationTag = (comment: string | undefined, label: string): string => {
+  if (!comment) {
+    return '';
+  }
+
+  const pattern = new RegExp(`(?:^|\\|)\\s*${label}:\\s*([^|]+)`, 'i');
+  const match = comment.match(pattern);
+  return match?.[1]?.trim() || '';
+};
+
+const stripMedicationTags = (comment: string | undefined): string => {
+  if (!comment) {
+    return '';
+  }
+
+  return comment
+    .split('|')
+    .map(part => part.trim())
+    .filter(part => part && !/^(Dosage|Duration|Interval|Form|Condition|Note):/i.test(part))
+    .join(' | ');
+};
+
+const parseFrequencyParts = (frequency: string | undefined): [number, number, number] => {
+  if (!frequency || !/^\d+-\d+-\d+(?:-\d+)?$/.test(frequency)) {
+    return [0, 0, 0];
+  }
+
+  const parts = frequency.split('-').map(part => parseInt(part, 10) || 0);
+
+  if (parts.length === 4) {
+    return [parts[0] || 0, parts[1] || 0, parts[3] || 0];
+  }
+
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+};
+
+const normalizeDoctorDisplayName = (name: string | undefined): string => {
+  const normalized = (name || '').trim().replace(/^dr\.?\s+/i, '').trim();
+  return normalized || 'Doctor';
+};
+
+const mapMedicationForPrint = (medication: any) => {
+  const comment = medication.comment || medication.instructions || medication.instruction || medication.notes || '';
+  const frequency = medication.frequency || medication.interval || extractMedicationTag(comment, 'Interval');
+  const [morning, lunch, night] = parseFrequencyParts(frequency);
+  const condition = medication.condition || extractMedicationTag(comment, 'Condition') || medication.instruction || '';
+  const note = medication.note || extractMedicationTag(comment, 'Note') || stripMedicationTags(comment);
+
+  return {
+    medicine_name: medication.drug_name || medication.medicine_name,
+    dosage: medication.dosage || extractMedicationTag(comment, 'Dosage'),
+    dosage_form: medication.dosage_form || medication.form || extractMedicationTag(comment, 'Form'),
+    frequency,
+    days: medication.period || medication.duration || extractMedicationTag(comment, 'Duration'),
+    condition,
+    comment: note,
+    morning,
+    lunch,
+    night,
+  };
+};
 
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -103,6 +168,7 @@ const PrescriptionPage: React.FC = () => {
   const { data: prescriptions, isLoading: prescriptionsLoading, refetch: refetchPrescriptions } = usePatientPrescriptions(patientId || '');
   const { data: invoices, isLoading: invoicesLoading } = usePatientInvoices(patientId || '');
   const { data: paymentSummary, isLoading: paymentSummaryLoading } = usePaymentSummary(patientId || '');
+  const { data: practitionersData } = usePractitioners();
 
   // Use pending_invoices from payment summary if invoices are not available
   const displayInvoices = React.useMemo(() => {
@@ -111,11 +177,11 @@ const PrescriptionPage: React.FC = () => {
     return [];
   }, [invoices, paymentSummary]);
 
-  const { mutate: createPrescription, isPending: isCreating } = useCreatePrescription();
-  const { mutate: updatePrescription, isPending: isUpdating } = useUpdatePrescription();
-  const { mutate: recordPayment, isPending: isPaymentProcessing } = useRecordPayment();
+  const { mutateAsync: createPrescription, isPending: isCreating } = useCreatePrescription();
+  const { mutateAsync: updatePrescription, isPending: isUpdating } = useUpdatePrescription();
+  const { mutateAsync: recordPayment, isPending: isPaymentProcessing } = useRecordPayment();
   const deleteInvoiceMutation = useDeleteInvoice();
-  const { mutate: createInvoice, isPending: isCreatingInvoice } = useCreateInvoice();
+  const { mutateAsync: createInvoice, isPending: isCreatingInvoice } = useCreateInvoice();
 
   const isLoading = patientLoading || prescriptionsLoading || invoicesLoading || paymentSummaryLoading;
 
@@ -164,6 +230,50 @@ const PrescriptionPage: React.FC = () => {
   const [invoiceDetails, setInvoiceDetails] = useState<Record<string, any>>({});
   const [loadingInvoiceDetails, setLoadingInvoiceDetails] = useState<Set<string>>(new Set());
   const [sendingInvoiceWhatsApp, setSendingInvoiceWhatsApp] = useState<Set<string>>(new Set());
+  const [appointmentDoctor, setAppointmentDoctor] = useState<{ id: string; name: string } | null>(null);
+  const [prescriptionOverrides, setPrescriptionOverrides] = useState<Record<string, any>>({});
+
+  const prescriptionDoctorOptions = React.useMemo(() => {
+    const options = new Map<string, string>();
+    const practitioners = practitionersData?.data || [];
+
+    practitioners.forEach(practitioner => {
+      if (practitioner.name) {
+        options.set(practitioner.name, practitioner.practitioner_name || practitioner.name);
+      }
+    });
+
+    if (appointmentDoctor?.id) {
+      options.set(appointmentDoctor.id, appointmentDoctor.name || appointmentDoctor.id);
+    }
+
+    if (user?.practitioner_id) {
+      options.set(user.practitioner_id, user.name || user.practitioner_id);
+    }
+
+    return Array.from(options.entries()).map(([id, name]) => ({ id, name }));
+  }, [appointmentDoctor, practitionersData, user]);
+
+  const practitionerLookup = React.useMemo(() => {
+    const lookup = new Map<string, { practitioner_name: string; designation?: string; department?: string }>();
+    const practitioners = practitionersData?.data || [];
+
+    practitioners.forEach(practitioner => {
+      if (!practitioner.name) {
+        return;
+      }
+
+      lookup.set(practitioner.name, {
+        practitioner_name: practitioner.practitioner_name || practitioner.name,
+        designation: practitioner.designation,
+        department: practitioner.department,
+      });
+    });
+
+    return lookup;
+  }, [practitionersData]);
+
+  const defaultPrescriptionDoctorId = appointmentDoctor?.id || user?.practitioner_id || prescriptionDoctorOptions[0]?.id || '';
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
@@ -236,6 +346,42 @@ const PrescriptionPage: React.FC = () => {
 
     fetchPatientFiles();
   }, [patientId, appointmentId]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const fetchAppointmentDoctor = async () => {
+      if (!appointmentId) {
+        setAppointmentDoctor(null);
+        return;
+      }
+
+      try {
+        const appointment = await appointmentService.getAppointment(appointmentId);
+        if (!isMounted) {
+          return;
+        }
+
+        const practitionerId = (appointment as any).practitioner_id || appointment.practitioner;
+        const practitionerName = (appointment as any).practitioner_name || practitionerId;
+
+        if (practitionerId) {
+          setAppointmentDoctor({
+            id: practitionerId,
+            name: practitionerName,
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to load appointment doctor', error);
+      }
+    };
+
+    fetchAppointmentDoctor();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [appointmentId]);
 
   // Fetch clinical records when patient loads
   React.useEffect(() => {
@@ -505,36 +651,67 @@ const PrescriptionPage: React.FC = () => {
   };
 
   // Handler for new prescription modal submission
-  const handleNewPrescriptionSubmit = async (medications: PrescriptionMedicine[]) => {
+  const handleNewPrescriptionSubmit = async (prescription: PrescriptionDraft) => {
     if (!patientId) return;
 
     try {
+      const validMedications = prescription.medications.filter(med => med.medicine_name.trim());
+
+      if (!validMedications.length && !prescription.physicianNotes?.trim()) {
+        toast.error('Add at least one medicine or physician notes');
+        return;
+      }
+
       // Convert from new modal format to API format
-      const apiMedications = medications.map(med => ({
+      const apiMedications = validMedications.map(med => ({
         drug_name: med.medicine_name,
-        dosage: med.strength || '',
+        dosage: med.dosage || '',
         dosage_form: med.dosage_form,
-        interval: `${med.morning}-${med.lunch}-${med.evening}-${med.night}`, // e.g., "1-0-0-1"
+        interval: `${med.morning}-${med.lunch}-${med.night}`,
         period: `${med.days} days`,
-        comment: med.condition + (med.instructions ? ` - ${med.instructions}` : ''),
+        comment: [
+          med.condition ? `Condition: ${med.condition}` : '',
+          med.note?.trim() ? `Note: ${med.note.trim()}` : '',
+        ].filter(Boolean).join(' | '),
       }));
 
-      const prescriptionData: any = {
+      const prescriptionData = {
         patient_id: patientId,
-        appointment_id: appointmentId,
+        appointment_id: appointmentId || undefined,
+        practitioner: prescription.practitioner || undefined,
+        treatment_plan: prescription.physicianNotes?.trim() || undefined,
         medications: apiMedications,
+        investigations: [],
       };
 
-      await createPrescription(prescriptionData);
+      const createdPrescription = await createPrescription(prescriptionData);
+
+      const selectedDoctorName =
+        prescriptionDoctorOptions.find(option => option.id === prescription.practitioner)?.name ||
+        appointmentDoctor?.name ||
+        user?.name ||
+        'Doctor';
+
+      const createdPrescriptionId = (createdPrescription as any)?.record_id || (createdPrescription as any)?.prescription_id;
+
+      if (createdPrescriptionId) {
+        setPrescriptionOverrides(prev => ({
+          ...prev,
+          [createdPrescriptionId]: {
+            practitioner: prescription.practitioner || '',
+            practitioner_name: selectedDoctorName,
+            treatment_plan: prescription.physicianNotes?.trim() || '',
+            medications: apiMedications,
+          },
+        }));
+      }
 
       // Manually refetch prescriptions to ensure UI updates
       await refetchPrescriptions();
 
       setShowNewPrescriptionModal(false);
-      toast.success('Prescription created successfully');
     } catch (error: any) {
       console.error('Create prescription error:', error);
-      toast.error('Failed to create prescription');
     }
   };
 
@@ -1748,63 +1925,68 @@ const PrescriptionPage: React.FC = () => {
                                               e.stopPropagation();
 
                                               let pdfDisplayData = displayData;
+                                              const prescriptionOverride = prescriptionOverrides[recordId];
 
-                                              // Fetch full details if medications are missing
-                                              if (!pdfDisplayData.medications || pdfDisplayData.medications.length === 0) {
+                                              try {
+                                                toast.loading('Preparing PDF...', { id: 'pdf-prep' });
+                                                const fullData = await prescriptionService.getPrescription(recordId);
+                                                pdfDisplayData = { ...displayData, ...fullData, ...prescriptionOverride };
+                                                toast.dismiss('pdf-prep');
+                                              } catch (err) {
+                                                console.error("Failed to fetch prescription details for PDF", err);
+                                                toast.error("Failed to load prescription details", { id: 'pdf-prep' });
+                                                return;
+                                              }
+
+                                              const medications = (pdfDisplayData.medications || []).map((medication: any) => mapMedicationForPrint(medication));
+                                              const practitionerId =
+                                                (typeof (pdfDisplayData as any)?.practitioner === 'string' && (pdfDisplayData as any)?.practitioner) ||
+                                                prescriptionOverride?.practitioner ||
+                                                '';
+                                              const practitionerMeta = practitionerLookup.get(practitionerId);
+                                              const practitionerName =
+                                                normalizeDoctorDisplayName(
+                                                  (pdfDisplayData as any)?.practitioner?.practitioner_name ||
+                                                  pdfDisplayData.practitioner_name ||
+                                                  prescriptionOverride?.practitioner_name ||
+                                                  (user as any)?.full_name ||
+                                                  user?.name
+                                                );
+                                              const doctorQualification =
+                                                practitionerMeta?.designation ||
+                                                practitionerMeta?.department ||
+                                                (pdfDisplayData as any)?.designation ||
+                                                (pdfDisplayData as any)?.department ||
+                                                (pdfDisplayData as any)?.medical_department ||
+                                                '';
+                                              let clinicLogo = profile?.basic_info?.logo_url;
+
+                                              if (clinicLogo) {
                                                 try {
-                                                  toast.loading('Preparing PDF...', { id: 'pdf-prep' });
-                                                  const fullData = await prescriptionService.getPrescription(recordId);
-                                                  pdfDisplayData = fullData;
-                                                  toast.dismiss('pdf-prep');
-                                                } catch (err) {
-                                                  console.error("Failed to fetch prescription details for PDF", err);
-                                                  toast.error("Failed to load full prescription details", { id: 'pdf-prep' });
-                                                  return;
+                                                  const embeddedAsset = await clinicProfileService.getEmbeddedAsset(clinicLogo);
+                                                  clinicLogo = embeddedAsset.data_url;
+                                                } catch (logoError) {
+                                                  console.warn('Failed to embed clinic logo for prescription PDF', logoError);
+                                                  clinicLogo = undefined;
                                                 }
                                               }
 
-                                              const medications = (pdfDisplayData.medications || []).map((m: any) => ({
-                                                medicine_name: m.drug_name || m.medicine_name,
-                                                strength: m.dosage || '',
-                                                frequency: m.frequency || m.interval || '',
-                                                days: m.duration || m.period || '',
-                                                condition: m.instruction || m.comment || '',
-                                                comment: m.instructions || m.comment,
-                                                morning: 0, lunch: 0, evening: 0, night: 0
-                                              }));
-                                              // Parse 1-0-1 format
-                                              medications.forEach((m: any) => {
-                                                if (m.frequency && /^\d+-\d+-\d+(-\d+)?$/.test(m.frequency)) {
-                                                  const parts = m.frequency.split('-');
-                                                  m.morning = parseInt(parts[0]) || 0;
-                                                  m.lunch = parseInt(parts[1]) || 0;
-                                                  // If 3 parts: Mor-Aft-Night (standard 1-0-1 is Morn-Aft-Night usually)
-                                                  if (parts.length === 3) {
-                                                    m.evening = parseInt(parts[2]) || 0;
-                                                    m.night = m.evening; // Template uses evening/night logic
-                                                  } else if (parts.length === 4) {
-                                                    m.evening = parseInt(parts[2]) || 0;
-                                                    m.night = parseInt(parts[3]) || 0;
-                                                  }
-                                                }
-                                              });
-
                                               const data: PrescriptionPrintData = {
                                                 patientName: pdfDisplayData.patient_name || patient?.patient_name || 'Patient',
-                                                patientAge: patient?.age ? String(patient.age) : (pdfDisplayData.age ? String(pdfDisplayData.age) : ''),
-                                                patientGender: patient?.sex || pdfDisplayData.gender || '',
+                                                patientAge: patient?.age ? String(patient.age) : ((pdfDisplayData as any).patient_age ? String((pdfDisplayData as any).patient_age) : ''),
+                                                patientGender: patient?.sex || (pdfDisplayData as any).patient_sex || '',
                                                 patientId: pdfDisplayData.patient || pdfDisplayData.patient_id || patient?.patient_id || patient?.name || patientId,
-                                                doctorName: pdfDisplayData.practitioner_name || (user as any)?.full_name || 'Doctor', // User might need casting if strict
+                                                doctorName: practitionerName,
+                                                doctorQualification,
                                                 clinicName: profile?.basic_info?.clinic_name || 'Dental Clinic',
                                                 doctorRegNo: profile?.basic_info?.registration_number || '',
-                                                doctorQualification: '', // Removed default static value
                                                 clinicAddress: profile?.address ? `${profile.address.address_line1 || ''}, ${profile.address.city || ''}` : '',
                                                 clinicPhone: profile?.basic_info?.phone,
                                                 clinicEmail: profile?.basic_info?.email,
-                                                clinicLogo: profile?.basic_info?.logo_url,
+                                                clinicLogo,
                                                 prescriptionDate: new Date(pdfDisplayData.encounter_date || pdfDisplayData.posting_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
                                                 diagnosis: pdfDisplayData.diagnosis || '',
-                                                notes: pdfDisplayData.notes || '',
+                                                notes: pdfDisplayData.treatment_plan || (pdfDisplayData as any).notes || '',
                                                 medications: medications
                                               };
                                               downloadPrescriptionPDF(data);
@@ -2556,6 +2738,8 @@ const PrescriptionPage: React.FC = () => {
               onClose={() => setShowNewPrescriptionModal(false)}
               patientId={patientId || ''}
               patientName={patient?.patient_name || patientId || ''}
+              doctorOptions={prescriptionDoctorOptions}
+              defaultDoctorId={defaultPrescriptionDoctorId}
               onSubmit={handleNewPrescriptionSubmit}
               isSubmitting={isCreating}
             />

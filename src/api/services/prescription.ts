@@ -15,9 +15,9 @@ export class PrescriptionService {
   /**
    * Create a new prescription
    */
-  async createPrescription(prescriptionData: CreatePrescriptionRequest): Promise<{ record_id: string }> {
+  async createPrescription(prescriptionData: CreatePrescriptionRequest): Promise<{ record_id?: string; prescription_id?: string }> {
     try {
-      const response = await apiClient.post<{ record_id: string }>(
+      const response = await apiClient.post<{ record_id?: string; prescription_id?: string }>(
         API_ENDPOINTS.PRESCRIPTIONS.CREATE,
         prescriptionData
       );
@@ -302,23 +302,14 @@ export class PrescriptionService {
       errors.push('Patient ID is required');
     }
 
-    if (!data.chief_complaint?.trim()) {
-      errors.push('Chief complaint is required');
+    if (!data.medications?.length && !data.treatment_plan?.trim()) {
+      errors.push('Add at least one medication or physician notes');
     }
 
-    if (!data.diagnosis?.trim()) {
-      errors.push('Diagnosis is required');
-    }
-
-    if (!data.medications || data.medications.length === 0) {
-      errors.push('At least one medication is required');
-    } else {
+    if (data.medications?.length) {
       data.medications.forEach((med, index) => {
         if (!med.drug_name?.trim()) {
           errors.push(`Medication ${index + 1}: Drug name is required`);
-        }
-        if (!med.dosage?.trim()) {
-          errors.push(`Medication ${index + 1}: Dosage is required`);
         }
       });
     }

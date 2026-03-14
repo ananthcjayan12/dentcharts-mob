@@ -304,12 +304,12 @@ export interface CancelAppointmentRequest {
 
 // Prescription related types
 export interface Medication {
-  drug_code: string;
+  drug_code?: string;
   drug_name: string;
-  dosage: string;
-  period: string;
-  dosage_form: string;
-  interval: string;
+  dosage?: string;
+  period?: string;
+  dosage_form?: string;
+  interval?: string;
   comment?: string;
 }
 
@@ -322,12 +322,13 @@ export interface Investigation {
 export interface CreatePrescriptionRequest {
   patient_id: string;
   appointment_id?: string;
-  chief_complaint: string;
-  symptoms: string;
-  diagnosis: string;
-  treatment_plan: string;
-  medications: Medication[];
-  investigations: Investigation[];
+  practitioner?: string;
+  chief_complaint?: string;
+  symptoms?: string;
+  diagnosis?: string;
+  treatment_plan?: string;
+  medications?: Medication[];
+  investigations?: Investigation[];
 }
 
 export interface PrescriptionResponse {
@@ -337,7 +338,13 @@ export interface PrescriptionResponse {
   patient?: string; // Alias for patient_id in list API
   patient_name: string;
   practitioner_id?: string;
-  practitioner?: string; // Alias for practitioner_id in list API
+  practitioner?: string | {
+    practitioner_id?: string;
+    practitioner_name?: string;
+    mobile?: string;
+    department?: string;
+  };
+  practitioner_name?: string;
   posting_date: string;
   encounter_date?: string; // From list API
   encounter_time?: string; // From list API

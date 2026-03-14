@@ -38,14 +38,44 @@ export interface PrescriptionMedicine {
     medicine_id?: string; // Medicine Template ID if selected from templates
     dosage_form: string;
     strength?: string;
+    dosage?: string;
     morning: number;
     lunch: number;
     evening: number;
     night: number;
     days: number;
     condition: string;
+    note?: string;
     instructions?: string;
 }
+
+export interface PrescriptionDraft {
+    practitioner?: string;
+    physicianNotes?: string;
+    medications: PrescriptionMedicine[];
+}
+
+const getDefaultDosageValue = (dosageForm?: string): string => {
+    const normalizedForm = (dosageForm || '').toLowerCase();
+
+    if (normalizedForm.includes('syrup') || normalizedForm.includes('suspension') || normalizedForm.includes('liquid')) {
+        return '5 ml';
+    }
+
+    if (normalizedForm.includes('drop')) {
+        return '2 drops';
+    }
+
+    if (normalizedForm.includes('capsule')) {
+        return '1 Capsule';
+    }
+
+    if (normalizedForm.includes('ointment') || normalizedForm.includes('cream') || normalizedForm.includes('gel')) {
+        return 'Apply locally';
+    }
+
+    return '1 Tablet';
+};
 
 export const medicineService = {
     /**
@@ -181,12 +211,14 @@ export const medicineService = {
             id: `med-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             medicine_name: '',
             dosage_form: 'Tablet',
+            dosage: getDefaultDosageValue('Tablet'),
             morning: 0,
             lunch: 0,
             evening: 0,
             night: 0,
             days: 5,
-            condition: 'After Food',
+            condition: '',
+            note: '',
         };
     },
 
@@ -194,18 +226,22 @@ export const medicineService = {
      * Convert MedicineTemplate to PrescriptionMedicine
      */
     templateToMedicine(template: MedicineTemplate): PrescriptionMedicine {
+        const dosageForm = template.dosage_form || 'Tablet';
+
         return {
             id: `med-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             medicine_id: template.name,
             medicine_name: template.medicine_name,
-            dosage_form: template.dosage_form,
+            dosage_form: dosageForm,
             strength: template.strength,
+            dosage: getDefaultDosageValue(dosageForm),
             morning: template.default_morning,
             lunch: template.default_lunch,
-            evening: template.default_evening,
-            night: template.default_night,
+            evening: 0,
+            night: Math.max(template.default_night, template.default_evening || 0),
             days: template.default_days,
             condition: template.default_condition,
+            note: '',
             instructions: template.instructions,
         };
     },

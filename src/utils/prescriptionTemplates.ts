@@ -1,18 +1,13 @@
-/**
- * Prescription Print Templates
- * Generates print-friendly HTML for prescriptions
- */
-
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
 export interface PrescriptionPrintMedicine {
   medicine_name: string;
+  dosage?: string;
   strength?: string;
   dosage_form?: string;
   morning?: number;
   lunch?: number;
-  evening?: number;
   night?: number;
   days?: number | string;
   condition?: string;
@@ -43,438 +38,489 @@ export interface PrescriptionPrintData {
   nextAppointment?: string;
 }
 
-/**
- * Generate print-friendly HTML for prescription
- * Matches the clean, medical letterhead design
- */
+const escapeHtml = (value?: string | number | null): string => {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+const formatDoctorName = (doctorName?: string): string => {
+  const normalized = String(doctorName || '').trim().replace(/^dr\.?\s+/i, '').trim();
+  return normalized ? `Dr ${normalized}` : 'Doctor';
+};
+
+const hasDisplayValue = (value?: string | number | null): boolean => {
+  const normalized = String(value ?? '').trim();
+  return Boolean(normalized && normalized !== '--' && normalized !== '---');
+};
+
+const formatDuration = (value?: string | number): string => {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) {
+    return '';
+  }
+
+  return /day/i.test(normalized) ? normalized : `${normalized} days`;
+};
+
+const formatFrequency = (med: PrescriptionPrintMedicine) => {
+  if (med.frequency) {
+    return med.frequency;
+  }
+
+  return `${med.morning || 0}-${med.lunch || 0}-${med.night || 0}`;
+};
+
+const renderMedicationRows = (medications: PrescriptionPrintMedicine[]) => {
+  return medications.map((med, i) => {
+    const instructions = [
+      formatDuration(med.days),
+      med.condition ? med.condition : '',
+      med.comment ? med.comment : '',
+    ].filter(Boolean).join('; ');
+
+    return `
+      <tr>
+        <td class="cell num-cell"><strong>${i + 1}.</strong></td>
+        <td class="cell medicine-cell">
+          <div class="medicine-name">${escapeHtml(med.medicine_name)}</div>
+          ${(med.dosage_form || med.strength) ? `<div class="medicine-meta">${escapeHtml([med.dosage_form, med.strength].filter(Boolean).join(' '))}</div>` : ''}
+        </td>
+        <td class="cell small-cell">${escapeHtml(med.dosage || '-')}</td>
+        <td class="cell small-cell"><strong>${escapeHtml(formatFrequency(med))}</strong></td>
+        <td class="cell instructions-cell">${escapeHtml(instructions) || '&nbsp;'}</td>
+      </tr>
+    `;
+  }).join('');
+};
+
 export function generatePrescriptionHTML(data: PrescriptionPrintData): string {
   const {
-    prescriptionId,
     patientName,
     patientAge,
     patientGender,
     patientId,
     doctorName,
-    doctorQualification,
     doctorRegNo,
+    doctorQualification,
     clinicName,
-    clinicAddress,
     clinicPhone,
     clinicEmail,
     clinicLogo,
     medications,
-    diagnosis,
     notes,
     prescriptionDate,
-    nextAppointment
   } = data;
 
-  // Helper to format dosage with logic to handle various formats
-  const formatDosage = (med: PrescriptionPrintMedicine) => {
-    if (med.morning || med.lunch || med.evening || med.night) {
-      return `${med.morning || 0} - ${med.lunch || 0} - ${med.evening || 0} - ${med.night || 0}`;
-    }
-    return med.frequency || '-';
-  };
+  const logoMarkup = clinicLogo
+    ? `<img class="clinic-logo" src="${escapeHtml(clinicLogo)}" alt="${escapeHtml(clinicName)} logo" />`
+    : `<svg viewBox="0 0 24 24" fill="currentColor" class="clinic-icon"><path d="M7 2c0 .942-.716 1.761-1.666 2H4a2 2 0 00-2 2v6c0 1.954.512 3.824 1.455 5.467A8.04 8.04 0 005.152 21.6a2 2 0 003.545-1.574A1 1 0 0110 19h4a1 1 0 011.303 1.026 2 2 0 003.545 1.574 8.045 8.045 0 001.697-4.133C21.488 15.824 22 13.954 22 12V6a2 2 0 00-2-2h-1.334A1.914 1.914 0 0017 2v2a1 1 0 01-1 1h-8a1 1 0 01-1-1V2H7z"/></svg>`;
+  const hasMedications = medications.length > 0;
+  const showDoctorQualification = hasDisplayValue(doctorQualification);
+  const showDoctorRegNo = hasDisplayValue(doctorRegNo);
+  const showDoctorSignature = hasDisplayValue(doctorName);
 
-  // Smart duration formatting to avoid "3 days days"
-  const formatDuration = (days: number | string | undefined) => {
-    if (!days) return '';
-    const dayStr = String(days);
-    if (dayStr.toLowerCase().includes('day')) return dayStr;
-    return `${dayStr} Days`;
-  };
-
-  /* Logic to ensure table isn't empty (fill with blank lines for manual writing if empty) */
-  const renderMedsRows = () => {
-    if (medications && medications.length > 0) {
-      return medications.map((med, index) => `
-            <tr class="med-row">
-              <td class="col-idx">${index + 1}</td>
-              <td class="col-drug">
-                <div class="med-name">${med.medicine_name}</div>
-                ${med.strength ? `<div class="med-meta">${med.dosage_form || 'Tablet'} | ${med.strength}</div>` : ''}
-              </td>
-              <td class="col-dosage">${formatDosage(med)}</td>
-              <td class="col-instruction">
-                <div class="duration-badge">${formatDuration(med.days)}</div>
-                <div class="instruction-text">${med.condition || ''}</div>
-                ${med.comment ? `<div class="instruction-note">${med.comment}</div>` : ''}
-              </td>
-            </tr>
-          `).join('');
-    } else {
-      // Render 4 empty rows for manual writing
-      return Array(4).fill(0).map((_, i) => `
-            <tr class="med-row" style="height: 45px;">
-              <td class="col-idx">${i + 1}</td>
-              <td class="col-drug"></td>
-              <td class="col-dosage"></td>
-              <td class="col-instruction"></td>
-            </tr>
-          `).join('');
-    }
-  };
-
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Prescription - ${patientName}</title>
+  <title>Prescription - ${escapeHtml(patientName)}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@700&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
+
     :root {
-        --primary: #111827;
-        --secondary: #4b5563;
-        --accent: #2563eb;
-        --border: #e5e7eb;
-        --bg-strip: #f9fafb;
+      --ink: #111827;
+      --ink-light: #374151;
+      --muted: #6b7280;
+      --border-light: #e5e7eb;
+      --border-dark: #d1d5db;
     }
+
+    * { box-sizing: border-box; }
 
     body {
-      font-family: 'Inter', sans-serif;
-      font-size: 10.5pt;
-      line-height: 1.5;
-      color: var(--primary);
-      background: #fff;
       margin: 0;
-      padding: 0;
+      color: var(--ink);
+      background: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 10pt;
+      line-height: 1.5;
     }
 
-    .page-container {
-      width: 100%;
-      max-width: 800px;
+    .page {
+      max-width: 820px;
       margin: 0 auto;
-      padding: 40px 50px;
-      position: relative;
+      padding: 48px;
     }
 
     /* HEADER */
-    .header {
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .clinic-logo {
+      height: 24px;
+      width: auto;
+    }
+    .clinic-icon {
+      width: 24px;
+      height: 24px;
+    }
+    .clinic-name {
+      font-family: 'Source Serif 4', serif;
+      font-size: 16pt;
+      font-weight: 700;
+      margin: 0;
+      color: var(--ink);
+    }
+
+    .doctor-info-container {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 25px;
-      border-bottom: 3px solid var(--primary);
-      padding-bottom: 20px;
+      align-items: flex-end;
+      margin-bottom: 24px;
     }
-
-    .brand-section {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .clinic-name {
-      font-family: 'Merriweather', serif;
-      font-size: 24px;
+    .doctor-name {
+      font-family: 'Source Serif 4', serif;
+      font-size: 28pt;
       font-weight: 700;
-      color: var(--primary);
+      margin: 0 0 8px 0;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+    .doctor-qual {
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
-      letter-spacing: -0.5px;
+      color: var(--ink-light);
+      margin-bottom: 4px;
+    }
+    .doctor-reg {
+      font-size: 11pt;
+      color: var(--ink-light);
     }
 
-    .clinic-details {
-        font-size: 9pt;
-        color: var(--secondary);
-        max-width: 300px;
+    .date-block {
+      text-align: right;
+    }
+    .date-label {
+      font-size: 10pt;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .date-value {
+      font-size: 13pt;
+      font-weight: 700;
+      color: var(--ink);
     }
 
-    .doctor-card {
-        text-align: right;
+    /* DIVIDERS */
+    .divider {
+      height: 1px;
+      background: var(--border-dark);
+      margin: 0 0 24px 0;
+    }
+    .divider-dotted {
+      border-top: 1px dashed var(--border-dark);
+      margin: 32px 0;
     }
 
-    .dr-name {
-        font-size: 16pt;
-        font-weight: 700;
-        margin: 0;
-        color: var(--primary);
+    /* PATIENT INFO */
+    .patient-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .value {
+      display: block;
+      font-size: 12pt;
+      font-weight: 700;
+      color: var(--ink);
     }
 
-    .dr-qual {
-        font-size: 8pt;
-        font-weight: 600;
-        color: var(--secondary);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-top: 4px;
-    }
-
-    /* PATIENT INFO STRIP */
-    .patient-strip {
-        background-color: var(--bg-strip);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        padding: 12px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 30px;
-    }
-
-    .info-group {
-        display: flex;
-        flex-direction: column;
-    }
-    .info-group:first-child { flex: 1.5; }
-    .info-group:nth-child(2) { flex: 0.8; text-align: center; }
-    .info-group:last-child { flex: 1.2; text-align: right; }
-
-    .info-label {
-        font-size: 8px;
-        color: #6b7280;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.8px;
-        margin-bottom: 4px;
-    }
-
-    .info-value {
-        font-size: 11pt;
-        font-weight: 600;
-        color: #000;
-        white-space: nowrap; /* Prevent wrapping */
-    }
-
-    /* RX SYMBOL */
-    .rx-line {
-        font-family: serif;
-        font-size: 24pt;
-        font-weight: 700;
-        font-style: italic;
-        color: var(--primary);
-        margin-bottom: 10px;
-        margin-left: 5px;
-    }
-
-    /* TABLE */
+    /* MEDICATIONS */
     .med-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      border: 1px solid var(--border-light);
     }
-
-    .med-table th {
-        text-align: left;
-        font-size: 8pt;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--secondary);
-        border-bottom: 2px solid #000;
-        padding: 8px 10px;
-    }
-
+    .med-table th,
     .med-table td {
-        padding: 12px 10px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
+      border: 1px solid var(--border-light);
+      padding: 12px 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .med-table th {
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      background: #fdfdfd;
+    }
+    .num-cell { width: 5%; text-align: center !important; }
+    .medicine-cell { width: 35%; }
+    .small-cell { width: 15%; }
+    .instructions-cell { width: 30%; }
+
+    .medicine-name {
+      font-weight: 700;
+      font-size: 11pt;
+      color: var(--ink);
+    }
+    .medicine-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 9.5pt;
     }
 
-    .col-idx { width: 30px; color: var(--secondary); font-size: 9pt; }
-    .col-drug { width: 45%; }
-    .col-dosage { width: 15%; font-family: monospace; font-weight: 700; font-size: 11pt; text-align: center; }
-    .col-instruction { text-align: left; }
-
-    .med-name { font-weight: 700; font-size: 11pt; color: #000; }
-    .med-meta { font-size: 9pt; color: var(--secondary); margin-top: 2px; }
-    .duration-badge { display: inline-block; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 8pt; font-weight: 600; color: #374151; margin-bottom: 4px; }
-    .instruction-text { font-size: 10pt; }
-    .instruction-note { font-size: 9pt; font-style: italic; color: var(--secondary); }
-    .legend { font-size: 8pt; color: #9ca3af; margin-top: 10px; font-style: italic; text-align: right; }
-
-    /* DIAGNOSIS & NOTES */
-    .content-block {
-        margin-top: 30px;
-        padding: 15px;
-        background: #fff;
-        border-left: 3px solid var(--border);
+    .legend {
+      font-size: 9.5pt;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 32px;
     }
 
-    .block-title {
-        font-size: 9pt;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: var(--secondary);
-        margin-bottom: 8px;
+    /* NOTES */
+    .note-section {
+      margin-top: 32px;
+    }
+    .note-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .note-icon {
+      width: 16px;
+      height: 16px;
+      color: var(--ink);
+    }
+    .note-title {
+      font-size: 11pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin: 0;
+      color: var(--ink);
+    }
+    .note-content {
+      font-size: 10.5pt;
+      color: var(--ink);
+      white-space: pre-wrap;
+      line-height: 1.6;
     }
 
-    .block-content {
-        font-size: 10.5pt;
+    /* CONTACT / SIGNATURE */
+    .footer-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 40px;
+    }
+    .contact-title {
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .contact-info {
+      font-size: 10.5pt;
+      color: var(--ink);
+    }
+    .contact-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .contact-icon {
+      width: 14px;
+      height: 14px;
+      color: var(--ink);
+    }
+
+    .signature-area {
+      text-align: right;
+    }
+    .signature-line {
+      width: 220px;
+      border-top: 1.5px solid var(--ink);
+      margin-bottom: 8px;
+    }
+    .signature-name {
+      font-family: 'Source Serif 4', serif;
+      font-size: 13pt;
+      font-weight: 700;
+      color: var(--ink);
     }
 
     /* FOOTER */
     .footer {
-        margin-top: 60px;
-        padding-top: 20px;
-        border-top: 1px solid var(--primary);
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-    }
-
-    .footer-left {
-        font-size: 8pt;
-        color: #9ca3af;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        max-width: 50%;
-    }
-
-    .signature-box {
-        text-align: right;
-    }
-
-    .sig-line {
-        height: 40px; 
-    }
-
-    .dr-sig-name {
-        font-weight: 700;
-        font-size: 12pt;
+      text-align: center;
+      color: var(--muted);
+      font-size: 8.5pt;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-top: 1px solid var(--border-light);
+      padding-top: 24px;
     }
   </style>
 </head>
 <body>
-  <div class="page-container">
-    
-    <!-- Header -->
-    <header class="header">
-      <div class="brand-section">
-        <div class="clinic-name">${clinicName}</div>
-        <div class="clinic-details">
-            ${clinicAddress || ''}
-            <div>${clinicPhone ? 'Phone: ' + clinicPhone : ''} ${clinicEmail ? '• ' + clinicEmail : ''}</div>
-        </div>
-      </div>
-      
-      <div class="doctor-card">
-        <h1 class="dr-name">${doctorName}</h1>
-        <div class="dr-qual">
-            ${doctorQualification ? `${doctorQualification}<br>` : ''}
-            ${doctorRegNo ? `REG NO: ${doctorRegNo}` : ''}
-        </div>
-      </div>
-    </header>
-
-    <!-- Patient Info Grid -->
-    <div class="patient-strip">
-        <div class="info-group">
-            <span class="info-label">Patient Name</span>
-            <span class="info-value">${patientName}</span>
-        </div>
-        <div class="info-group">
-            <span class="info-label">Age / Gender</span>
-            <span class="info-value">${patientAge || '--'} / ${patientGender || '--'}</span>
-        </div>
-        <div class="info-group">
-            <span class="info-label">Date : ID</span>
-            <span class="info-value">${prescriptionDate} : ${patientId || 'NEW'}</span>
-        </div>
+  <div class="page">
+    <div class="header-top">
+      ${logoMarkup}
+      <h1 class="clinic-name">${escapeHtml(clinicName)}</h1>
     </div>
 
-    <!-- Diagnosis Section -->
-    ${diagnosis ? `
-    <div style="margin-bottom: 25px;">
-        <span style="font-size: 9pt; font-weight: 700; text-transform: uppercase; color: #4b5563;">Diagnosis</span>
-        <div style="font-size: 11pt; margin-top: 4px;">${diagnosis}</div>
+    <div class="doctor-info-container">
+      <div>
+        <h2 class="doctor-name">${escapeHtml(formatDoctorName(doctorName))}</h2>
+        ${showDoctorQualification ? `<div class="doctor-qual">${escapeHtml(doctorQualification)}</div>` : ''}
+        ${showDoctorRegNo ? `<div class="doctor-reg">Reg No: ${escapeHtml(doctorRegNo)}</div>` : ''}
+      </div>
+      <div class="date-block">
+        <div class="date-label">Date</div>
+        <div class="date-value">${escapeHtml(prescriptionDate)}</div>
+      </div>
     </div>
-    ` : ''}
 
-    <div class="rx-line">Rx</div>
+    <div class="divider"></div>
 
-    <!-- Medicine Table -->
+    <div class="patient-grid">
+      <div>
+        <span class="label">Patient Name</span>
+        <span class="value">${escapeHtml(patientName)}</span>
+      </div>
+      <div>
+        <span class="label">Age / Gender</span>
+        <span class="value">${escapeHtml(patientAge || '--')} Yrs / ${escapeHtml(patientGender || '--')}</span>
+      </div>
+      <div>
+        <span class="label">Patient ID</span>
+        <span class="value">${escapeHtml(patientId || '--')}</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    ${hasMedications ? `
     <table class="med-table">
       <thead>
         <tr>
-          <th style="width: 5%;">#</th>
-          <th style="width: 45%;">Medicine Name & Composition</th>
-          <th style="width: 20%; text-align: center;">Dosage</th>
-          <th style="width: 30%;">Instruction & Duration</th>
+          <th class="num-cell">#</th>
+          <th>Medicine Name</th>
+          <th>Dosage</th>
+          <th>Frequency</th>
+          <th>Instructions</th>
         </tr>
       </thead>
       <tbody>
-        ${renderMedsRows()}
+        ${renderMedicationRows(medications)}
       </tbody>
     </table>
 
-    <div class="legend">Legend: 1-0-1 (Morn-Aft-Night) | BF: Before Food | AF: After Food</div>
+    <div class="legend">Legend: 1-0-1 (Morning-Lunch-Night) | SOS (As Needed)</div>
+    ` : ''}
 
-    <!-- Follow Up / Notes -->
-    <div style="margin-top: 40px; display: flex; gap: 40px;">
-        ${notes ? `
-        <div class="content-block" style="flex: 1;">
-            <div class="block-title">Advice / Notes</div>
-            <div class="block-content">${notes}</div>
-        </div>
-        ` : ''}
+    ${notes ? `
+    <div class="note-section">
+      <div class="note-header">
+        <svg viewBox="0 0 24 24" fill="currentColor" class="note-icon"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        <h3 class="note-title">Note</h3>
+      </div>
+      <div class="note-content">${escapeHtml(notes)}</div>
+    </div>
+    ` : ''}
 
-        ${nextAppointment ? `
-        <div class="content-block" style="flex: 1; border-color: #2563eb;">
-            <div class="block-title" style="color: #2563eb;">Next Follow-up</div>
-            <div class="block-content" style="font-weight: 600;">${nextAppointment}</div>
+    <div class="divider-dotted"></div>
+
+    <div class="footer-area">
+      <div>
+        <div class="contact-title">Contact Information</div>
+        <div class="contact-info">
+          ${clinicPhone ? `
+          <div class="contact-row">
+            <svg viewBox="0 0 24 24" fill="currentColor" class="contact-icon"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.01.24l-2.2 2.2a15.045 15.045 0 01-6.59-6.59l2.2-2.2c.28-.28.36-.67.25-1.02C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM12 3v10l3-3h6V3h-9z"/></svg>
+            ${escapeHtml(clinicPhone)}
+          </div>
+          ` : ''}
+          ${clinicEmail ? `
+          <div class="contact-row">
+            <svg viewBox="0 0 24 24" fill="currentColor" class="contact-icon"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+            ${escapeHtml(clinicEmail)}
+          </div>
+          ` : ''}
         </div>
-        ` : ''}
+      </div>
+
+      ${showDoctorSignature ? `
+      <div class="signature-area">
+        <div class="signature-line"></div>
+        <div class="signature-name">${escapeHtml(formatDoctorName(doctorName))}</div>
+      </div>
+      ` : ''}
     </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-left">
-            Generated by DentCharts<br>
-            ${clinicName} • Electronic Prescription
-        </div>
-        <div class="signature-box">
-            <!-- Space for signature -->
-            <div style="height: 30px;"></div>
-            <div class="dr-sig-name">${doctorName}</div>
-            <div style="font-size: 8pt; color: #6b7280;">(Authorized Signatory)</div>
-        </div>
-    </footer>
-
+    <div class="footer">
+      ${escapeHtml(clinicName).toUpperCase()} &bull; PRESCRIPTION GENERATED ELECTRONICALLY
+    </div>
   </div>
 </body>
-</html>
-    `;
+</html>`;
 }
 
-/**
- * Download prescription as PDF using html2pdf.js
- */
 export function downloadPrescriptionPDF(data: PrescriptionPrintData): void {
   const html = generatePrescriptionHTML(data);
-
-  // Create a temporary container
   const element = document.createElement('div');
   element.innerHTML = html;
 
-  // Basic options
   const opt = {
     margin: 0,
     filename: `Prescription_${data.patientName}_${data.prescriptionDate}.pdf`,
     image: { type: 'jpeg' as const, quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
   };
 
-  // Generate PDF
   html2pdf().set(opt).from(element).save();
 }
 
-/**
- * Print prescription (Browser Print)
- */
 export function printPrescription(data: PrescriptionPrintData): void {
   const html = generatePrescriptionHTML(data);
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
+  const win = window.open('', '', 'width=800,height=600');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    win.focus();
     setTimeout(() => {
-      printWindow.print();
-    }, 500);
+      win.print();
+      win.close();
+    }, 250);
   }
 }

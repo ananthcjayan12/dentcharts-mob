@@ -240,7 +240,7 @@ const HomePage: React.FC = () => {
                                 <CalendarDaysIcon className="w-5 h-5 text-blue-500" />
                                 <div>
                                   <p className="text-sm font-medium text-gray-900">{apt.patient_name}</p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-gray-500 flex-wrap">
                                     {new Date(apt.appointment_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {apt.status}
                                   </p>
                                 </div>
@@ -263,7 +263,7 @@ const HomePage: React.FC = () => {
                                 <UserIcon className="w-5 h-5 text-green-500" />
                                 <div>
                                   <p className="text-sm font-medium text-gray-900">{patient.name}</p>
-                                  <p className="text-xs text-gray-500">{patient.patient_id} • {patient.mobile}</p>
+                                  <p className="text-xs text-gray-500 flex-wrap">{patient.patient_id} • {patient.mobile}</p>
                                 </div>
                               </div>
                             </div>
@@ -374,7 +374,7 @@ const HomePage: React.FC = () => {
                               <Typography variant="body1" className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
                                 {apt.patient_name}
                               </Typography>
-                              <Flex align="center" gap={2} className="text-xs text-gray-500">
+                              <Flex align="center" gap={2} className="text-xs text-gray-500 flex-wrap">
                                 <span>Consultation</span>
                                 <span>•</span>
                                 <span>{apt.duration || 30} min</span>
@@ -386,7 +386,7 @@ const HomePage: React.FC = () => {
                                       event.stopPropagation();
                                       setOpenTypeMenuId(prev => (prev === appointmentId ? null : appointmentId));
                                     }}
-                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100"
+                                    className="inline-flex items-center justify-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100"
                                   >
                                     {displayType}
                                   </button>
@@ -525,7 +525,7 @@ const HomePage: React.FC = () => {
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-gray-900 truncate">{apt.patient_name}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 flex-wrap">
                               {new Date(apt.appointment_datetime).toLocaleDateString(undefined, { weekday: 'short' })}, {new Date(apt.appointment_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
