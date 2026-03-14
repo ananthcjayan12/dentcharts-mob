@@ -28,6 +28,9 @@ interface InvoiceData {
   remarks?: string;
 }
 
+const getPrimaryItemLabel = (item: InvoiceItem) =>
+  item.description || item.item_name || 'N/A';
+
 export const invoiceTemplates = [
   { id: 'standard', name: 'Standard (Blue Accent)', description: 'Classic professional look with blue accents' },
   { id: 'modern', name: 'Modern (Clean)', description: 'Contemporary design with plenty of whitespace' },
@@ -118,8 +121,7 @@ export const generateInvoiceHTML = (
     ? fullInvoiceData.items.map((item) => `
         <tr>
           <td>
-            <strong>${item.item_name || item.description}</strong>
-            ${item.description && item.description !== item.item_name ? `<br><small style="color: #64748b;">${item.description}</small>` : ''}
+            <strong>${getPrimaryItemLabel(item)}</strong>
           </td>
           <td class="text-right">${item.qty}</td>
           <td class="text-right">${formatCurrency(item.rate)}</td>
@@ -481,7 +483,7 @@ export const generateInvoiceHTML = (
                   ${fullInvoiceData.items && fullInvoiceData.items.length > 0
                     ? fullInvoiceData.items.map((item) => `
                         <tr>
-                          <td style="text-align: left;">${item.item_name || item.description}</td>
+                          <td style="text-align: left;">${getPrimaryItemLabel(item)}</td>
                           <td style="text-align: center;">${formatCurrency(item.rate)}/-</td>
                           <td style="text-align: center;">${item.qty}</td>
                           <td style="text-align: right;">${formatCurrency(item.amount)}/-</td>

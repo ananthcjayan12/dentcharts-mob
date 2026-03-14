@@ -143,6 +143,63 @@ const InvoicePage: React.FC = () => {
     }
   };
 
+  const handleProcedureTextChange = (id: string, value: string) => {
+    setInvoiceItems(prev =>
+      prev.map(item =>
+        item.id === id
+          ? {
+              ...item,
+              description: value,
+              item_code: '',
+            }
+          : item
+      )
+    );
+  };
+
+  const handleProcedureSelect = (id: string, proc: any | null) => {
+    if (!proc) {
+      setInvoiceItems(prev =>
+        prev.map(item =>
+          item.id === id
+            ? {
+                ...item,
+                item_code: '',
+              }
+            : item
+        )
+      );
+      return;
+    }
+
+    setInvoiceItems(prev =>
+      prev.map(item =>
+        item.id === id
+          ? {
+              ...item,
+              item_code: proc.code || '',
+              description: proc.name || '',
+              rate: proc.cost || 0,
+            }
+          : item
+      )
+    );
+  };
+
+  const handleDescriptionChange = (id: string, value: string) => {
+    setInvoiceItems(prev =>
+      prev.map(item =>
+        item.id === id
+          ? {
+              ...item,
+              description: value,
+              item_code: '',
+            }
+          : item
+      )
+    );
+  };
+
   const updateInvoiceItem = (id: string, field: keyof LocalInvoiceItem, value: any) => {
     setInvoiceItems(prev => prev.map(item => {
       if (item.id !== id) return item;
@@ -426,12 +483,8 @@ const InvoicePage: React.FC = () => {
                                       name: p.procedure_name,
                                     }));
                                   }}
-                                  onSelect={(proc: any | null) => {
-                                    if (!proc) return updateInvoiceItem(item.id, 'description', '');
-                                    updateInvoiceItem(item.id, 'item_code', proc.code || '');
-                                    updateInvoiceItem(item.id, 'description', proc.name || '');
-                                    updateInvoiceItem(item.id, 'rate', proc.cost || 0);
-                                  }}
+                                  onInputChange={(value) => handleProcedureTextChange(item.id, value)}
+                                  onSelect={(proc: any | null) => handleProcedureSelect(item.id, proc)}
                                   renderSuggestion={(proc: any) => (
                                     <div className="flex justify-between items-center">
                                       <div className="truncate">
@@ -449,7 +502,7 @@ const InvoicePage: React.FC = () => {
                                   type="text"
                                   placeholder="Enter description"
                                   value={item.description}
-                                  onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)}
+                                  onChange={(e) => handleDescriptionChange(item.id, e.target.value)}
                                   className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                 />
                               </div>

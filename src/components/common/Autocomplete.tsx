@@ -5,6 +5,7 @@ type Suggestion<T> = T & { id?: string };
 type AutocompleteProps<T> = {
   value?: string;
   onSelect: (item: T | null) => void;
+  onInputChange?: (value: string) => void;
   fetchSuggestions: (q: string) => Promise<T[]>;
   renderSuggestion?: (item: T) => React.ReactNode;
   placeholder?: string;
@@ -23,6 +24,7 @@ function useDebouncedValue<T>(value: T, delay = 250) {
 export default function Autocomplete<T extends { [key: string]: any }>({
   value = '',
   onSelect,
+  onInputChange,
   fetchSuggestions,
   renderSuggestion,
   placeholder = '',
@@ -34,6 +36,10 @@ export default function Autocomplete<T extends { [key: string]: any }>({
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setInput(value);
+  }, [value]);
 
   useEffect(() => {
     let mounted = true;
@@ -98,7 +104,12 @@ export default function Autocomplete<T extends { [key: string]: any }>({
         type="text"
         value={input}
         placeholder={placeholder}
-        onChange={(e) => { setInput(e.target.value); onSelect(null); }}
+        onChange={(e) => {
+          const nextValue = e.target.value;
+          setInput(nextValue);
+          onInputChange?.(nextValue);
+          onSelect(null);
+        }}
         onKeyDown={handleKeyDown}
         className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
       />
