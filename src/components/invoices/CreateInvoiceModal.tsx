@@ -292,20 +292,53 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
         return (calculateLineAmount(item) * commissionValue) / 100;
     };
 
+    const normalizeProcedureLabel = (value: string) =>
+        value.trim().replace(/\s+/g, ' ');
+
+    const getProcedureLabelCandidates = (value: string) => {
+        const normalized = normalizeProcedureLabel(value);
+        if (!normalized) {
+            return [];
+        }
+
+        return [normalized];
+    };
+
+    const findMatchingProcedure = (value: string, explicitCode?: string) => {
+        const normalizedCode = (explicitCode || '').trim().toLowerCase();
+        if (normalizedCode) {
+            const codeMatch = procedures.find(
+                (procedure) => (procedure.code || '').trim().toLowerCase() === normalizedCode
+            );
+            if (codeMatch) {
+                return codeMatch;
+            }
+        }
+
+        const candidates = getProcedureLabelCandidates(value);
+        if (candidates.length === 0) {
+            return undefined;
+        }
+
+        return procedures.find((procedure) =>
+            candidates.includes(normalizeProcedureLabel(procedure.procedure_name || ''))
+        );
+    };
+
     const handleDescriptionChange = (id: string, value: string) => {
-        const selectedProcedure = procedures.find(p => p.procedure_name === value);
+        const selectedProcedure = findMatchingProcedure(value, value);
 
         setItems(items.map(item => {
             if (item.id === id) {
                 if (selectedProcedure) {
                     return {
                         ...item,
-                        description: value,
+                        description: selectedProcedure.procedure_name,
                         item_code: selectedProcedure.code || '',
                         rate: selectedProcedure.cost || 0
                     };
                 }
-                return { ...item, description: value };
+                return { ...item, description: value, item_code: '' };
             }
             return item;
         }));
@@ -317,13 +350,18 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
             return;
         }
 
-        const procedureItems = completedProcedures.map(proc => ({
-            id: Date.now().toString() + Math.random(),
-            description: proc.procedure_name || proc.name,
-            item_code: proc.code || '',
-            qty: 1,
-            rate: proc.cost || 0
-        }));
+        const procedureItems = completedProcedures.map(proc => {
+            const rawDescription = proc.procedure_name || proc.name || '';
+            const matchedProcedure = findMatchingProcedure(rawDescription, proc.code);
+
+            return {
+                id: Date.now().toString() + Math.random(),
+                description: rawDescription,
+                item_code: matchedProcedure?.code || proc.code || '',
+                qty: 1,
+                rate: proc.cost || matchedProcedure?.cost || 0
+            };
+        });
 
         setItems(procedureItems);
     };
@@ -382,19 +420,25 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
             discount: discountValue, // Provide clean numbers to parent
             tax: taxValue,
             discount_type: discountType,
-            items: items.map(item => ({
-                ...item,
-                qty: parseFloat(item.qty.toString()) || 0,
-                rate: parseFloat(item.rate.toString()) || 0,
-                consultant: item.consultant_enabled && item.consultant_id
-                    ? {
-                        consultant_id: item.consultant_id,
-                        commission_type: item.consultant_commission_type || 'Percentage',
-                        commission_value: parseFloat(String(item.consultant_commission_value)) || 0,
-                        override: Boolean(item.consultant_override),
-                    }
-                    : undefined,
-            })),
+            items: items.map(item => {
+                const matchedProcedure = findMatchingProcedure(item.description, item.item_code);
+
+                return {
+                    ...item,
+                    description: item.description,
+                    item_code: matchedProcedure?.code || item.item_code,
+                    qty: parseFloat(item.qty.toString()) || 0,
+                    rate: parseFloat(item.rate.toString()) || 0,
+                    consultant: item.consultant_enabled && item.consultant_id
+                        ? {
+                            consultant_id: item.consultant_id,
+                            commission_type: item.consultant_commission_type || 'Percentage',
+                            commission_value: parseFloat(String(item.consultant_commission_value)) || 0,
+                            override: Boolean(item.consultant_override),
+                        }
+                        : undefined,
+                };
+            }),
             subtotal,
             discount_amount: discountAmount,
             tax_amount: taxAmount,
