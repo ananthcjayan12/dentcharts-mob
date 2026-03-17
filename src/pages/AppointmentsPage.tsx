@@ -597,7 +597,9 @@ const AppointmentsPage: React.FC = () => {
   const { data: patientsData } = usePatientsWithSearch(patientSearch, { limit_page_length: 20 });
   const patientsList = patientsData?.data || [];
 
-
+  // The daily queue view hides pagination, so it needs the full day's dataset.
+  const appointmentPageLength = showTodaysOnly ? 1000 : itemsPerPage;
+  const appointmentPageStart = showTodaysOnly ? 0 : (currentPage - 1) * itemsPerPage;
 
   // Real API data with pagination and filters
   const {
@@ -605,8 +607,8 @@ const AppointmentsPage: React.FC = () => {
     isLoading: appointmentsLoading
   } = useAppointments(
     {
-      limit_page_length: itemsPerPage,
-      limit_start: (currentPage - 1) * itemsPerPage
+      limit_page_length: appointmentPageLength,
+      limit_start: appointmentPageStart
     },
     appointmentFilters
   );
