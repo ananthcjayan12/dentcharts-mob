@@ -4,9 +4,6 @@ import { Container, Grid, Stack, Flex, Card, Button, InputField, Typography, Bad
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import { usePatientsWithSearch, usePatientStats, useUpdatePatient, useDeletePatient, usePatient } from '../hooks/usePatients';
-import { useProfile } from '../hooks/useAuth';
-import { Patient } from '../types';
-import toast from 'react-hot-toast';
 
 const PatientsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,7 +15,6 @@ const PatientsPage: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [editingPatient, setEditingPatient] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const { data: profile } = useProfile();
   const { mutate: updatePatient, isPending: isUpdating } = useUpdatePatient();
   const { mutate: deletePatient, isPending: isDeleting } = useDeletePatient();
 
@@ -358,7 +354,6 @@ const PatientsPage: React.FC = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                           {filteredPatients.map((patient) => (
-                            console.log('Rendering patient:', patient),
                             <tr
                               key={patient.patient_id || patient.name}
                               className="hover:bg-gray-50 cursor-pointer transition-colors"
@@ -411,7 +406,7 @@ const PatientsPage: React.FC = () => {
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <Typography variant="body2" className="text-gray-600 text-sm">
-                                  {profile?.practitioner_name || profile?.name || 'N/A'}
+                                  {patient.doctor_name || patient.doctor || patient.practitioner_name || '-'}
                                 </Typography>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">

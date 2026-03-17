@@ -176,6 +176,10 @@ export interface PatientResponse {
   last_visit?: string | null;
   total_visits?: number;
   pending_amount?: number;
+  doctor?: string | null;
+  doctor_name?: string | null;
+  practitioner?: string | null;
+  practitioner_name?: string | null;
 }
 
 export interface UpdatePatientRequest {

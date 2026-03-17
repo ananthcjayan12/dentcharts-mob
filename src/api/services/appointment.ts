@@ -1,4 +1,5 @@
 import { apiClient, API_ENDPOINTS } from '../client';
+import { formatDateForInput } from '../../utils/date';
 import {
   CreateAppointmentRequest,
   AppointmentResponse,
@@ -265,7 +266,7 @@ export class AppointmentService {
    * Get today's appointments
    */
   async getTodaysAppointments(): Promise<AppointmentResponse[]> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatDateForInput();
 
     try {
       const response = await this.getAppointments(
@@ -295,8 +296,8 @@ export class AppointmentService {
       const response = await this.getAppointments(
         { limit_page_length: 100 },
         {
-          date_from: tomorrow.toISOString().split('T')[0],
-          date_to: futureDate.toISOString().split('T')[0],
+          date_from: formatDateForInput(tomorrow),
+          date_to: formatDateForInput(futureDate),
         }
       );
 

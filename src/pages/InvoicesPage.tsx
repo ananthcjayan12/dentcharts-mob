@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar, Card, Typography, Badge, Button, Flex, Stack, TopBar, BottomNav } from '../components';
 import { paymentService } from '../api/services/payment';
+import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
 import { InvoiceResponse } from '../api/types';
 import { useClinic } from '../contexts/ClinicContext';
 import { useAuth } from '../contexts/AuthContext';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import { printHTML } from '../utils/printUtils';
+import { useCreateInvoice } from '../hooks/usePayments';
 import toast from 'react-hot-toast';
 import {
     CurrencyDollarIcon,
@@ -33,12 +35,15 @@ const InvoicesPage: React.FC = () => {
     const [limitStart, setLimitStart] = useState(0);
     const [totalCount, setTotalCount] = useState(0);
     const limitPageLength = 20;
+    const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+    const { mutate: createInvoice, isPending: isCreatingInvoice } = useCreateInvoice();
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const status = params.get('status');
         const incomingDateFrom = params.get('date_from');
         const incomingDateTo = params.get('date_to');
+        const shouldOpenCreate = params.get('create') === '1';
 
         if (status) {
             setStatusFilter(status);
@@ -48,6 +53,9 @@ const InvoicesPage: React.FC = () => {
         }
         if (incomingDateTo) {
             setDateTo(incomingDateTo);
+        }
+        if (shouldOpenCreate) {
+            setShowCreateInvoiceModal(true);
         }
     }, [location.search]);
 
@@ -106,6 +114,43 @@ const InvoicesPage: React.FC = () => {
         }
     };
 
+    const handleCreateInvoiceSubmit = (data: any) => {
+        if (!data.patient_id) {
+            toast.error('Please select a patient');
+            return;
+        }
+
+        const items = data.items || [];
+        if (items.some((item: any) => !item.description || Number(item.rate) <= 0)) {
+            toast.error('Please fill item description and rate');
+            return;
+        }
+
+        createInvoice(
+            {
+                patient_id: data.patient_id,
+                practitioner_id: data.practitioner_id || undefined,
+                items: items.map(({ id, ...rest }: any) => ({
+                    ...rest,
+                    qty: Number(rest.qty) || 1,
+                    rate: Number(rest.rate) || 0,
+                })),
+                posting_date: data.date,
+                due_date: data.dueDate,
+                remarks: data.notes || undefined,
+                discount_amount: data.discount_amount || 0,
+                tax_amount: data.tax_amount || 0,
+            },
+            {
+                onSuccess: () => {
+                    setShowCreateInvoiceModal(false);
+                    fetchInvoices();
+                    toast.success('Invoice created successfully');
+                },
+            }
+        );
+    };
+
     const filteredInvoices = invoices.filter(inv => {
         if (!searchTerm) return true;
         const searchLower = searchTerm.toLowerCase();
@@ -115,6 +160,22 @@ const InvoicesPage: React.FC = () => {
             (inv.patient && inv.patient.toLowerCase().includes(searchLower))
         );
     });
+
+    const handleCloseCreateInvoiceModal = () => {
+        setShowCreateInvoiceModal(false);
+
+        const params = new URLSearchParams(location.search);
+        if (params.get('create') === '1') {
+            params.delete('create');
+            navigate(
+                {
+                    pathname: location.pathname,
+                    search: params.toString() ? `?${params.toString()}` : '',
+                },
+                { replace: true }
+            );
+        }
+    };
 
     return (
         <div className="flex min-h-screen bg-gray-50">
@@ -135,7 +196,7 @@ const InvoicesPage: React.FC = () => {
                                 </Typography>
                             </div>
                             <Button
-                                onClick={() => navigate('/invoice')}
+                                onClick={() => setShowCreateInvoiceModal(true)}
                                 leftIcon={<PlusIcon className="w-5 h-5" />}
                             >
                                 New Invoice
@@ -302,13 +363,21 @@ const InvoicesPage: React.FC = () => {
                                 <h3 className="text-sm font-medium text-gray-900">No invoices found</h3>
                                 <p className="mt-1 text-sm text-gray-500">Adjust your filters or create a new invoice.</p>
                                 <div className="mt-6">
-                                    <Button onClick={() => navigate('/invoice')}>Create Invoice</Button>
+                                    <Button onClick={() => setShowCreateInvoiceModal(true)}>Create Invoice</Button>
                                 </div>
                             </div>
                         )}
 
                     </div>
                 </div>
+
+                <CreateInvoiceModal
+                    isOpen={showCreateInvoiceModal}
+                    onClose={handleCloseCreateInvoiceModal}
+                    onSubmit={handleCreateInvoiceSubmit}
+                    isCreating={isCreatingInvoice}
+                    allowPatientSelection
+                />
 
                 <BottomNav activeTab={activeTab} onTabChange={(tab: any) => {
                     setActiveTab(tab);

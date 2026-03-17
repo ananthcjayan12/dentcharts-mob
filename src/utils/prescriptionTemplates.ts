@@ -48,8 +48,7 @@ const escapeHtml = (value?: string | number | null): string => {
 };
 
 const formatDoctorName = (doctorName?: string): string => {
-  const normalized = String(doctorName || '').trim().replace(/^dr\.?\s+/i, '').trim();
-  return normalized ? `Dr ${normalized}` : 'Doctor';
+  return String(doctorName || '').trim() || 'Doctor';
 };
 
 const hasDisplayValue = (value?: string | number | null): boolean => {
@@ -162,10 +161,14 @@ export function generatePrescriptionHTML(data: PrescriptionPrintData): string {
       align-items: center;
       gap: 12px;
       margin-bottom: 24px;
+      flex-wrap: wrap;
     }
     .clinic-logo {
-      height: 24px;
+      max-height: 64px;
+      max-width: 180px;
+      height: auto;
       width: auto;
+      object-fit: contain;
     }
     .clinic-icon {
       width: 24px;
