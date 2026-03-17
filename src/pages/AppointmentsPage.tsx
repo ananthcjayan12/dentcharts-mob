@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
+import { formatDateForInput } from '../utils/date';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { queryClient, invalidateQueriesHelper } from '../api/queryClient';
 import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar, Button, AppointmentActions, ActionDropdown, Portal } from '../components';
@@ -34,7 +35,7 @@ const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('appointments');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(formatDateForInput());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   // Toggle to show only today's queue (default ON)
@@ -183,7 +184,7 @@ const AppointmentsPage: React.FC = () => {
     setEditingAppointment({
       appointment_id: appointment.name || appointment.appointment_id,
       patient_name: appointment.patient_name,
-      appointment_date: appointmentTime.toISOString().split('T')[0],
+      appointment_date: formatDateForInput(appointmentTime),
       appointment_time: appointmentTime.toTimeString().split(' ')[0].substring(0, 5),
       notes: appointment.notes || '',
       appointment_type: appointment.appointment_type || 'General Consultation',
@@ -350,8 +351,8 @@ const AppointmentsPage: React.FC = () => {
     { id: '1', item_code: '', description: '', qty: 1, rate: '' }
   ]);
   const [invoiceDataState, setInvoiceDataState] = useState({
-    date: new Date().toISOString().split('T')[0],
-    dueDate: new Date().toISOString().split('T')[0],
+    date: formatDateForInput(),
+    dueDate: formatDateForInput(),
     notes: ''
   });
 
@@ -359,7 +360,7 @@ const AppointmentsPage: React.FC = () => {
   const [paymentInvoiceId, setPaymentInvoiceId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(formatDateForInput());
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentPatientId, setPaymentPatientId] = useState<string | null>(null);
   const [pendingAmount, setPendingAmount] = useState<number | null>(null);
@@ -373,7 +374,7 @@ const AppointmentsPage: React.FC = () => {
   const openCreateInvoiceModal = (appointment: any) => {
     setInvoiceModalAppointment(appointment);
     setInvoiceItems([{ id: '1', item_code: '', description: '', qty: 1, rate: '' }]);
-    setInvoiceDataState({ date: new Date().toISOString().split('T')[0], dueDate: new Date().toISOString().split('T')[0], notes: '' });
+    setInvoiceDataState({ date: formatDateForInput(), dueDate: formatDateForInput(), notes: '' });
     setShowCreateInvoiceModal(true);
   };
 
@@ -435,7 +436,7 @@ const AppointmentsPage: React.FC = () => {
     setPaymentInvoiceId(invoiceId || null);
     setPaymentAmount('');
     setPaymentMode('Cash');
-    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentDate(formatDateForInput());
     setPaymentReference('');
     setPaymentPatientId(null);
     setPendingAmount(null);
@@ -555,7 +556,7 @@ const AppointmentsPage: React.FC = () => {
   // Build dynamic filters
   const appointmentFilters: any = {};
   // If "Today's Queue" toggle is enabled, override date filters to today
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatDateForInput();
   if (showTodaysOnly) {
     appointmentFilters.date_from = today;
     appointmentFilters.date_to = today;
@@ -582,7 +583,7 @@ const AppointmentsPage: React.FC = () => {
   }, [practitioners, selectedPractitionerForQueue]);
 
   // Today's date for queue operations
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = formatDateForInput();
 
   // Fetch today's slots when add-to-queue modal is open (used to show occupancy)
   const todaysSlotsParams: any = { date: todayDate, duration: 30 };

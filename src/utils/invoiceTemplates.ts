@@ -26,6 +26,10 @@ interface InvoiceData {
   discount_amount?: number;
   total_taxes_and_charges?: number;
   remarks?: string;
+  payments?: Array<{
+    posting_date?: string;
+    paid_amount?: number;
+  }>;
 }
 
 const getPrimaryItemLabel = (item: InvoiceItem) =>
@@ -399,6 +403,14 @@ export const generateInvoiceHTML = (
   const selectedCss = templateId === 'modern' ? modernTemplate : templateId === 'minimal' ? minimalTemplate : templateId === 'elegant' ? elegantTemplate : standardTemplate;
 
   const isOutstanding = fullInvoiceData.outstanding_amount > 0;
+  const payments = [...(fullInvoiceData.payments || [])].sort((left, right) => {
+    const leftTime = left.posting_date ? new Date(left.posting_date).getTime() : 0;
+    const rightTime = right.posting_date ? new Date(right.posting_date).getTime() : 0;
+    return rightTime - leftTime;
+  });
+  const latestPayment = payments[0];
+  const resolvedPaidAmount = (fullInvoiceData.paid_amount ?? (fullInvoiceData.grand_total - fullInvoiceData.outstanding_amount)) || 0;
+  const latestPaidAmount = latestPayment?.paid_amount ?? resolvedPaidAmount;
 
   // HTML Structure Construction
   if (templateId === 'elegant') {
@@ -465,7 +477,7 @@ export const generateInvoiceHTML = (
                   <td style="width: 50%; text-align: right;" class="invoice-meta">
                     <p>Date : ${formatDate(fullInvoiceData.posting_date)}</p>
                     <p>Invoice No: ${fullInvoiceData.invoice_id}</p>
-                    ${isOutstanding && fullInvoiceData.due_date ? `<p>Due Date : ${formatDate(fullInvoiceData.due_date)}</p>` : ''}
+                    ${resolvedPaidAmount > 0 ? `<p>Paid Date : ${latestPayment?.posting_date ? formatDate(latestPayment.posting_date) : '-'}</p>` : ''}
                   </td>
                 </tr>
               </table>
@@ -522,6 +534,11 @@ export const generateInvoiceHTML = (
                         <td style="text-align: left; padding-top: 15px; font-size: 16px; font-weight: bold;">TOTAL</td>
                         <td style="text-align: right; padding-top: 15px; font-size: 16px; font-weight: bold;">${formatCurrency(fullInvoiceData.grand_total)}/-</td>
                       </tr>
+                      ${resolvedPaidAmount > 0 ? `
+                      <tr>
+                        <td style="text-align: left; font-weight: bold; color: #2563eb; padding-top: 10px;">Paid Amount</td>
+                        <td style="text-align: right; font-weight: bold; color: #2563eb; padding-top: 10px;">${formatCurrency(latestPaidAmount)}/-</td>
+                      </tr>` : ''}
                       ${isOutstanding ? `
                       <tr>
                         <td style="text-align: left; font-weight: bold; color: #ef4444; padding-top: 10px;">Balance Due</td>
@@ -595,14 +612,14 @@ export const generateInvoiceHTML = (
           <label>Date Issued</label>
           <value>${formatDate(fullInvoiceData.posting_date)}</value>
         </div>
-        ${isOutstanding ? `
+        ${resolvedPaidAmount > 0 ? `
         <div class="meta-item">
-          <label>Due Date</label>
-          <value>${formatDate(fullInvoiceData.due_date)}</value>
+          <label>Paid Date</label>
+          <value>${latestPayment?.posting_date ? formatDate(latestPayment.posting_date) : '-'}</value>
         </div>
         <div class="meta-item">
-          <label>Amount Due</label>
-          <value>${formatCurrency(fullInvoiceData.outstanding_amount)}</value>
+          <label>Paid Amount</label>
+          <value>${formatCurrency(latestPaidAmount)}</value>
         </div>
         ` : `
         <div class="meta-item">
@@ -626,7 +643,7 @@ export const generateInvoiceHTML = (
           <h2>INVOICE</h2>
           <p class="invoice-number">#${fullInvoiceData.invoice_id}</p>
           <p><strong>Date:</strong> ${formatDate(fullInvoiceData.posting_date)}</p>
-          ${isOutstanding && fullInvoiceData.due_date ? `<p><strong>Due Date:</strong> ${formatDate(fullInvoiceData.due_date)}</p>` : ''}
+          ${resolvedPaidAmount > 0 ? `<p><strong>Paid Date:</strong> ${latestPayment?.posting_date ? formatDate(latestPayment.posting_date) : '-'}</p>` : ''}
           <p><strong>Status:</strong> ${fullInvoiceData.status}</p>
         </div>
       </div>
@@ -694,7 +711,7 @@ export const generateInvoiceHTML = (
                 </div>
                 <div class="totals-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0; font-size: 13px;">
                   <span>Amount Paid</span>
-                  <span>${formatCurrency((fullInvoiceData.paid_amount || (fullInvoiceData.grand_total - fullInvoiceData.outstanding_amount)) || 0)}</span>
+                  <span>${formatCurrency(latestPaidAmount)}</span>
                 </div>
                 ${isOutstanding ? `
                 <div class="totals-row" style="font-size: 13px; font-weight: 600; color: #ef4444;">
@@ -770,7 +787,8 @@ export const generateInvoiceHTML = (
             <div class="billing-box" style="${templateId === 'minimal' ? 'text-align: right;' : ''}">
               <h3>Payment Summary:</h3>
               <p><strong>Total Amount:</strong> ${formatCurrency(fullInvoiceData.grand_total)}</p>
-              <p><strong>Amount Paid:</strong> ${formatCurrency((fullInvoiceData.paid_amount || (fullInvoiceData.grand_total - fullInvoiceData.outstanding_amount)) || 0)}</p>
+              ${resolvedPaidAmount > 0 ? `<p><strong>Paid Date:</strong> ${latestPayment?.posting_date ? formatDate(latestPayment.posting_date) : '-'}</p>` : ''}
+              <p><strong>Amount Paid:</strong> ${formatCurrency(latestPaidAmount)}</p>
               ${isOutstanding ? `<p><strong>Balance Due:</strong> ${formatCurrency(fullInvoiceData.outstanding_amount)}</p>` : ''}
             </div>
           </div>

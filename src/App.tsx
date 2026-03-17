@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import RootRedirect from './pages/RootRedirect';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -10,7 +10,6 @@ import AppointmentsPage from './pages/AppointmentsPage';
 import NewAppointmentPage from './pages/NewAppointmentPage';
 import PatientsPage from './pages/PatientsPage';
 import NewPatientPage from './pages/NewPatientPage';
-import InvoicePage from './pages/InvoicePage';
 import InvoicesPage from './pages/InvoicesPage';
 import SettingsPage from './pages/SettingsPage';
 import WhatsAppManagerPage from './pages/WhatsAppManagerPage';
@@ -45,7 +44,7 @@ const AppRoutes = () => {
         <Route path="/appointments/new" element={<PageAccessGuard pageKey="appointments"><NewAppointmentPage /></PageAccessGuard>} />
         <Route path="/patients" element={<PageAccessGuard pageKey="patients"><PatientsPage /></PageAccessGuard>} />
         <Route path="/patients/new" element={<PageAccessGuard pageKey="patients"><NewPatientPage /></PageAccessGuard>} />
-        <Route path="/invoice" element={<PageAccessGuard pageKey="invoice"><InvoicePage /></PageAccessGuard>} />
+        <Route path="/invoice" element={<PageAccessGuard pageKey="invoice"><Navigate to="/invoices?create=1" replace /></PageAccessGuard>} />
         <Route path="/invoices" element={<PageAccessGuard pageKey="invoice"><InvoicesPage /></PageAccessGuard>} />
         <Route path="/settings/*" element={<PageAccessGuard pageKey="settings" requireAdmin><SettingsPage /></PageAccessGuard>} />
         <Route path="/whatsapp-manager" element={<PageAccessGuard pageKey="whatsapp-manager"><WhatsAppManagerPage /></PageAccessGuard>} />

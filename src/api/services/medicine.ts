@@ -55,11 +55,16 @@ export interface PrescriptionDraft {
     medications: PrescriptionMedicine[];
 }
 
-const getDefaultDosageValue = (dosageForm?: string): string => {
+const getDefaultDosageValue = (dosageForm?: string, medicineName?: string): string => {
     const normalizedForm = (dosageForm || '').toLowerCase();
+    const normalizedName = (medicineName || '').toLowerCase();
 
     if (normalizedForm.includes('syrup') || normalizedForm.includes('suspension') || normalizedForm.includes('liquid')) {
         return '5 ml';
+    }
+
+    if (normalizedForm.includes('mouthwash') || normalizedForm.includes('gargle')) {
+        return '10 ml';
     }
 
     if (normalizedForm.includes('drop')) {
@@ -70,8 +75,25 @@ const getDefaultDosageValue = (dosageForm?: string): string => {
         return '1 Capsule';
     }
 
-    if (normalizedForm.includes('ointment') || normalizedForm.includes('cream') || normalizedForm.includes('gel')) {
+    if (
+        normalizedForm.includes('ointment') ||
+        normalizedForm.includes('cream') ||
+        normalizedForm.includes('gel') ||
+        normalizedForm.includes('paste') ||
+        normalizedForm.includes('powder')
+    ) {
         return 'Apply locally';
+    }
+
+    if (
+        normalizedForm.includes('other') ||
+        normalizedName.includes('paste') ||
+        normalizedName.includes('mouthwash') ||
+        normalizedName.includes('gargle') ||
+        normalizedName.includes('floss') ||
+        normalizedName.includes('brush')
+    ) {
+        return '';
     }
 
     return '1 Tablet';
@@ -211,7 +233,7 @@ export const medicineService = {
             id: `med-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             medicine_name: '',
             dosage_form: 'Tablet',
-            dosage: getDefaultDosageValue('Tablet'),
+            dosage: getDefaultDosageValue('Tablet', ''),
             morning: 0,
             lunch: 0,
             evening: 0,
@@ -234,7 +256,7 @@ export const medicineService = {
             medicine_name: template.medicine_name,
             dosage_form: dosageForm,
             strength: template.strength,
-            dosage: getDefaultDosageValue(dosageForm),
+            dosage: getDefaultDosageValue(dosageForm, template.medicine_name),
             morning: template.default_morning,
             lunch: template.default_lunch,
             evening: 0,
