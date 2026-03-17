@@ -13,7 +13,7 @@ import {
   ApiResponse,
 } from '../types';
 
-const formatDateForInput = (date: Date = new Date()): string => {
+const formatLocalDateForInput = (date: Date = new Date()): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -272,7 +272,7 @@ export class AppointmentService {
    * Get today's appointments
    */
   async getTodaysAppointments(): Promise<AppointmentResponse[]> {
-    const today = formatDateForInput();
+    const today = formatLocalDateForInput();
 
     try {
       const response = await this.getAppointments(
@@ -302,8 +302,8 @@ export class AppointmentService {
       const response = await this.getAppointments(
         { limit_page_length: 100 },
         {
-          date_from: formatDateForInput(tomorrow),
-          date_to: formatDateForInput(futureDate),
+          date_from: formatLocalDateForInput(tomorrow),
+          date_to: formatLocalDateForInput(futureDate),
         }
       );
 
