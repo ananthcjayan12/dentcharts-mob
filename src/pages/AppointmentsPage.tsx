@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils';
+import { formatDateForInput } from '../utils/date';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { queryClient, invalidateQueriesHelper } from '../api/queryClient';
 import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar, Button, AppointmentActions, ActionDropdown, Portal } from '../components';
@@ -29,13 +30,6 @@ import toast from 'react-hot-toast';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import { whatsappService } from '../api/services/whatsapp';
-
-const formatDateForInput = (date: Date = new Date()): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();

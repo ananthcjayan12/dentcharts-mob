@@ -1,4 +1,5 @@
 import { apiClient, API_ENDPOINTS } from '../client';
+import { formatDateForInput } from '../../utils/date';
 import {
   CreateAppointmentRequest,
   AppointmentResponse,
@@ -12,13 +13,6 @@ import {
   AppointmentFilters,
   ApiResponse,
 } from '../types';
-
-const formatLocalDateForInput = (date: Date = new Date()): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 export class AppointmentService {
   /**
@@ -272,7 +266,7 @@ export class AppointmentService {
    * Get today's appointments
    */
   async getTodaysAppointments(): Promise<AppointmentResponse[]> {
-    const today = formatLocalDateForInput();
+    const today = formatDateForInput();
 
     try {
       const response = await this.getAppointments(
@@ -302,8 +296,8 @@ export class AppointmentService {
       const response = await this.getAppointments(
         { limit_page_length: 100 },
         {
-          date_from: formatLocalDateForInput(tomorrow),
-          date_to: formatLocalDateForInput(futureDate),
+          date_from: formatDateForInput(tomorrow),
+          date_to: formatDateForInput(futureDate),
         }
       );
 
