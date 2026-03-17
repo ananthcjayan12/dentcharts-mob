@@ -388,6 +388,28 @@ export const API_ENDPOINTS = {
     SEND_REMINDER: '/api/method/mob_clinic.mob_clinic.api.payment.send_payment_reminder',
   },
 
+  // Orthodontic Payment Tracker
+  ORTHODONTIC: {
+    CREATE_CASE: '/api/method/mob_clinic.mob_clinic.api.orthodontic.create_orthodontic_case',
+    GET_CASE: '/api/method/mob_clinic.mob_clinic.api.orthodontic.get_orthodontic_case',
+    UPDATE_CASE: '/api/method/mob_clinic.mob_clinic.api.orthodontic.update_orthodontic_case',
+    LIST_CASES: '/api/method/mob_clinic.mob_clinic.api.orthodontic.list_orthodontic_cases',
+    CLOSE_CASE: '/api/method/mob_clinic.mob_clinic.api.orthodontic.close_orthodontic_case',
+    CASE_COMMISSION_SUMMARY: '/api/method/mob_clinic.mob_clinic.api.orthodontic.get_orthodontic_case_commission_summary',
+    ADD_LEDGER_ENTRY: '/api/method/mob_clinic.mob_clinic.api.orthodontic.add_orthodontic_ledger_entry',
+    UPDATE_LEDGER_ENTRY: '/api/method/mob_clinic.mob_clinic.api.orthodontic.update_orthodontic_ledger_entry',
+    DELETE_LEDGER_ENTRY: '/api/method/mob_clinic.mob_clinic.api.orthodontic.delete_orthodontic_ledger_entry',
+    GET_LEDGER: '/api/method/mob_clinic.mob_clinic.api.orthodontic.get_orthodontic_ledger',
+    CREATE_PAYOUT: '/api/method/mob_clinic.mob_clinic.api.orthodontic.create_orthodontic_commission_payout',
+    LIST_PAYOUTS: '/api/method/mob_clinic.mob_clinic.api.orthodontic.list_orthodontic_commission_payouts',
+    REVERSE_PAYOUT: '/api/method/mob_clinic.mob_clinic.api.orthodontic.reverse_orthodontic_commission_payout',
+    PATIENT_SUMMARY: '/api/method/mob_clinic.mob_clinic.api.orthodontic.get_patient_orthodontic_summary',
+    DASHBOARD: '/api/method/mob_clinic.mob_clinic.api.orthodontic.get_orthodontic_dashboard',
+    CONSULTANT_PAYOUT_REPORT: '/api/method/mob_clinic.mob_clinic.api.orthodontic.get_orthodontic_consultant_payout_report',
+    PRINT_DATA: '/api/method/mob_clinic.mob_clinic.api.orthodontic.get_orthodontic_print_data',
+    SHARE_CARD: '/api/method/mob_clinic.mob_clinic.api.orthodontic.share_orthodontic_card',
+  },
+
   // File Upload & Management
   FILES: {
     UPLOAD: '/api/method/mob_clinic.mob_clinic.api.file_upload.upload_file',

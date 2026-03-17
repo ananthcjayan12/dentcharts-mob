@@ -228,6 +228,9 @@ const FinancialDashboardPage: React.FC = () => {
             today_collection: 0, today_growth: 0,
             month_collection: 0, month_growth: 0,
             total_outstanding: 0, total_patients: 0,
+            orthodontic_balance: 0,
+            orthodontic_case_count: 0,
+            total_receivables: 0,
             new_patients: 0, returning_patients: 0,
             avg_transaction_value: 0,
             total_transactions: 0,
@@ -342,6 +345,15 @@ const FinancialDashboardPage: React.FC = () => {
                             <Typography variant="body2" className="text-gray-500 font-medium">
                                 Clinic-wide financial overview & perfomance tracking.
                             </Typography>
+                            <div className="mt-3">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => navigate('/financial-dashboard/orthodontic')}
+                                >
+                                    Open Orthodontic Dashboard
+                                </Button>
+                            </div>
                         </div>
                         
                         <div className="flex flex-wrap items-center gap-2 lg:gap-3 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200/60 ring-1 ring-black/[0.02]">
@@ -542,7 +554,7 @@ const FinancialDashboardPage: React.FC = () => {
                                     <div className="flex justify-between items-start relative z-10">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1.5">
-                                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Outstanding</p>
+                                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Invoice Outstanding</p>
                                                 {data.summary.outstanding_count > 0 && (
                                                     <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-bold">
                                                         {data.summary.outstanding_count} bills
@@ -586,6 +598,38 @@ const FinancialDashboardPage: React.FC = () => {
                                     </div>
                                 </Card>
                             </div>
+
+                            <Card className="p-5 rounded-[24px] border border-gray-100/50 shadow-sm bg-white">
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Orthodontic Receivables</p>
+                                        <h4 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+                                            {formatCurrency(data.summary.orthodontic_balance || 0)}
+                                        </h4>
+                                        <p className="mt-2 text-sm text-gray-500">
+                                            Active orthodontic balance across {data.summary.orthodontic_case_count || 0} cases. This is tracked separately from invoice outstanding.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col gap-3 lg:items-end">
+                                        <div className="rounded-2xl border border-primary-100 bg-primary-50 px-4 py-3">
+                                            <div className="text-[11px] font-bold uppercase tracking-widest text-primary-700">Combined Receivables View</div>
+                                            <div className="mt-2 text-xl font-extrabold text-primary-800">
+                                                {formatCurrency(data.summary.total_receivables || 0)}
+                                            </div>
+                                            <div className="mt-1 text-xs text-primary-700/80">
+                                                Invoice outstanding + active orthodontic balance
+                                            </div>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => navigate('/financial-dashboard/orthodontic')}
+                                        >
+                                            Open Orthodontic Dashboard
+                                        </Button>
+                                    </div>
+                                </div>
+                            </Card>
 
                             {/* CHARTS ROW */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

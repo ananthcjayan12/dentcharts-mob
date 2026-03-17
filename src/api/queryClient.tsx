@@ -94,6 +94,16 @@ export const queryKeys = {
     overdue: (patientId?: string) => ['payments', 'overdue', patientId],
   },
 
+  // Orthodontic tracker
+  orthodontic: {
+    all: () => ['orthodontic'],
+    patientSummary: (patientId: string, clinicId?: string | null) => ['orthodontic', 'summary', patientId, clinicId],
+    case: (caseId: string) => ['orthodontic', 'case', caseId],
+    ledger: (caseId: string) => ['orthodontic', 'ledger', caseId],
+    payouts: (caseId: string) => ['orthodontic', 'payouts', caseId],
+    print: (caseId: string) => ['orthodontic', 'print', caseId],
+  },
+
   // Files
   files: {
     all: () => ['files'],
@@ -123,6 +133,8 @@ export const queryKeys = {
     stats: (params?: any) => ['dashboard', 'stats', params],
     collection: (params?: any) => ['dashboard', 'collection', params],
     consultantPayouts: (params?: any) => ['dashboard', 'consultantPayouts', params],
+    orthodontic: (params?: any) => ['dashboard', 'orthodontic', params],
+    orthodonticConsultants: (params?: any) => ['dashboard', 'orthodonticConsultants', params],
   },
 } as const;
 
@@ -159,6 +171,14 @@ export const mutationKeys = {
     recordPayment: (invoiceId: string) => ['payments', 'recordPayment', invoiceId],
     deleteInvoice: (invoiceId: string) => ['payments', 'deleteInvoice', invoiceId],
     sendReminder: (invoiceId: string) => ['payments', 'sendReminder', invoiceId],
+  },
+
+  orthodontic: {
+    createCase: () => ['orthodontic', 'createCase'],
+    updateCase: (caseId: string) => ['orthodontic', 'updateCase', caseId],
+    addLedgerEntry: (caseId: string) => ['orthodontic', 'addLedgerEntry', caseId],
+    createPayout: (caseId: string) => ['orthodontic', 'createPayout', caseId],
+    reversePayout: (payoutId: string) => ['orthodontic', 'reversePayout', payoutId],
   },
 
   files: {
@@ -199,6 +219,10 @@ export const invalidateQueriesHelper = {
   // Invalidate all payment-related queries
   invalidatePayments: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.payments.all() });
+  },
+
+  invalidateOrthodontic: () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.orthodontic.all() });
   },
 
   // Invalidate all file-related queries
