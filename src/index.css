@@ -10,12 +10,12 @@
     -webkit-tap-highlight-color: transparent;
     box-sizing: border-box;
   }
-  
+
   html {
     font-size: 16px;
     scroll-behavior: smooth;
   }
-  
+
   body {
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -26,20 +26,29 @@
     color: #111827;
     line-height: 1.5;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Poppins', sans-serif;
     font-weight: 600;
     line-height: 1.25;
     color: #111827;
   }
-  
+
   /* Mobile optimizations */
-  input, textarea, select, button {
-    font-size: 16px !important; /* Prevents zoom on iOS */
+  input,
+  textarea,
+  select,
+  button {
+    font-size: 16px !important;
+    /* Prevents zoom on iOS */
     font-family: inherit;
   }
-  
+
   /* Ensure all form inputs have minimum 16px font size */
   input[type="text"],
   input[type="email"],
@@ -54,27 +63,27 @@
     font-size: 16px !important;
     -webkit-text-size-adjust: 100%;
   }
-  
+
   /* Custom scrollbar for webkit browsers */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-  
+
   ::-webkit-scrollbar-track {
     background: #F3F4F6;
     border-radius: 3px;
   }
-  
+
   ::-webkit-scrollbar-thumb {
     background: #D1D5DB;
     border-radius: 3px;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
     background: #9CA3AF;
   }
-  
+
   /* Focus visible for better accessibility */
   *:focus-visible {
     outline: 2px solid #3B82F6;
@@ -89,36 +98,36 @@
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }
-  
+
   .safe-area-padding {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
+
   .btn-primary {
     @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg;
   }
-  
+
   .btn-secondary {
     @apply bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg;
   }
-  
+
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
   }
-  
+
   .input-field {
     @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
   }
-  
+
   /* Mobile-specific animations */
   .scale-98 {
     transform: scale(0.98);
   }
-  
+
   .touch-feedback {
     @apply active:scale-95 transition-transform duration-150;
   }
-  
+
   /* Floating action button */
   .fab {
     @apply fixed bottom-20 right-4 w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 active:scale-90 transition-all duration-200;
