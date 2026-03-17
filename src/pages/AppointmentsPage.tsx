@@ -31,13 +31,6 @@ import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import { whatsappService } from '../api/services/whatsapp';
 
-const formatDateForInput = (date: Date = new Date()): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
 const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
