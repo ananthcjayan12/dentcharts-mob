@@ -19,6 +19,7 @@ import { ClinicProvider } from './contexts/ClinicContext';
 import ToastProvider from './components/providers/ToastProvider';
 
 import FinancialDashboardPage from './pages/FinancialDashboardPage';
+import OrthodonticDashboardPage from './pages/OrthodonticDashboardPage';
 import PublicClinicPage from './pages/PublicClinicPage';
 import PageAccessGuard from './components/auth/PageAccessGuard';
 
@@ -38,6 +39,7 @@ const AppRoutes = () => {
         <Route path="/home" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} />
         <Route path="/dashboard" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} /> {/* Alias for home */}
         <Route path="/financial-dashboard" element={<PageAccessGuard pageKey="financial_dashboard"><FinancialDashboardPage /></PageAccessGuard>} />
+        <Route path="/financial-dashboard/orthodontic" element={<PageAccessGuard pageKey="financial_dashboard"><OrthodonticDashboardPage /></PageAccessGuard>} />
         <Route path="/profile" element={<PageAccessGuard><ProfilePage /></PageAccessGuard>} />
         <Route path="/prescriptions/:patientId" element={<PageAccessGuard pageKey="prescriptions"><PrescriptionPage /></PageAccessGuard>} />
         <Route path="/appointments" element={<PageAccessGuard pageKey="appointments"><AppointmentsPage /></PageAccessGuard>} />

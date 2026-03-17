@@ -33,6 +33,7 @@ import toast from 'react-hot-toast';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import ImageViewerModal from '../components/common/ImageViewerModal';
 import EditPatientModal from '../components/patients/EditPatientModal';
+import OrthodonticTrackerPanel from '../components/orthodontic/OrthodonticTrackerPanel';
 import { clinicProfileService } from '../api/services/clinicProfile';
 
 // Get API base URL from environment variable (same as API client)
@@ -2251,25 +2252,33 @@ const PrescriptionPage: React.FC = () => {
 
                     {/* Payments Content */}
                     {currentSection === 'payments' && (
-                      <Card className="p-4 lg:p-6">
-                        <h3 className="text-base lg:text-lg font-bold text-gray-800 mb-4">Payment History</h3>
-                        {invoicesLoading ? (
-                          <div className="space-y-4">
-                            {[1, 2].map((i) => (
-                              <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">
-                                <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
-                                <div className="h-12 bg-gray-200 rounded"></div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : !displayInvoices || displayInvoices.length === 0 ? (
-                          <div className="text-center py-12 bg-gray-50 rounded-lg">
-                            <p className="text-gray-500">No payment history available</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {displayInvoices.map((invoice: any) => (
-                              <div key={invoice.invoice_id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                      <div className="space-y-4 lg:space-y-6">
+                        {patientId && (
+                          <OrthodonticTrackerPanel
+                            patientId={patientId}
+                            patientName={patient?.patient_name || patient?.name}
+                          />
+                        )}
+
+                        <Card className="p-4 lg:p-6">
+                          <h3 className="text-base lg:text-lg font-bold text-gray-800 mb-4">Payment History</h3>
+                          {invoicesLoading ? (
+                            <div className="space-y-4">
+                              {[1, 2].map((i) => (
+                                <div key={i} className="animate-pulse border border-gray-200 rounded-lg p-4">
+                                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+                                  <div className="h-12 bg-gray-200 rounded"></div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : !displayInvoices || displayInvoices.length === 0 ? (
+                            <div className="text-center py-12 bg-gray-50 rounded-lg">
+                              <p className="text-gray-500">No payment history available</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {displayInvoices.map((invoice: any) => (
+                                <div key={invoice.invoice_id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                                 {/* Invoice Header */}
                                 <div className="flex items-start justify-between mb-4">
                                   <div>
@@ -2411,11 +2420,12 @@ const PrescriptionPage: React.FC = () => {
                                     </svg>
                                   </Button>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </Card>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </Card>
+                      </div>
                     )}
 
                     {/* Dental Chart Content */}
