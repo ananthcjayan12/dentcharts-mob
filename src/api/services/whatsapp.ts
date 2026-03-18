@@ -14,6 +14,12 @@ export interface WhatsAppSendResponse {
     error?: string;
 }
 
+export interface WhatsAppPdfPayload {
+    phone?: string;
+    pdfBase64?: string;
+    pdfFilename?: string;
+}
+
 export interface WhatsAppTestResponse {
     success: boolean;
     message?: string;
@@ -228,11 +234,17 @@ class WhatsAppService {
     /**
      * Share prescription via WhatsApp
      */
-    async sendPrescription(prescriptionId: string, phone?: string): Promise<WhatsAppSendResponse> {
+    async sendPrescription(prescriptionId: string, options?: WhatsAppPdfPayload): Promise<WhatsAppSendResponse> {
         try {
             const payload: Record<string, string> = { prescription_id: prescriptionId };
-            if (phone) {
-                payload.patient_phone = phone;
+            if (options?.phone) {
+                payload.patient_phone = options.phone;
+            }
+            if (options?.pdfBase64) {
+                payload.pdf_base64 = options.pdfBase64;
+            }
+            if (options?.pdfFilename) {
+                payload.pdf_filename = options.pdfFilename;
             }
 
             const response = await apiClient.post<WhatsAppSendResponse>(
@@ -249,11 +261,17 @@ class WhatsAppService {
     /**
      * Share invoice/receipt via WhatsApp
      */
-    async sendInvoice(invoiceId: string, phone?: string): Promise<WhatsAppSendResponse> {
+    async sendInvoice(invoiceId: string, options?: WhatsAppPdfPayload): Promise<WhatsAppSendResponse> {
         try {
             const payload: Record<string, string> = { invoice_id: invoiceId };
-            if (phone) {
-                payload.patient_phone = phone;
+            if (options?.phone) {
+                payload.patient_phone = options.phone;
+            }
+            if (options?.pdfBase64) {
+                payload.pdf_base64 = options.pdfBase64;
+            }
+            if (options?.pdfFilename) {
+                payload.pdf_filename = options.pdfFilename;
             }
 
             const response = await apiClient.post<WhatsAppSendResponse>(

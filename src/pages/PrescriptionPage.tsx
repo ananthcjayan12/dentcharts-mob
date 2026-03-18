@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 // Icons removed as they are unused (replaced by SVGs)
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
-import { printPrescription, PrescriptionPrintData, downloadPrescriptionPDF } from '../utils/prescriptionTemplates';
-import { printHTML } from '../utils/printUtils';
+import { PrescriptionPrintData, downloadPrescriptionPDF, generatePrescriptionHTML } from '../utils/prescriptionTemplates';
+import { generatePdfBlobFromHtml, printHTML } from '../utils/printUtils';
 import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
 import { PrescriptionDraft } from '../api/services/medicine';
@@ -78,6 +78,16 @@ const parseFrequencyParts = (frequency: string | undefined): [number, number, nu
 const normalizeDoctorDisplayName = (name: string | undefined): string => {
   return (name || '').trim() || 'Doctor';
 };
+
+const blobToBase64 = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    const result = typeof reader.result === 'string' ? reader.result : '';
+    resolve(result.includes(',') ? result.split(',', 2)[1] : result);
+  };
+  reader.onerror = () => reject(reader.error || new Error('Failed to read PDF blob'));
+  reader.readAsDataURL(blob);
+});
 
 const mapMedicationForPrint = (medication: any) => {
   const comment = medication.comment || medication.instructions || medication.instruction || medication.notes || '';
@@ -274,6 +284,75 @@ const PrescriptionPage: React.FC = () => {
   }, [practitionersData]);
 
   const defaultPrescriptionDoctorId = appointmentDoctor?.id || user?.practitioner_id || prescriptionDoctorOptions[0]?.id || '';
+
+  const buildPrescriptionPrintData = async (recordId: string, displayData: any): Promise<PrescriptionPrintData | null> => {
+    let pdfDisplayData = displayData;
+    const prescriptionOverride = prescriptionOverrides[recordId];
+
+    try {
+      toast.loading('Preparing PDF...', { id: 'pdf-prep' });
+      const fullData = await prescriptionService.getPrescription(recordId);
+      pdfDisplayData = { ...displayData, ...fullData, ...prescriptionOverride };
+      toast.dismiss('pdf-prep');
+    } catch (err) {
+      console.error('Failed to fetch prescription details for PDF', err);
+      toast.error('Failed to load prescription details', { id: 'pdf-prep' });
+      return null;
+    }
+
+    const medications = (pdfDisplayData.medications || []).map((medication: any) => mapMedicationForPrint(medication));
+    const practitionerId =
+      (typeof (pdfDisplayData as any)?.practitioner === 'string' && (pdfDisplayData as any)?.practitioner) ||
+      prescriptionOverride?.practitioner ||
+      '';
+    const practitionerMeta = practitionerLookup.get(practitionerId);
+    const practitionerName =
+      normalizeDoctorDisplayName(
+        (pdfDisplayData as any)?.practitioner?.practitioner_name ||
+        pdfDisplayData.practitioner_name ||
+        prescriptionOverride?.practitioner_name ||
+        (user as any)?.full_name ||
+        user?.name
+      );
+    const doctorQualification =
+      practitionerMeta?.designation ||
+      practitionerMeta?.department ||
+      (pdfDisplayData as any)?.designation ||
+      (pdfDisplayData as any)?.department ||
+      (pdfDisplayData as any)?.medical_department ||
+      '';
+    let clinicLogo = profile?.basic_info?.logo_url;
+
+    if (clinicLogo) {
+      try {
+        const embeddedAsset = await clinicProfileService.getEmbeddedAsset(clinicLogo);
+        clinicLogo = embeddedAsset.data_url;
+      } catch (logoError) {
+        console.warn('Failed to embed clinic logo for prescription PDF', logoError);
+        clinicLogo = undefined;
+      }
+    }
+
+    return {
+      patientName: pdfDisplayData.patient_name || patient?.patient_name || 'Patient',
+      patientAge: patient?.age ? String(patient.age) : ((pdfDisplayData as any).patient_age ? String((pdfDisplayData as any).patient_age) : ''),
+      patientGender: patient?.sex || (pdfDisplayData as any).patient_sex || '',
+      patientId: pdfDisplayData.patient || pdfDisplayData.patient_id || patient?.patient_id || patient?.name || patientId,
+      doctorName: practitionerName,
+      doctorQualification,
+      clinicName: profile?.basic_info?.clinic_name || 'Dental Clinic',
+      doctorRegNo: profile?.basic_info?.registration_number || '',
+      clinicAddress: profile?.address ? `${profile.address.address_line1 || ''}, ${profile.address.city || ''}` : '',
+      clinicPhone: profile?.basic_info?.phone,
+      clinicEmail: profile?.basic_info?.email,
+      clinicLogo,
+      prescriptionDate: new Date(pdfDisplayData.encounter_date || pdfDisplayData.posting_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
+      diagnosis: pdfDisplayData.diagnosis || '',
+      notes: pdfDisplayData.treatment_plan || (pdfDisplayData as any).notes || '',
+      medications,
+      prescriptionId: recordId,
+    };
+  };
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
@@ -1171,8 +1250,20 @@ const PrescriptionPage: React.FC = () => {
     toast.loading('Sending invoice via WhatsApp...', { id: `wa-invoice-${invoiceId}` });
 
     try {
-      const { whatsappService } = await import('../api/services/whatsapp');
-      const response = await whatsappService.sendInvoice(invoiceId);
+      const [{ whatsappService }, { paymentService }] = await Promise.all([
+        import('../api/services/whatsapp'),
+        import('../api/services'),
+      ]);
+      const fullInvoice = await paymentService.getInvoice(invoiceId);
+      const invoiceSettings = (profile?.invoice_settings || {}) as any;
+      const templateId = invoiceSettings.template_id || 'modern';
+      const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId, user?.name);
+      const invoiceBlob = await generatePdfBlobFromHtml(invoiceHTML, `${invoiceId}.pdf`);
+      const pdfBase64 = await blobToBase64(invoiceBlob);
+      const response = await whatsappService.sendInvoice(invoiceId, {
+        pdfBase64,
+        pdfFilename: `${invoiceId}.pdf`,
+      });
 
       if (response.success) {
         toast.success('Invoice sent via WhatsApp', { id: `wa-invoice-${invoiceId}` });
@@ -1941,72 +2032,10 @@ const PrescriptionPage: React.FC = () => {
                                           <button
                                             onClick={async (e) => {
                                               e.stopPropagation();
-
-                                              let pdfDisplayData = displayData;
-                                              const prescriptionOverride = prescriptionOverrides[recordId];
-
-                                              try {
-                                                toast.loading('Preparing PDF...', { id: 'pdf-prep' });
-                                                const fullData = await prescriptionService.getPrescription(recordId);
-                                                pdfDisplayData = { ...displayData, ...fullData, ...prescriptionOverride };
-                                                toast.dismiss('pdf-prep');
-                                              } catch (err) {
-                                                console.error("Failed to fetch prescription details for PDF", err);
-                                                toast.error("Failed to load prescription details", { id: 'pdf-prep' });
+                                              const data = await buildPrescriptionPrintData(recordId, displayData);
+                                              if (!data) {
                                                 return;
                                               }
-
-                                              const medications = (pdfDisplayData.medications || []).map((medication: any) => mapMedicationForPrint(medication));
-                                              const practitionerId =
-                                                (typeof (pdfDisplayData as any)?.practitioner === 'string' && (pdfDisplayData as any)?.practitioner) ||
-                                                prescriptionOverride?.practitioner ||
-                                                '';
-                                              const practitionerMeta = practitionerLookup.get(practitionerId);
-                                              const practitionerName =
-                                                normalizeDoctorDisplayName(
-                                                  (pdfDisplayData as any)?.practitioner?.practitioner_name ||
-                                                  pdfDisplayData.practitioner_name ||
-                                                  prescriptionOverride?.practitioner_name ||
-                                                  (user as any)?.full_name ||
-                                                  user?.name
-                                                );
-                                              const doctorQualification =
-                                                practitionerMeta?.designation ||
-                                                practitionerMeta?.department ||
-                                                (pdfDisplayData as any)?.designation ||
-                                                (pdfDisplayData as any)?.department ||
-                                                (pdfDisplayData as any)?.medical_department ||
-                                                '';
-                                              let clinicLogo = profile?.basic_info?.logo_url;
-
-                                              if (clinicLogo) {
-                                                try {
-                                                  const embeddedAsset = await clinicProfileService.getEmbeddedAsset(clinicLogo);
-                                                  clinicLogo = embeddedAsset.data_url;
-                                                } catch (logoError) {
-                                                  console.warn('Failed to embed clinic logo for prescription PDF', logoError);
-                                                  clinicLogo = undefined;
-                                                }
-                                              }
-
-                                              const data: PrescriptionPrintData = {
-                                                patientName: pdfDisplayData.patient_name || patient?.patient_name || 'Patient',
-                                                patientAge: patient?.age ? String(patient.age) : ((pdfDisplayData as any).patient_age ? String((pdfDisplayData as any).patient_age) : ''),
-                                                patientGender: patient?.sex || (pdfDisplayData as any).patient_sex || '',
-                                                patientId: pdfDisplayData.patient || pdfDisplayData.patient_id || patient?.patient_id || patient?.name || patientId,
-                                                doctorName: practitionerName,
-                                                doctorQualification,
-                                                clinicName: profile?.basic_info?.clinic_name || 'Dental Clinic',
-                                                doctorRegNo: profile?.basic_info?.registration_number || '',
-                                                clinicAddress: profile?.address ? `${profile.address.address_line1 || ''}, ${profile.address.city || ''}` : '',
-                                                clinicPhone: profile?.basic_info?.phone,
-                                                clinicEmail: profile?.basic_info?.email,
-                                                clinicLogo,
-                                                prescriptionDate: new Date(pdfDisplayData.encounter_date || pdfDisplayData.posting_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
-                                                diagnosis: pdfDisplayData.diagnosis || '',
-                                                notes: pdfDisplayData.treatment_plan || (pdfDisplayData as any).notes || '',
-                                                medications: medications
-                                              };
                                               downloadPrescriptionPDF(data);
                                             }}
                                             className="text-gray-500 hover:text-gray-700 p-1"
@@ -2021,7 +2050,21 @@ const PrescriptionPage: React.FC = () => {
                                               e.stopPropagation();
                                               toast.loading('Sending via WhatsApp...', { id: 'wa-rx' });
                                               const { whatsappService } = await import('../api/services/whatsapp');
-                                              const res = await whatsappService.sendPrescription(recordId);
+                                              const data = await buildPrescriptionPrintData(recordId, displayData);
+                                              if (!data) {
+                                                toast.dismiss('wa-rx');
+                                                return;
+                                              }
+                                              const prescriptionHTML = generatePrescriptionHTML(data);
+                                              const prescriptionBlob = await generatePdfBlobFromHtml(
+                                                prescriptionHTML,
+                                                `${recordId}.pdf`
+                                              );
+                                              const pdfBase64 = await blobToBase64(prescriptionBlob);
+                                              const res = await whatsappService.sendPrescription(recordId, {
+                                                pdfBase64,
+                                                pdfFilename: `${recordId}.pdf`,
+                                              });
                                               if (res.success) {
                                                 toast.success('Prescription sent via WhatsApp', { id: 'wa-rx' });
                                               } else {
