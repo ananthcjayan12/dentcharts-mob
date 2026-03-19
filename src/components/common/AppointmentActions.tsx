@@ -28,6 +28,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
   const appointmentId = appointment.name || appointment.appointment_id || '';
   const status = appointment.status;
   const deleteInvoiceMutation = useDeleteInvoice();
+  const actionId = (action: string) => `appointment-action-${appointmentId}-${action}`;
 
   const handleCreateInvoice = () => {
     // Navigate to invoice page with appointment and patient data
@@ -63,6 +64,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
       <div className="flex flex-wrap gap-2">
         <Button
           onClick={() => onCheckIn?.(appointmentId)}
+          data-testid={actionId('check-in')}
           className="text-xs sm:text-sm px-3 py-1.5"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,6 +75,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
         <Button
           variant="outline"
           onClick={() => onCancel?.(appointmentId)}
+          data-testid={actionId('cancel')}
           className="text-xs sm:text-sm px-3 py-1.5"
         >
           Cancel
@@ -87,6 +90,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
       <div className="flex flex-wrap gap-2">
         <Button
           onClick={() => onStartVisit?.(appointmentId)}
+          data-testid={actionId('start-visit')}
           className="text-xs sm:text-sm px-3 py-1.5"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,6 +102,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
         <Button
           variant="outline"
           onClick={() => onCancel?.(appointmentId)}
+          data-testid={actionId('cancel')}
           className="text-xs sm:text-sm px-3 py-1.5"
         >
           Cancel
@@ -112,6 +117,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
       <div className="flex flex-wrap gap-2">
         <Button
           onClick={() => onCompleteVisit?.(appointmentId)}
+          data-testid={actionId('complete-visit')}
           className="text-xs sm:text-sm px-3 py-1.5"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,6 +137,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
           <>
             <Button
               onClick={handleMakePayment}
+              data-testid={actionId('make-payment')}
               className="text-xs sm:text-sm px-3 py-1.5"
             >
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,6 +147,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
             </Button>
             <Button
               variant="outline"
+              data-testid={actionId('delete-invoice')}
               onClick={async () => {
                 const invId = appointment.invoice_id;
                 if (!invId) {
@@ -161,6 +169,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
         ) : (
           <Button
             onClick={handleCreateInvoice}
+            data-testid={actionId('create-invoice')}
             className="text-xs sm:text-sm px-3 py-1.5"
           >
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,6 +188,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
       <div className="flex flex-wrap gap-2">
         <Button
           onClick={() => onUploadFiles?.(appointmentId)}
+          data-testid={actionId('upload-files')}
           className="text-xs sm:text-sm px-3 py-1.5"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,6 +199,7 @@ const AppointmentActions: React.FC<AppointmentActionsProps> = ({
         <Button
           variant={appointment.review_requested ? 'outline' : 'primary'}
           onClick={() => onToggleReview?.(appointmentId, !appointment.review_requested)}
+          data-testid={actionId('toggle-review')}
           className="text-xs sm:text-sm px-3 py-1.5"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

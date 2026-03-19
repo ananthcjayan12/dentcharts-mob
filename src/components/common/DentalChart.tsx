@@ -599,6 +599,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                 size="sm"
                 onClick={() => setIsCreateModalOpen(true)}
                 className="bg-primary-600 hover:bg-primary-700"
+                data-testid="dental-chart-add-treatment"
               >
                 + Add Treatment
               </Button>
@@ -623,6 +624,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             size="sm"
             onClick={() => setShowSummary(true)}
             className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
+            data-testid="dental-chart-view-summary"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1082,6 +1084,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                 <Button
                   onClick={handleSaveCondition}
                   className="flex-1"
+                  data-testid={modalMode === 'edit-condition' ? 'dental-chart-update-condition' : 'dental-chart-save-condition'}
                 >
                   {modalMode === 'edit-condition' ? 'Update' : 'Add Condition'}
                 </Button>
@@ -1215,6 +1218,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                 <Button
                   onClick={handleSaveProcedure}
                   className="flex-1"
+                  data-testid={modalMode === 'edit-procedure' ? 'dental-chart-update-procedure' : 'dental-chart-save-procedure'}
                 >
                   {modalMode === 'edit-procedure' ? 'Update' : 'Add Procedure'}
                 </Button>
@@ -1244,6 +1248,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             <button
               onClick={() => handleContextMenuAction('condition')}
               className="w-full px-4 py-2.5 text-left text-sm hover:bg-red-50 transition-colors flex items-center gap-3 text-gray-700"
+              data-testid="dental-chart-context-add-condition"
             >
               <span className="text-xl">🦷</span>
               <span className="font-medium">Add Condition</span>
@@ -1252,6 +1257,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             <button
               onClick={() => handleContextMenuAction('procedure')}
               className="w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 transition-colors flex items-center gap-3 text-gray-700"
+              data-testid="dental-chart-context-add-procedure"
             >
               <span className="text-xl">💉</span>
               <span className="font-medium">Add Procedure</span>

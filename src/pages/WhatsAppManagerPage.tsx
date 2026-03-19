@@ -472,6 +472,7 @@ const WhatsAppManagerPage: React.FC = () => {
               <button 
                 className="px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition-colors shadow-sm"
                 onClick={onSaveSettings}
+                data-testid="whatsapp-settings-save"
               >
                 Save Settings
               </button>

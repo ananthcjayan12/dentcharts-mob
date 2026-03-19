@@ -207,6 +207,7 @@ const RolesSettingsTab: React.FC = () => {
                   size="sm"
                   onClick={() => saveRow(row)}
                   isLoading={Boolean(savingById[row.practitioner_id])}
+                  data-testid={`roles-settings-save-${row.practitioner_id}`}
                 >
                   Save
                 </Button>

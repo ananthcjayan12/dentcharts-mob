@@ -14,6 +14,9 @@ const ClinicSelector: React.FC<ClinicSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
 
+  const getClinicOptionTestId = (clinic: string) =>
+    `clinic-selector-option-${clinic.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
   if (!user || !user.clinics || user.clinics.length <= 1) {
     // Don't show selector if user has only one clinic or no clinics
     return null;
@@ -45,6 +48,7 @@ const ClinicSelector: React.FC<ClinicSelectorProps> = ({
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-white border border-gray-300 hover:border-primary-500 transition-colors"
           disabled={isSwitching}
+          data-testid="clinic-selector-trigger"
         >
           <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -76,6 +80,7 @@ const ClinicSelector: React.FC<ClinicSelectorProps> = ({
                     key={clinic}
                     onClick={() => handleClinicChange(clinic)}
                     disabled={isSwitching}
+                    data-testid={getClinicOptionTestId(clinic)}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                       clinic === user.active_clinic
                         ? 'bg-primary-50 text-primary-700 font-medium'
@@ -107,6 +112,7 @@ const ClinicSelector: React.FC<ClinicSelectorProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center space-x-2 ${className}`}
         disabled={isSwitching}
+        data-testid="clinic-selector-trigger"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -139,6 +145,7 @@ const ClinicSelector: React.FC<ClinicSelectorProps> = ({
                   key={clinic}
                   onClick={() => handleClinicChange(clinic)}
                   disabled={isSwitching}
+                  data-testid={getClinicOptionTestId(clinic)}
                   className={`w-full text-left p-4 border-b border-gray-100 transition-colors ${
                     clinic === user.active_clinic
                       ? 'bg-primary-50'
