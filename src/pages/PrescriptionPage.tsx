@@ -6,7 +6,6 @@ import { generatePdfBlobFromHtml, printHTML } from '../utils/printUtils';
 import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
 import { PrescriptionDraft } from '../api/services/medicine';
-import { prescriptionService } from '../api/services/prescription';
 import { useClinic } from '../contexts/ClinicContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -27,14 +26,21 @@ import { usePatientPrescriptions, useCreatePrescription, useUpdatePrescription }
 import { usePractitioners } from '../hooks/usePractitioners';
 import { usePatientInvoices, usePaymentSummary, useRecordPayment, useDeleteInvoice, useCreateInvoice } from '../hooks/usePayments';
 import CreateInvoiceModal from '../components/invoices/CreateInvoiceModal';
-import { appointmentService } from '../api/services/appointment';
-import { fileUploadService } from '../api/services/fileUpload';
+import { 
+  appointmentService, 
+  fileUploadService, 
+  patientSummaryService,
+  orthodonticService,
+  clinicProfileService,
+  prescriptionService
+} from '../api/services';
 import toast from 'react-hot-toast';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import ImageViewerModal from '../components/common/ImageViewerModal';
 import EditPatientModal from '../components/patients/EditPatientModal';
 import OrthodonticTrackerPanel from '../components/orthodontic/OrthodonticTrackerPanel';
-import { clinicProfileService } from '../api/services/clinicProfile';
+import PatientSummaryModal from '../components/patients/PatientSummaryModal';
+import { PatientSummaryPrintData } from '../utils/patientSummaryTemplates';
 
 // Get API base URL from environment variable (same as API client)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
@@ -114,7 +120,7 @@ const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { patientId: rawPatientId } = useParams<{ patientId: string }>();
-  const { profile } = useClinic();
+  const { profile, clinicId } = useClinic();
   const { user, canAccessPage } = useAuth();
 
   // Decode the patientId from URL (e.g., "Ananth.C%20Jayan" -> "Ananth.C Jayan")
@@ -148,6 +154,9 @@ const PrescriptionPage: React.FC = () => {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentReference, setPaymentReference] = useState('');
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const [showPatientSummaryModal, setShowPatientSummaryModal] = useState(false);
+  const [patientSummaryData, setPatientSummaryData] = useState<PatientSummaryPrintData | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showNewPrescriptionModal, setShowNewPrescriptionModal] = useState(false);
   const [showClinicalDetails, setShowClinicalDetails] = useState(false);
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
@@ -1123,6 +1132,40 @@ const PrescriptionPage: React.FC = () => {
     }
   };
 
+  const handleGenerateSummary = async () => {
+    if (!patientId) {
+      toast.error('Patient ID is missing');
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    toast.loading('Generating Patient Summary...', { id: 'gen-summary' });
+
+    try {
+      const data = await patientSummaryService.getPatientSummaryData(
+        patientId,
+        clinicId || undefined,
+        profile,
+        {
+          patient: patient ?? undefined,
+          prescriptions: prescriptions ?? undefined,
+          invoices: displayInvoices ?? undefined,
+          paymentSummary: paymentSummary ?? undefined,
+          patientFiles: isLoadingFiles ? undefined : patientFiles,
+          clinicalRecords: clinicalRecordsLoading ? undefined : clinicalRecords,
+        }
+      );
+      setPatientSummaryData(data);
+      setShowPatientSummaryModal(true);
+      toast.success('Patient Summary Ready', { id: 'gen-summary' });
+    } catch (error: any) {
+      console.error('Error generating summary:', error);
+      toast.error(error.message || 'Failed to generate patient summary', { id: 'gen-summary' });
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
   const handleRecordPayment = async () => {
     if (!selectedInvoice) return;
 
@@ -1587,6 +1630,18 @@ const PrescriptionPage: React.FC = () => {
                         </div>
                         <span className="text-xs font-medium text-gray-700 text-center leading-tight">Upload</span>
                       </button>
+                      <button
+                        onClick={handleGenerateSummary}
+                        disabled={isGeneratingSummary}
+                        className="flex flex-col items-center gap-2 group"
+                      >
+                        <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
+                          <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <span className="text-xs font-medium text-gray-700 text-center leading-tight">Summary</span>
+                      </button>
                     </div>
 
                     {/* Desktop Quick Actions */}
@@ -1635,6 +1690,20 @@ const PrescriptionPage: React.FC = () => {
                             Create Invoice
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={handleGenerateSummary}
+                          disabled={isGeneratingSummary}
+                          leftIcon={
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          }
+                        >
+                          Generate Patient Summary
+                        </Button>
                       </div>
                     </Card>
                   </div>
@@ -3048,8 +3117,6 @@ const PrescriptionPage: React.FC = () => {
             <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
           </div >
         </MobileContainer >
-
-
       </div >
       {/* Edit Patient Modal */}
       {patient && (
@@ -3057,6 +3124,13 @@ const PrescriptionPage: React.FC = () => {
           isOpen={showEditProfileModal}
           onClose={() => setShowEditProfileModal(false)}
           patient={patient}
+        />
+      )}
+      {showPatientSummaryModal && patientSummaryData && (
+        <PatientSummaryModal
+          isOpen={showPatientSummaryModal}
+          data={patientSummaryData}
+          onClose={() => setShowPatientSummaryModal(false)}
         />
       )}
     </div >

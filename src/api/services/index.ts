@@ -11,6 +11,9 @@ export { practitionerService } from './practitioner';
 export { dashboardService } from './dashboard';
 export { publicService } from './public';
 export { medicineService } from './medicine';
+export { patientSummaryService } from './patientSummary';
+export { orthodonticService } from './orthodontic';
+export { clinicProfileService } from './clinicProfile';
 
 // Re-export types for convenience
 export * from '../types';
