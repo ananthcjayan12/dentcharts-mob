@@ -14,6 +14,7 @@ export { medicineService } from './medicine';
 export { patientSummaryService } from './patientSummary';
 export { orthodonticService } from './orthodontic';
 export { clinicProfileService } from './clinicProfile';
+export { dataExportService } from './dataExport';
 
 // Re-export types for convenience
 export * from '../types';
