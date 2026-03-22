@@ -88,6 +88,14 @@ const SettingsSidebar: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9l-5 4.87L18.18 21 12 17.77 5.82 21 7 13.87 2 9l6.91-.74L12 2zm0 8a2 2 0 100 4 2 2 0 000-4z" />
                     </svg>
                 )
+            }, {
+                name: 'Data Export',
+                path: '/settings/data-export',
+                icon: (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16V4m0 12l-4-4m4 4l4-4M4 20h16" />
+                    </svg>
+                )
             }]
             : []),
     ];
