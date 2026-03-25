@@ -12,6 +12,36 @@ import {
 } from '../types';
 
 export class PrescriptionService {
+  private getPrescriptionDateValue(prescription: Partial<PrescriptionResponse> | Record<string, any>): string {
+    return (
+      prescription.prescription_date ||
+      prescription.encounter_date ||
+      prescription.posting_date ||
+      prescription.creation ||
+      ''
+    );
+  }
+
+  private normalizePrescription(rawPrescription: any): PrescriptionResponse {
+    const resolvedDate = this.getPrescriptionDateValue(rawPrescription);
+
+    return {
+      ...rawPrescription,
+      record_id: rawPrescription.record_id || rawPrescription.prescription_id || rawPrescription.name,
+      patient_id: rawPrescription.patient_id || rawPrescription.patient,
+      posting_date: rawPrescription.posting_date || resolvedDate,
+      prescription_date: rawPrescription.prescription_date || resolvedDate || undefined,
+      encounter_date: rawPrescription.encounter_date || rawPrescription.prescription_date || undefined,
+      chief_complaint: rawPrescription.chief_complaint || '',
+      symptoms: rawPrescription.symptoms || '',
+      diagnosis: rawPrescription.diagnosis || '',
+      treatment_plan: rawPrescription.treatment_plan || '',
+      medications: rawPrescription.medications || [],
+      investigations: rawPrescription.investigations || [],
+      status: rawPrescription.status || 'Draft',
+    };
+  }
+
   /**
    * Create a new prescription
    */
@@ -43,7 +73,7 @@ export class PrescriptionService {
       );
 
       if (response.data) {
-        return response.data;
+        return this.normalizePrescription(response.data);
       }
 
       throw new Error(response.message || 'Prescription not found');
@@ -77,7 +107,8 @@ export class PrescriptionService {
 
       // Handle new API response format
       if (response.data) {
-        return { data: response.data, total_count: response.data?.length || 0, page_length: pagination.limit_page_length || 20, start: 0 };
+        const normalizedData = response.data.map((prescription: any) => this.normalizePrescription(prescription));
+        return { data: normalizedData, total_count: normalizedData.length || 0, page_length: pagination.limit_page_length || 20, start: 0 };
       }
 
       throw new Error(response.message || 'Failed to fetch prescriptions');
@@ -152,7 +183,7 @@ export class PrescriptionService {
       );
 
       if (response.data) {
-        return response.data;
+        return response.data.map((prescription) => this.normalizePrescription(prescription));
       }
 
       return [];
@@ -201,7 +232,7 @@ export class PrescriptionService {
    */
   formatPrescriptionDate(prescription: PrescriptionResponse): string {
     try {
-      const date = new Date(prescription.posting_date);
+      const date = new Date(this.getPrescriptionDateValue(prescription));
       return date.toLocaleDateString();
     } catch {
       return 'Invalid date';
@@ -243,7 +274,7 @@ export class PrescriptionService {
    */
   isPrescriptionRecent(prescription: PrescriptionResponse): boolean {
     try {
-      const prescriptionDate = new Date(prescription.posting_date);
+      const prescriptionDate = new Date(this.getPrescriptionDateValue(prescription));
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       return prescriptionDate >= thirtyDaysAgo;
@@ -315,6 +346,10 @@ export class PrescriptionService {
     }
 
     return errors;
+  }
+
+  resolvePrescriptionDate(prescription: Partial<PrescriptionResponse> | Record<string, any>): string {
+    return this.getPrescriptionDateValue(prescription);
   }
 }
 

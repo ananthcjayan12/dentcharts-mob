@@ -3,12 +3,32 @@ import {
   UploadFileRequest,
   FileResponse,
   ListFilesParams,
-  DeleteFileRequest,
   FileCategory,
   ApiResponse,
 } from '../types';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://dev2.localhost:8800';
+
 export class FileUploadService {
+  private toAbsoluteUrl(url?: string): string {
+    if (!url) return '';
+
+    if (/^https?:\/\//i.test(url)) {
+      return url;
+    }
+
+    if (url.startsWith('//')) {
+      const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
+      return `${protocol}${url}`;
+    }
+
+    if (url.startsWith('/')) {
+      return `${API_BASE_URL}${url}`;
+    }
+
+    return `${API_BASE_URL}/${url}`;
+  }
+
   /**
    * Get available file categories
    */
@@ -352,8 +372,15 @@ export class FileUploadService {
    * Generate file download URL
    */
   getDownloadUrl(file: FileResponse): string {
-    // Assuming the file_url from the API is the download URL
-    return file.file_url;
+    return this.toAbsoluteUrl(file.download_url || file.file_url);
+  }
+
+  /**
+   * Generate a safe preview URL for inline viewing
+   */
+  getPreviewUrl(file: FileResponse): string {
+    const url = file.is_private ? (file.download_url || file.file_url) : (file.file_url || file.download_url);
+    return this.toAbsoluteUrl(url);
   }
 
   /**

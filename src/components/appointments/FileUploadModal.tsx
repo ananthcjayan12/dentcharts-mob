@@ -28,7 +28,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     const [description, setDescription] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const { mutate: uploadFile, isPending: isUploading } = useUploadFile();
+    const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
     const { data: files, refetch: refetchFiles } = useFiles({
         reference_doctype: referenceDoctype,
         reference_name: referenceName,
@@ -59,27 +59,31 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
     const handleUpload = async () => {
         if (selectedFiles.length === 0) return;
 
-        for (const file of selectedFiles) {
-            uploadFile({
-                file,
-                options: {
-                    file_category: category,
-                    description: description || file.name,
-                    reference_doctype: referenceDoctype,
-                    reference_name: referenceName,
-                    is_private: false,
-                },
-            }, {
-                onSuccess: () => {
-                    refetchFiles();
-                    setSelectedFiles([]);
-                    setDescription('');
-                    if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                    }
-                    onUploadComplete?.();
-                },
-            });
+        try {
+            await Promise.all(
+                selectedFiles.map((file) =>
+                    uploadFile({
+                        file,
+                        options: {
+                            file_category: category,
+                            description: description || file.name,
+                            reference_doctype: referenceDoctype,
+                            reference_name: referenceName,
+                            is_private: false,
+                        },
+                    })
+                )
+            );
+
+            await refetchFiles();
+            setSelectedFiles([]);
+            setDescription('');
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            onUploadComplete?.();
+        } catch (error) {
+            console.error('File upload failed', error);
         }
     };
 
@@ -160,6 +164,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({
                                 ref={fileInputRef}
                                 type="file"
                                 multiple
+                                accept="image/*,application/pdf,.doc,.docx,.txt,.dcm,.dicom,.mp4,.mov"
                                 onChange={handleFileSelect}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                             />
