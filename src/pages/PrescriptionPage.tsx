@@ -66,6 +66,11 @@ const stripMedicationTags = (comment: string | undefined): string => {
     .join(' | ');
 };
 
+const getPrescriptionDisplayDate = (prescription: Record<string, any>): string => {
+  const resolvedDate = prescriptionService.resolvePrescriptionDate(prescription);
+  return resolvedDate || new Date().toISOString();
+};
+
 const parseFrequencyParts = (frequency: string | undefined): [number, number, number] => {
   if (!frequency || !/^\d+-\d+-\d+(?:-\d+)?$/.test(frequency)) {
     return [0, 0, 0];
@@ -399,7 +404,7 @@ const PrescriptionPage: React.FC = () => {
       clinicPhone: profile?.basic_info?.phone,
       clinicEmail: profile?.basic_info?.email,
       clinicLogo,
-      prescriptionDate: new Date(pdfDisplayData.encounter_date || pdfDisplayData.posting_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
+      prescriptionDate: new Date(getPrescriptionDisplayDate(pdfDisplayData)).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
       diagnosis: pdfDisplayData.diagnosis || '',
       notes: pdfDisplayData.treatment_plan || (pdfDisplayData as any).notes || '',
       medications,
@@ -1902,7 +1907,7 @@ const PrescriptionPage: React.FC = () => {
                                     <div key={recordId} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
                                       <div className="flex items-center justify-between mb-3">
                                         <h4 className="text-sm font-bold text-gray-700">
-                                          {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
+                                          {new Date(getPrescriptionDisplayDate(displayData)).toLocaleDateString()}
                                         </h4>
                                         <div className="flex items-center space-x-2">
                                           <button

@@ -350,6 +350,7 @@ export interface PrescriptionResponse {
   };
   practitioner_name?: string;
   posting_date: string;
+  prescription_date?: string;
   encounter_date?: string; // From list API
   encounter_time?: string; // From list API
   creation?: string; // From list API
