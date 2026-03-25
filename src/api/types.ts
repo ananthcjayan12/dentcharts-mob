@@ -556,11 +556,17 @@ export interface FileResponse {
   file_id: string;
   file_name: string;
   file_url: string;
+  download_url?: string;
   file_category: string;
   description?: string;
   file_size: number;
   creation: string;
   is_private: number;
+  folder?: string;
+  modified?: string;
+  owner?: string;
+  reference_doctype?: string;
+  reference_name?: string;
 }
 
 export interface ListFilesParams {
