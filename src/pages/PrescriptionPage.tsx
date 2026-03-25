@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import { PrescriptionPrintData, downloadPrescriptionPDF, generatePrescriptionHTML } from '../utils/prescriptionTemplates';
 import { generatePdfBlobFromHtml, printHTML } from '../utils/printUtils';
-import { compressImage, processFilesWithCompression } from '../utils/imageCompression';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
 import { PrescriptionDraft } from '../api/services/medicine';
 import { useClinic } from '../contexts/ClinicContext';
@@ -67,6 +66,11 @@ const stripMedicationTags = (comment: string | undefined): string => {
     .join(' | ');
 };
 
+const getPrescriptionDisplayDate = (prescription: Record<string, any>): string => {
+  const resolvedDate = prescriptionService.resolvePrescriptionDate(prescription);
+  return resolvedDate || new Date().toISOString();
+};
+
 const parseFrequencyParts = (frequency: string | undefined): [number, number, number] => {
   if (!frequency || !/^\d+-\d+-\d+(?:-\d+)?$/.test(frequency)) {
     return [0, 0, 0];
@@ -116,6 +120,58 @@ const mapMedicationForPrint = (medication: any) => {
   };
 };
 
+const dedupeFilesById = (files: any[]): any[] => {
+  return files.reduce((acc: any[], file: any) => {
+    const fileId = file.file_id || file.name;
+    if (!acc.find((existing: any) => (existing.file_id || existing.name) === fileId)) {
+      acc.push(file);
+    }
+    return acc;
+  }, []);
+};
+
+const fetchPatientContextFiles = async (patientId: string, appointmentId?: string | null): Promise<any[]> => {
+  if (!patientId) {
+    return [];
+  }
+
+  const patientFilesList = await fileUploadService.getPatientFiles(patientId);
+  let appointmentFiles: any[] = [];
+
+  if (appointmentId) {
+    try {
+      appointmentFiles = await fileUploadService.listFiles({
+        reference_doctype: 'Patient Appointment',
+        reference_name: appointmentId,
+        limit: 100,
+      });
+    } catch (error) {
+      console.warn('Failed to fetch appointment files', error);
+    }
+  } else {
+    try {
+      const patientAppointments = await appointmentService.getPatientAppointments(patientId, 100);
+      const appointmentFilePromises = patientAppointments.map(async (appointment: any) => {
+        try {
+          return await fileUploadService.listFiles({
+            reference_doctype: 'Patient Appointment',
+            reference_name: appointment.name || appointment.id,
+            limit: 100,
+          });
+        } catch {
+          return [];
+        }
+      });
+
+      appointmentFiles = (await Promise.all(appointmentFilePromises)).flat();
+    } catch (error) {
+      console.warn('Failed to fetch patient appointments for files', error);
+    }
+  }
+
+  return dedupeFilesById([...patientFilesList, ...appointmentFiles]);
+};
+
 const PrescriptionPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -133,14 +189,7 @@ const PrescriptionPage: React.FC = () => {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart'>('medical');
   const [dentalChartData, setDentalChartData] = useState<Record<number, ToothData>>({});
-  const [showUpload, setShowUpload] = useState(false);
   const [showFileUploadModal, setShowFileUploadModal] = useState(false);
-  const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
-  const [uploadNotes, setUploadNotes] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [fileCategory, setFileCategory] = useState('report');
   const [patientFiles, setPatientFiles] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [selectedFileCategory, setSelectedFileCategory] = useState<string>('all');
@@ -355,7 +404,7 @@ const PrescriptionPage: React.FC = () => {
       clinicPhone: profile?.basic_info?.phone,
       clinicEmail: profile?.basic_info?.email,
       clinicLogo,
-      prescriptionDate: new Date(pdfDisplayData.encounter_date || pdfDisplayData.posting_date || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
+      prescriptionDate: new Date(getPrescriptionDisplayDate(pdfDisplayData)).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
       diagnosis: pdfDisplayData.diagnosis || '',
       notes: pdfDisplayData.treatment_plan || (pdfDisplayData as any).notes || '',
       medications,
@@ -365,74 +414,37 @@ const PrescriptionPage: React.FC = () => {
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
+    let isMounted = true;
+
     const fetchPatientFiles = async () => {
-      if (!patientId) return;
+      if (!patientId) {
+        setPatientFiles([]);
+        return;
+      }
 
       setIsLoadingFiles(true);
       try {
-        // Fetch files linked directly to the Patient
-        const patientFilesList = await fileUploadService.getPatientFiles(patientId);
-
-        // Fetch appointment files
-        let appointmentFiles: any[] = [];
-        if (appointmentId) {
-          // If specific appointmentId provided, fetch files for that appointment only
-          try {
-            appointmentFiles = await fileUploadService.listFiles({
-              reference_doctype: 'Patient Appointment',
-              reference_name: appointmentId,
-              limit: 100
-            });
-          } catch (e) {
-            console.warn('Failed to fetch appointment files', e);
-          }
-        } else {
-          // When no appointmentId, fetch ALL appointments for this patient
-          // and get files for each appointment
-          try {
-            const { appointmentService } = await import('../api/services');
-            const patientAppointments = await appointmentService.getPatientAppointments(patientId, 100);
-
-            // Fetch files for each appointment in parallel
-            const appointmentFilePromises = patientAppointments.map(async (apt: any) => {
-              try {
-                return await fileUploadService.listFiles({
-                  reference_doctype: 'Patient Appointment',
-                  reference_name: apt.name || apt.id,
-                  limit: 100
-                });
-              } catch {
-                return [];
-              }
-            });
-
-            const allAppointmentFiles = await Promise.all(appointmentFilePromises);
-            appointmentFiles = allAppointmentFiles.flat();
-          } catch (e) {
-            console.warn('Failed to fetch patient appointments for files', e);
-          }
+        const files = await fetchPatientContextFiles(patientId, appointmentId);
+        if (isMounted) {
+          setPatientFiles(files);
         }
-
-        // Merge and de-duplicate files by file_id
-        const allFiles = [...patientFilesList, ...appointmentFiles];
-        const uniqueFiles = allFiles.reduce((acc: any[], file: any) => {
-          const fileId = file.file_id || file.name;
-          if (!acc.find((f: any) => (f.file_id || f.name) === fileId)) {
-            acc.push(file);
-          }
-          return acc;
-        }, []);
-
-        setPatientFiles(uniqueFiles);
       } catch (error) {
         console.error('Error fetching patient files:', error);
-        toast.error('Failed to load patient files');
+        if (isMounted) {
+          toast.error('Failed to load patient files');
+        }
       } finally {
-        setIsLoadingFiles(false);
+        if (isMounted) {
+          setIsLoadingFiles(false);
+        }
       }
     };
 
     fetchPatientFiles();
+
+    return () => {
+      isMounted = false;
+    };
   }, [patientId, appointmentId]);
 
   React.useEffect(() => {
@@ -856,56 +868,10 @@ const PrescriptionPage: React.FC = () => {
       // Immediately remove the file from state for instant UI update
       setPatientFiles(prevFiles => prevFiles.filter((f: any) => f.file_id !== fileId && f.name !== fileId));
 
-      // Also refresh from server to ensure consistency
-      const files = await fileUploadService.getPatientFiles(patientId || '');
-
-      let appointmentFiles: any[] = [];
-      if (appointmentId) {
-        try {
-          appointmentFiles = await fileUploadService.listFiles({
-            reference_doctype: 'Patient Appointment',
-            reference_name: appointmentId,
-            limit: 100
-          });
-        } catch (e) {
-          // ignore
-        }
-      } else {
-        // Fetch ALL appointments for this patient and get files for each
-        try {
-          const { appointmentService } = await import('../api/services');
-          const patientAppointments = await appointmentService.getPatientAppointments(patientId || '', 100);
-
-          const appointmentFilePromises = patientAppointments.map(async (apt: any) => {
-            try {
-              return await fileUploadService.listFiles({
-                reference_doctype: 'Patient Appointment',
-                reference_name: apt.name || apt.id,
-                limit: 100
-              });
-            } catch {
-              return [];
-            }
-          });
-
-          const allAppointmentFiles = await Promise.all(appointmentFilePromises);
-          appointmentFiles = allAppointmentFiles.flat();
-        } catch (e) {
-          // ignore
-        }
+      if (patientId) {
+        const files = await fetchPatientContextFiles(patientId, appointmentId);
+        setPatientFiles(files);
       }
-
-      // Merge and de-duplicate
-      const allFiles = [...files, ...appointmentFiles];
-      const uniqueFiles = allFiles.reduce((acc: any[], file: any) => {
-        const fId = file.file_id || file.name;
-        if (!acc.find((f: any) => (f.file_id || f.name) === fId)) {
-          acc.push(file);
-        }
-        return acc;
-      }, []);
-
-      setPatientFiles(uniqueFiles);
     } catch (error: any) {
       console.error('Delete file error:', error);
       toast.error(error?.message || 'Failed to delete file');
@@ -918,7 +884,7 @@ const PrescriptionPage: React.FC = () => {
     );
     const clickedIndex = imageFiles.findIndex((file: any) => file.file_id === clickedFileId);
     const images = imageFiles.map((file: any) => ({
-      url: `${API_BASE_URL}${file.file_url}`,
+      url: fileUploadService.getPreviewUrl(file),
       caption: file.description || file.file_name
     }));
     setViewerImages(images);
@@ -952,142 +918,6 @@ const PrescriptionPage: React.FC = () => {
       ...prev,
       investigations: prev.investigations.filter((_, i) => i !== index),
     }));
-  };
-
-  // File upload handlers
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const fileArray = Array.from(files);
-
-      // Compress images before adding to state
-      const processedFiles = await Promise.all(
-        fileArray.map(async (file) => {
-          if (file.type.startsWith('image/')) {
-            try {
-              const originalSize = (file.size / 1024 / 1024).toFixed(2);
-              // Browser file selection: max 1920px, 80% quality
-              const compressed = await compressImage(file, 1920, 1920, 0.8);
-              const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
-              console.log(`Compressed ${file.name}: ${originalSize}MB → ${compressedSize}MB`);
-              return compressed;
-            } catch (error) {
-              console.error('Image compression failed, using original:', error);
-              return file;
-            }
-          }
-          return file;
-        })
-      );
-
-      setSelectedFiles(prev => [...prev, ...processedFiles]);
-    }
-  };
-
-  const handleCameraCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const fileArray = Array.from(files);
-
-      // Compress camera images more aggressively (mobile photos are large)
-      const processedFiles = await Promise.all(
-        fileArray.map(async (file) => {
-          if (file.type.startsWith('image/')) {
-            try {
-              const originalSize = (file.size / 1024 / 1024).toFixed(2);
-              // Camera capture: max 1280px, 70% quality (mobile photos are typically high-res)
-              const compressed = await compressImage(file, 1280, 1280, 0.7);
-              const compressedSize = (compressed.size / 1024 / 1024).toFixed(2);
-              console.log(`Camera compressed ${file.name}: ${originalSize}MB → ${compressedSize}MB`);
-              return compressed;
-            } catch (error) {
-              console.error('Camera image compression failed, using original:', error);
-              return file;
-            }
-          }
-          return file;
-        })
-      );
-
-      setSelectedFiles(prev => [...prev, ...processedFiles]);
-    }
-  };
-
-  const handleTakePhoto = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.setAttribute('capture', 'environment'); // Use rear camera on mobile (iOS compatible)
-    input.onchange = (e: any) => handleCameraCapture(e);
-    input.click();
-  };
-
-  const handleUploadFiles = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.accept = 'image/*,application/pdf,.doc,.docx';
-    input.onchange = (e: any) => handleFileSelect(e);
-    input.click();
-  };
-
-  const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSaveReport = async () => {
-    if (selectedFiles.length === 0) {
-      toast.error('Please select at least one file to upload');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const uploadPromises = selectedFiles.map(file =>
-        fileUploadService.uploadFile(file, {
-          file_category: fileCategory,
-          description: uploadNotes || `${fileCategory} uploaded on ${uploadDate}`,
-          reference_doctype: appointmentId ? 'Patient Appointment' : 'Patient',
-          reference_name: appointmentId || patientId || '',
-          is_private: true,
-        })
-      );
-
-      const results = await Promise.all(uploadPromises);
-
-      setUploadedFiles(prev => [...prev, ...results]);
-      toast.success(`Successfully uploaded ${results.length} file(s)`);
-
-      // Refresh patient files list
-      const files = await fileUploadService.getPatientFiles(patientId || '');
-
-      if (appointmentId) {
-        try {
-          const appointmentFiles = await fileUploadService.listFiles({
-            reference_doctype: 'Patient Appointment',
-            reference_name: appointmentId,
-            limit: 100
-          });
-          setPatientFiles([...files, ...appointmentFiles]);
-        } catch (e) {
-          setPatientFiles(files);
-        }
-      } else {
-        setPatientFiles(files);
-      }
-
-      // Reset state
-      setSelectedFiles([]);
-      setUploadNotes('');
-      setShowUpload(false);
-      setFileCategory('report');
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error(error?.message || 'Failed to upload files');
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   const handleOpenPaymentModal = (invoice: any) => {
@@ -1620,7 +1450,7 @@ const PrescriptionPage: React.FC = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => setShowUpload(true)}
+                        onClick={() => setShowFileUploadModal(true)}
                         className="flex flex-col items-center gap-2 group"
                       >
                         <div className="w-12 h-12 bg-white border border-gray-200 rounded-xl flex items-center justify-center shadow-sm group-active:scale-95 transition-transform">
@@ -1651,7 +1481,7 @@ const PrescriptionPage: React.FC = () => {
                         <Button
                           size="sm"
                           className="w-full justify-start"
-                          onClick={() => setShowUpload(true)}
+                          onClick={() => setShowFileUploadModal(true)}
                           leftIcon={
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -1837,7 +1667,7 @@ const PrescriptionPage: React.FC = () => {
                                     >
                                       {fileUploadService.isImageFile(file.file_name) ? (
                                         <img
-                                          src={`${API_BASE_URL}${file.file_url}`}
+                                          src={fileUploadService.getPreviewUrl(file)}
                                           alt={file.file_name}
                                           className="w-full h-full object-cover"
                                         />
@@ -1870,7 +1700,7 @@ const PrescriptionPage: React.FC = () => {
                                         </span>
                                         <div className="flex items-center gap-1">
                                           <a
-                                            href={`${API_BASE_URL}${file.file_url}`}
+                                            href={fileUploadService.getDownloadUrl(file)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
@@ -2077,7 +1907,7 @@ const PrescriptionPage: React.FC = () => {
                                     <div key={recordId} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
                                       <div className="flex items-center justify-between mb-3">
                                         <h4 className="text-sm font-bold text-gray-700">
-                                          {new Date(prescription.encounter_date || prescription.posting_date || prescription.creation || new Date()).toLocaleDateString()}
+                                          {new Date(getPrescriptionDisplayDate(displayData)).toLocaleDateString()}
                                         </h4>
                                         <div className="flex items-center space-x-2">
                                           <button
@@ -2556,169 +2386,6 @@ const PrescriptionPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Upload Modal */}
-            {showUpload && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
-                <div className="bg-white rounded-xl p-6 w-full max-w-sm max-h-[600px] overflow-y-auto">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-800 font-lato">
-                      Upload Medical Records
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setShowUpload(false);
-                        setSelectedFiles([]);
-                        setUploadNotes('');
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* File Category Selection */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                        Document Type
-                      </label>
-                      <select
-                        value={fileCategory}
-                        onChange={(e) => setFileCategory(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg text-sm font-montserrat"
-                      >
-                        <option value="report">Medical Report</option>
-                        <option value="xray">X-ray</option>
-                        <option value="photo">Clinical Photo</option>
-                        <option value="prescription">Prescription</option>
-                        <option value="consent">Consent Form</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-
-                    {/* Date Selection */}
-                    <InputField
-                      label="Report Date"
-                      type="date"
-                      value={uploadDate}
-                      onChange={(e) => setUploadDate(e.target.value)}
-                    />
-
-                    {/* Upload Actions */}
-                    <div className="flex space-x-4">
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        className="flex-1"
-                        onClick={handleTakePhoto}
-                        disabled={isUploading}
-                        leftIcon={
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        }
-                      >
-                        Take Photo
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        className="flex-1"
-                        onClick={handleUploadFiles}
-                        disabled={isUploading}
-                        leftIcon={
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                          </svg>
-                        }
-                      >
-                        Browse Files
-                      </Button>
-                    </div>
-
-                    {/* Selected Files Preview */}
-                    {selectedFiles.length > 0 && (
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                          Selected Files ({selectedFiles.length})
-                        </label>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {selectedFiles.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                <span className="text-lg">
-                                  {fileUploadService.getFileIcon(file.name)}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold text-gray-700 truncate">
-                                    {file.name}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {fileUploadService.formatFileSize(file.size)}
-                                  </p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => removeFile(index)}
-                                className="text-red-500 hover:text-red-700 ml-2"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 font-lato mb-2">
-                        Notes (Optional)
-                      </label>
-                      <textarea
-                        value={uploadNotes}
-                        onChange={(e) => setUploadNotes(e.target.value)}
-                        placeholder="Add any additional notes about the files..."
-                        className="w-full p-3 border border-gray-300 rounded-lg text-sm font-montserrat"
-                        rows={3}
-                      />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-4 pt-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => {
-                          setShowUpload(false);
-                          setSelectedFiles([]);
-                          setUploadNotes('');
-                        }}
-                        disabled={isUploading}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        className="flex-1"
-                        onClick={handleSaveReport}
-                        disabled={isUploading || selectedFiles.length === 0}
-                      >
-                        {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}`}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Payment Recording Modal */}
             {showPaymentModal && selectedInvoice && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
@@ -2884,9 +2551,8 @@ const PrescriptionPage: React.FC = () => {
               title="Upload Files"
               subtitle={patient?.patient_name || patientId}
               onUploadComplete={async () => {
-                // Refresh patient files after upload
                 if (patientId) {
-                  const files = await fileUploadService.getPatientFiles(patientId);
+                  const files = await fetchPatientContextFiles(patientId, appointmentId);
                   setPatientFiles(files);
                 }
               }}

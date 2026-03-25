@@ -350,6 +350,7 @@ export interface PrescriptionResponse {
   };
   practitioner_name?: string;
   posting_date: string;
+  prescription_date?: string;
   encounter_date?: string; // From list API
   encounter_time?: string; // From list API
   creation?: string; // From list API
@@ -556,11 +557,17 @@ export interface FileResponse {
   file_id: string;
   file_name: string;
   file_url: string;
+  download_url?: string;
   file_category: string;
   description?: string;
   file_size: number;
   creation: string;
   is_private: number;
+  folder?: string;
+  modified?: string;
+  owner?: string;
+  reference_doctype?: string;
+  reference_name?: string;
 }
 
 export interface ListFilesParams {
