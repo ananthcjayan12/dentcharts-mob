@@ -485,6 +485,12 @@ export const API_ENDPOINTS = {
     GET_COLLECTION: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_collection_summary',
     GET_CONSULTANT_PAYOUTS: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_consultant_payout_report',
   },
+
+  // Data Export
+  DATA_EXPORT: {
+    CONFIG: '/api/method/mob_clinic.mob_clinic.api.data_export.get_data_export_config',
+    EXPORT_CSV: '/api/method/mob_clinic.mob_clinic.api.data_export.export_data_csv',
+  },
 } as const;
 
 export default apiClient;

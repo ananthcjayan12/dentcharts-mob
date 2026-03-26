@@ -11,6 +11,7 @@ import ConsultantsSettingsTab from '../components/settings/ConsultantsSettingsTa
 import NotificationsTab from '../components/settings/NotificationsTab';
 import SocialMediaTab from '../components/settings/SocialMediaTab';
 import RolesSettingsTab from '../components/settings/RolesSettingsTab';
+import DataExportSettingsTab from '../components/settings/DataExportSettingsTab';
 
 const SettingsPage: React.FC = () => {
     return (
@@ -29,6 +30,7 @@ const SettingsPage: React.FC = () => {
                         <Route path="notifications" element={<NotificationsTab key="notifications" />} />
                         <Route path="social" element={<SocialMediaTab key="social" />} />
                         <Route path="roles" element={<RolesSettingsTab key="roles" />} />
+                        <Route path="data-export" element={<DataExportSettingsTab key="data-export" />} />
                     </Routes>
                 </main>
             </div>

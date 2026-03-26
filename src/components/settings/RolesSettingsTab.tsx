@@ -13,10 +13,15 @@ type PageOption = {
   label: string;
 };
 
+const PATIENT_SCOPE_ALL_KEY = 'patients_all';
+const PATIENT_SCOPE_USER_KEY = 'patients_user';
+const PATIENT_SCOPE_KEYS = [PATIENT_SCOPE_ALL_KEY, PATIENT_SCOPE_USER_KEY];
+
 const PAGE_OPTIONS: PageOption[] = [
   { key: 'home', label: 'Home' },
   { key: 'appointments', label: 'Appointments' },
-  { key: 'patients', label: 'Patients' },
+  { key: PATIENT_SCOPE_ALL_KEY, label: 'All Patients' },
+  { key: PATIENT_SCOPE_USER_KEY, label: 'User Patients' },
   { key: 'prescriptions', label: 'Prescriptions' },
   { key: 'invoice', label: 'Invoice' },
   { key: 'financial_dashboard', label: 'Financial Dashboard' },
@@ -79,6 +84,21 @@ const RolesSettingsTab: React.FC = () => {
     updateRow(practitionerId, (row) => {
       if (row.is_clinic_admin && pageKey === 'settings') {
         return row;
+      }
+
+      if (PATIENT_SCOPE_KEYS.includes(pageKey)) {
+        let nextPages = row.allowed_pages.filter((page) => !PATIENT_SCOPE_KEYS.includes(page));
+
+        if (checked) {
+          nextPages = Array.from(new Set([...nextPages, 'patients', pageKey]));
+        } else {
+          nextPages = nextPages.filter((page) => page !== 'patients');
+        }
+
+        return {
+          ...row,
+          allowed_pages: nextPages,
+        };
       }
 
       const nextPages = checked
