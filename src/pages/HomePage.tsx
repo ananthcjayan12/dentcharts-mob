@@ -336,7 +336,7 @@ const HomePage: React.FC = () => {
                     onClick={() => navigate('/appointments')}
                     className="text-primary-600 hover:text-primary-700"
                   >
-                    View Calendar <ChevronRightIcon className="w-4 h-4 ml-1" />
+                    View Calendar
                   </Button>
                 </Flex>
 
@@ -365,67 +365,77 @@ const HomePage: React.FC = () => {
 
                           return (
                         <Flex align="center" justify="between">
-                          <Flex gap={4} align="center">
-                            <div className="flex flex-col items-center justify-center w-12 h-12 bg-gray-50 rounded-lg text-gray-900 font-medium text-xs border border-gray-200">
+                          <Flex gap={4} align="center" className="min-w-0 flex-1">
+                            <div className="flex flex-col items-center justify-center w-12 h-12 bg-gray-50 rounded-lg text-gray-900 font-medium text-xs border border-gray-200 shrink-0">
                               <span>{new Date(apt.appointment_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).split(' ')[0]}</span>
                               <span className="text-[10px] text-gray-500 uppercase">{new Date(apt.appointment_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).split(' ')[1]}</span>
                             </div>
-                            <Stack spacing={0.5}>
-                              <Typography variant="body1" className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                            <Stack spacing={0.5} className="min-w-0">
+                              <Typography variant="body1" className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors truncate">
                                 {apt.patient_name}
                               </Typography>
                               <Flex align="center" gap={2} className="text-xs text-gray-500 flex-wrap">
                                 <span>Consultation</span>
                                 <span>•</span>
                                 <span>{apt.duration || 30} min</span>
-                                <span>•</span>
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      setOpenTypeMenuId(prev => (prev === appointmentId ? null : appointmentId));
-                                    }}
-                                    className="inline-flex items-center justify-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100"
-                                  >
-                                    {displayType}
-                                  </button>
-                                  {openTypeMenuId === appointmentId && (
-                                    <div
-                                      className="absolute z-10 mt-2 right-0 w-28 bg-white border border-gray-200 rounded-lg shadow-lg"
-                                      onClick={(event) => event.stopPropagation()}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() => handleAppointmentTypeSelect(appointmentId, 'Booking')}
-                                        className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                                      >
-                                        Booking
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleAppointmentTypeSelect(appointmentId, 'Walk In')}
-                                        className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                                      >
-                                        Walk In
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
                               </Flex>
                             </Stack>
                           </Flex>
-                          <Badge
-                            variant={
-                              apt.status === 'Confirmed' ? 'success' :
-                                apt.status === 'Scheduled' ? 'warning' :
-                                  apt.status === 'Cancelled' ? 'danger' : 'primary'
-                            }
-                            size="sm"
-                            className="capitalize"
-                          >
-                            {apt.status}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1.5 ml-2 shrink-0">
+                            <Badge
+                              variant={
+                                apt.status === 'Confirmed' ? 'success' :
+                                  apt.status === 'Scheduled' ? 'warning' :
+                                    apt.status === 'Cancelled' ? 'danger' : 'primary'
+                              }
+                              size="sm"
+                              className="capitalize max-w-[100px] sm:max-w-none truncate"
+                            >
+                              {((apt.status as string) === 'Files To Be Uploaded' ? 'Upload Files' : apt.status) as any}
+                            </Badge>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setOpenTypeMenuId(prev => (prev === appointmentId ? null : appointmentId));
+                                }}
+                                className="inline-flex flex-row-reverse items-center justify-center whitespace-nowrap px-1 py-0.5 text-gray-500 hover:text-gray-800 transition-colors group/menu focus:outline-none"
+                              >
+                                <span className="text-[10px] font-medium ml-1.5 mr-0.5">{displayType}</span>
+                                {displayType === 'Walk In' ? (
+                                  <svg className="w-3.5 h-3.5 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.2L8 8v2h2.8l-1 1.9z" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-3.5 h-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                )}
+                              </button>
+                              {openTypeMenuId === appointmentId && (
+                                <div
+                                  className="absolute z-10 mt-1 right-0 w-24 bg-white border border-gray-200 rounded shadow-lg"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAppointmentTypeSelect(appointmentId, 'Booking')}
+                                    className="w-full text-left px-2 py-1.5 text-[10px] text-gray-700 hover:bg-gray-50"
+                                  >
+                                    Booking
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAppointmentTypeSelect(appointmentId, 'Walk In')}
+                                    className="w-full text-left px-2 py-1.5 text-[10px] text-gray-700 hover:bg-gray-50"
+                                  >
+                                    Walk In
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </Flex>
                           );
                         })()}

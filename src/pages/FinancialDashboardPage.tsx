@@ -19,76 +19,164 @@ import toast from 'react-hot-toast';
 
 // --- Custom Charts ---
 
-// Simple Line Chart
-const SimpleLineChart = ({ data, height = 240, color = "#3B82F6" }: { data: { date: string, amount: number }[], height?: number, color?: string }) => {
+// Simple Bar Chart
+const SimpleBarChart = ({ data, height = 240, color = "#3B82F6" }: { data: { date: string, amount: number }[], height?: number, color?: string }) => {
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        // ALWAYS scroll to the extreme right on load so latest data is shown
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+        }
+    }, [data]);
+
     if (!data || data.length === 0) return <div className="h-full flex items-center justify-center text-gray-400">No data available</div>;
 
     const maxVal = Math.max(...data.map(d => d.amount));
-    const minVal = Math.min(...data.map(d => d.amount));
-    const range = maxVal - minVal || 1;
+    const calculateNiceMax = (val: number) => {
+        if (val <= 0) return 100;
+        const magnitude = Math.pow(10, Math.floor(Math.log10(val)));
+        const norm = val / magnitude;
+        
+        let niceNorm = Math.ceil(norm);
+        if (niceNorm > 5) niceNorm = 10;
+        else if (niceNorm === 3) niceNorm = 4;
+        
+        return niceNorm * magnitude;
+    };
+    const chartMax = calculateNiceMax(maxVal);
 
-    const points = data.map((d, i) => {
-        const x = (i / (data.length - 1)) * 100;
-        const y = 90 - ((d.amount - minVal) / range) * 80;
-        return `${x},${y}`;
-    }).join(' ');
+    const formatYAxis = (val: number) => {
+        if (val === 0) return '0';
+        if (val >= 1000) return (val % 1000 === 0) ? (val / 1000) + 'k' : (val / 1000).toFixed(1) + 'k';
+        return val.toString();
+    };
 
     return (
-        <div className="w-full relative" style={{ height }}>
-            <div className="absolute left-0 top-0 bottom-8 w-10 flex flex-col justify-between text-[11px] font-medium text-gray-400">
-                <span>{(maxVal / 1000).toFixed(1)}k</span>
-                <span>{((minVal + range / 2) / 1000).toFixed(1)}k</span>
-                <span>{(minVal / 1000).toFixed(1)}k</span>
+        <div className="w-full relative flex pt-0" style={{ height }}>
+            {/* Custom scrollbar styling scoped to this chart */}
+            <style>{`
+                .chart-scroll::-webkit-scrollbar {
+                    height: 8px;
+                }
+                .chart-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .chart-scroll::-webkit-scrollbar-thumb {
+                    background: rgba(148, 163, 184, 0.4);
+                    border-radius: 10px;
+                }
+                .chart-scroll::-webkit-scrollbar-thumb:hover,
+                .chart-scroll::-webkit-scrollbar-thumb:active {
+                    background: rgba(100, 116, 139, 0.8);
+                }
+            `}</style>
+            
+            {/* Y Axis Labels */}
+            <div className="w-12 pr-2 flex flex-col justify-between items-end text-[11px] font-medium text-gray-400 pt-12 pb-8 flex-shrink-0">
+                <span>{formatYAxis(chartMax)}</span>
+                <span>{formatYAxis(chartMax / 2)}</span>
+                <span>0</span>
             </div>
 
-            <div className="absolute left-10 right-0 top-0 bottom-8">
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                    <line x1="0" y1="10" x2="100" y2="10" stroke="#f3f4f6" strokeWidth="0.5" strokeDasharray="2,2" />
-                    <line x1="0" y1="50" x2="100" y2="50" stroke="#f3f4f6" strokeWidth="0.5" strokeDasharray="2,2" />
-                    <line x1="0" y1="90" x2="100" y2="90" stroke="#f3f4f6" strokeWidth="0.5" strokeDasharray="2,2" />
+            {/* Chart Area */}
+            <div className="flex-1 relative pb-8 overflow-visible">
+                {/* Horizontal Grid Lines */}
+                <div className="absolute inset-x-0 top-12 bottom-8 flex flex-col justify-between pointer-events-none z-0">
+                    <div className="w-full border-b border-gray-100 border-dashed" />
+                    <div className="w-full border-b border-gray-100 border-dashed" />
+                    <div className="w-full border-b border-gray-200" />
+                </div>
 
-                    <defs>
-                        <linearGradient id="gradientFill" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-                            <stop offset="100%" stopColor={color} stopOpacity="0.0" />
-                        </linearGradient>
-                    </defs>
+                {/* SCROLLABLE BAR CONTAINER */}
+                <div 
+                    ref={scrollContainerRef}
+                    className="absolute inset-0 z-10 overflow-x-auto chart-scroll scroll-smooth pt-12 pb-1.5"
+                >
+                    <div className="h-full relative flex flex-col justify-between" style={{ minWidth: `max(100%, ${data.length * 36}px)` }}>
+                        {/* Bars Row */}
+                        <div className="flex-1 flex items-end justify-around px-2 gap-1 w-full pb-8">
+                            {data.map((d, i) => {
+                                const heightPercent = (d.amount / chartMax) * 100;
+                                const formattedAmount = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(d.amount);
+                                
+                                return (
+                                    <div 
+                                        key={i} 
+                                        className="h-full flex items-end relative group cursor-pointer"
+                                        style={{ flex: 1, minWidth: '16px', maxWidth: '44px' }}
+                                        title={`${d.date}: ${formattedAmount}`}
+                                    >
+                                        <div
+                                            className="w-full rounded-t-[4px] transition-all duration-300 hover:bg-blue-600 relative"
+                                            style={{ 
+                                                height: `${Math.max(heightPercent, 2)}%`, 
+                                                backgroundColor: heightPercent > 0 ? color : '#e5e7eb'
+                                            }}
+                                        >
+                                            {/* Tooltip for Hover */}
+                                            <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[10px] sm:text-xs rounded py-1 px-2 pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                                                <span className="font-semibold block">{d.date}</span>
+                                                <span className="text-gray-300">{formattedAmount}</span>
+                                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                        
+                        {/* X Axis labels Row */}
+                        <div className="absolute bottom-0 left-0 right-0 h-8 flex items-end justify-around px-2 gap-1 w-full pb-0.5">
+                            {data.map((d, i) => {
+                                let label = d.date.substring(0, 6);
+                                let isStartOfMonth = false;
+                                
+                                const currentD = new Date(d.date);
+                                if (!isNaN(currentD.getTime())) {
+                                    const day = currentD.getDate();
+                                    const prevD = i > 0 ? new Date(data[i-1].date) : null;
+                                    
+                                    if (i === 0 || (prevD && !isNaN(prevD.getTime()) && currentD.getMonth() !== prevD.getMonth())) {
+                                        label = currentD.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                        isStartOfMonth = true;
+                                    } else {
+                                        label = day.toString();
+                                    }
+                                } else {
+                                    const parts = d.date.split(/[ \-\/]/);
+                                    if (parts.length >= 2) {
+                                        const isNumberFirst = !isNaN(parseInt(parts[0]));
+                                        const dayStr = isNumberFirst ? parts[0] : parts[1];
+                                        const monthStr = isNumberFirst ? parts[1] : parts[0];
+                                        
+                                        const prevParts = i > 0 ? data[i-1].date.split(/[ \-\/]/) : [];
+                                        const prevMonthStr = prevParts.length >= 2 ? (!isNaN(parseInt(prevParts[0])) ? prevParts[1] : prevParts[0]) : '';
+                                        
+                                        if (i === 0 || monthStr !== prevMonthStr) {
+                                            label = `${monthStr} ${dayStr}`;
+                                            isStartOfMonth = true;
+                                        } else {
+                                            label = dayStr;
+                                        }
+                                    }
+                                }
 
-                    <polygon
-                        points={`0,100 ${points} 100,100`}
-                        fill="url(#gradientFill)"
-                    />
-
-                    <polyline
-                        points={points}
-                        fill="none"
-                        stroke={color}
-                        strokeWidth="2.5"
-                        vectorEffect="non-scaling-stroke"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-
-                    {data.map((d, i) => {
-                        const x = (i / (data.length - 1)) * 100;
-                        const y = 90 - ((d.amount - minVal) / range) * 80;
-                        return (
-                            <circle key={i} cx={x} cy={y} r="3" fill="white" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" className="hover:r-5 transition-all duration-200 cursor-pointer" />
-                        )
-                    })}
-                </svg>
-            </div>
-
-            <div className="absolute left-10 right-0 bottom-0 h-6 flex justify-between text-[11px] font-medium text-gray-400">
-                {data.length > 5 ? (
-                    <>
-                        <span>{data[0].date}</span>
-                        <span>{data[Math.floor(data.length / 2)].date}</span>
-                        <span>{data[data.length - 1].date}</span>
-                    </>
-                ) : (
-                    data.map((d, i) => <span key={i}>{d.date}</span>)
-                )}
+                                return (
+                                    <div 
+                                        key={i} 
+                                        className={`flex flex-col justify-end text-center truncate ${isStartOfMonth ? 'pb-1' : 'pb-0'}`} 
+                                        style={{ flex: 1, minWidth: '16px', maxWidth: '44px' }}
+                                    >
+                                        <span className={`block truncate ${isStartOfMonth ? 'text-[11px] font-extrabold text-gray-700' : 'text-[10px] font-medium text-gray-400'}`}>
+                                            {label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -330,10 +418,10 @@ const FinancialDashboardPage: React.FC = () => {
     };
 
     return (
-        <div className="flex bg-gray-50 min-h-screen text-gray-900 font-sans selection:bg-blue-100">
+        <div className="flex bg-gray-50 min-h-screen text-gray-900 font-sans selection:bg-blue-100 overflow-x-hidden">
             <Sidebar />
 
-            <main className="flex-1 ml-0 md:ml-64 transition-all duration-300">
+            <main className="flex-1 ml-0 md:ml-64 pb-16 md:pb-0 transition-all duration-300 w-full min-w-0">
                 <TopBar title="Dashboard" showClinicSelector={true} />
 
                 <Container className="max-w-[1400px] mx-auto py-8 pb-24 space-y-8">
@@ -356,20 +444,20 @@ const FinancialDashboardPage: React.FC = () => {
                             </div>
                         </div>
                         
-                        <div className="flex flex-wrap items-center gap-2 lg:gap-3 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-200/60 ring-1 ring-black/[0.02]">
-                            <div className="flex items-center px-4 py-2 bg-gray-50/80 rounded-[10px] text-sm text-gray-700 border border-gray-100/50">
+                        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 lg:gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-200/60 ring-1 ring-black/[0.02]">
+                            <div className="flex justify-between items-center px-4 py-2 bg-gray-50/80 rounded-[10px] text-sm text-gray-700 border border-gray-100/50">
                                 <span className="text-gray-400 mr-2 text-[11px] font-bold uppercase tracking-wider">Scope</span>
                                 <span className="font-semibold text-gray-800">{clinicId || 'Active clinic'}</span>
                             </div>
                             
                             <div className="w-px h-8 bg-gray-100 hidden sm:block"></div>
                             
-                            <div className="flex items-center px-2">
+                            <div className="flex items-center px-3 sm:px-2 bg-gray-50/50 sm:bg-transparent rounded-xl sm:rounded-none border sm:border-none border-gray-100/50">
                                 <span className="text-gray-400 mr-2 text-[11px] font-bold uppercase tracking-wider hidden sm:inline-block">Provider</span>
                                 <select
                                     value={selectedPractitionerId}
                                     onChange={(event) => setSelectedPractitionerId(event.target.value)}
-                                    className="h-10 bg-transparent text-sm focus:ring-0 cursor-pointer outline-none font-semibold text-gray-800 pr-2"
+                                    className="w-full sm:w-auto h-10 bg-transparent text-sm focus:ring-0 cursor-pointer outline-none font-semibold text-gray-800 pr-2"
                                 >
                                     <option value="">All Practitioners</option>
                                     {practitionerOptions.map((practitioner) => (
@@ -382,12 +470,12 @@ const FinancialDashboardPage: React.FC = () => {
                             
                             <div className="w-px h-8 bg-gray-100 hidden sm:block"></div>
                             
-                            <div className="flex items-center px-2 pr-2">
+                            <div className="flex items-center px-3 sm:px-2 pr-2 bg-gray-50/50 sm:bg-transparent rounded-xl sm:rounded-none border sm:border-none border-gray-100/50">
                                 <span className="text-gray-400 mr-2 text-[11px] font-bold uppercase tracking-wider hidden sm:inline-block">Period</span>
                                 <select
                                     value={dateRange}
                                     onChange={(event) => setDateRange(event.target.value)}
-                                    className="h-10 bg-transparent text-sm focus:ring-0 cursor-pointer outline-none font-semibold text-gray-800 pr-2"
+                                    className="w-full sm:w-auto h-10 bg-transparent text-sm focus:ring-0 cursor-pointer outline-none font-semibold text-gray-800 pr-2"
                                 >
                                     <option>Today</option>
                                     <option>This Week</option>
@@ -450,18 +538,7 @@ const FinancialDashboardPage: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {data.summary.aging_analysis && data.summary.aging_analysis["60_plus_days"] > 0 && (
-                                        <div className="bg-red-50/50 rounded-2xl p-4 border border-red-100 flex gap-3 items-start hover:shadow-sm transition-shadow">
-                                            <div className="p-2 bg-red-100 text-red-600 rounded-lg">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900">Overdue Payments</p>
-                                                <p className="text-xs text-gray-600 mt-0.5">{formatCurrency(data.summary.aging_analysis["60_plus_days"])} pending 60+ days.</p>
-                                                <button className="text-xs font-semibold text-red-700 mt-2 hover:underline" onClick={() => navigate(buildInvoiceQuery({ status: 'Overdue' }))}>Send reminders →</button>
-                                            </div>
-                                        </div>
-                                    )}
+
 
                                     {(data.summary.period_growth || data.summary.month_growth) > 15 && (
                                         <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100 flex gap-3 items-start hover:shadow-sm transition-shadow">
@@ -635,9 +712,16 @@ const FinancialDashboardPage: React.FC = () => {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="lg:col-span-2">
                                     <Card className="p-6 rounded-[24px] border border-gray-100/50 shadow-sm bg-white h-full flex flex-col">
-                                        <h4 className="text-sm font-bold text-gray-900 mb-6 tracking-wide">Revenue Trend</h4>
+                                        <div className="mb-2">
+                                            <h4 className="text-sm font-bold text-gray-900 tracking-wide">Revenue Trend</h4>
+                                            {data.revenue_trend && data.revenue_trend.length > 0 && (
+                                                <p className="text-xs text-gray-400 font-medium mt-1">
+                                                    {data.revenue_trend[0].date} — {data.revenue_trend[data.revenue_trend.length - 1].date}
+                                                </p>
+                                            )}
+                                        </div>
                                         <div className="flex-1">
-                                            <SimpleLineChart data={data.revenue_trend} height={250} color="#3B82F6" />
+                                            <SimpleBarChart data={data.revenue_trend} height={250} color="#3B82F6" />
                                         </div>
                                     </Card>
                                 </div>
@@ -862,8 +946,8 @@ const FinancialDashboardPage: React.FC = () => {
                                             Detailed reporting of generated commissions.
                                         </Typography>
                                     </div>
-                                    <div className="w-full lg:w-auto flex items-center gap-3">
-                                        <div className="flex-1 lg:w-64">
+                                    <div className="w-full lg:w-auto flex flex-col sm:flex-row items-center gap-3">
+                                        <div className="w-full lg:w-64">
                                             <select
                                                 value={selectedConsultantId}
                                                 onChange={(event) => setSelectedConsultantId(event.target.value)}
@@ -877,9 +961,11 @@ const FinancialDashboardPage: React.FC = () => {
                                                 ))}
                                             </select>
                                         </div>
-                                        <Button variant="outline" size="sm" onClick={exportConsultantPayoutCsv}>
-                                            Export CSV
-                                        </Button>
+                                        <div className="w-full sm:w-auto flex">
+                                           <Button variant="outline" size="sm" onClick={exportConsultantPayoutCsv} className="w-full justify-center">
+                                               Export CSV
+                                           </Button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -906,7 +992,7 @@ const FinancialDashboardPage: React.FC = () => {
                                                 </div>
                                             </div>
                                             
-                                            <div className="mt-2 h-[260px] overflow-y-auto pr-2 space-y-2 no-scrollbar">
+                                            <div className="mt-2 max-h-[260px] overflow-y-auto pr-2 space-y-2 no-scrollbar">
                                                 {payoutData.consultants.length > 0 ? (
                                                     payoutData.consultants.map((consultant: any) => (
                                                         <button
