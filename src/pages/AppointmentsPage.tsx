@@ -774,9 +774,9 @@ const AppointmentsPage: React.FC = () => {
             <colgroup>
               <col className="w-[13%]" />
               <col className="w-[10%]" />
-              <col className="w-[8%]" />
+              <col className="w-[9%]" />
               <col className="w-[15%]" />
-              <col className="w-[24%]" />
+              <col className="w-[23%]" />
               <col className="w-[11%]" />
               <col className="w-[8%]" />
               <col className="w-[11%]" />
@@ -793,11 +793,11 @@ const AppointmentsPage: React.FC = () => {
                 <th className="px-4 py-3 text-left">Doctor</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-200">
               {items.map((appointment) => (
                 <tr
                   key={appointment.name || appointment.appointment_id}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="hover:bg-gray-50 cursor-pointer border-b border-gray-300 last:border-b-0"
                   onClick={() => handleAppointmentClick(appointment)}
                   onContextMenu={(e) => handleContextMenu(e, appointment)}
                 >
@@ -857,11 +857,11 @@ const AppointmentsPage: React.FC = () => {
         </div>
 
         {/* Mobile View */}
-        <div className="md:hidden divide-y divide-gray-100">
+        <div className="md:hidden p-3 bg-gray-50/30 space-y-3">
           {items.map((appointment) => (
             <div
               key={appointment.name || appointment.appointment_id}
-              className="p-3 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
+              className="p-3 bg-white border border-gray-300 shadow-sm rounded-lg hover:border-primary-400 active:bg-gray-50 cursor-pointer transition-all"
               onClick={() => handleAppointmentClick(appointment)}
             >
               <div className="flex justify-between items-start mb-2">
@@ -927,162 +927,6 @@ const AppointmentsPage: React.FC = () => {
     );
   };
 
-  const renderAllAppointmentsTable = (items: any[]) => {
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-        <div className={`px-4 py-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center`}>
-          <h3 className="font-bold text-gray-800">All Appointments</h3>
-          <div className="text-sm font-bold text-gray-900">{items.length} Patients</div>
-        </div>
-
-        {/* Desktop View */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-700 text-xs uppercase text-white font-medium">
-              <tr>
-                <th className="px-4 py-3 text-left">Full Name</th>
-                <th className="px-4 py-3 text-left">Procedure</th>
-                <th className="px-4 py-3 text-left">Mobile Number</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-center">Actions</th>
-                <th className="px-4 py-3 text-left">Appointment Time</th>
-                <th className="px-4 py-3 text-left">Type</th>
-                <th className="px-4 py-3 text-left">Doctor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {items.map((appointment) => (
-                <tr
-                  key={appointment.name || appointment.appointment_id}
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleAppointmentClick(appointment)}
-                  onContextMenu={(e) => handleContextMenu(e, appointment)}
-                >
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{appointment.patient_name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.patient_mobile || '-'}</td>
-                  <td className="px-4 py-3 text-center">
-                    <ActionDropdown
-                      isOpen={openActionMenu === `all-desk-status-${appointment.name || appointment.appointment_id}`}
-                      onToggle={() => setOpenActionMenu(openActionMenu === `all-desk-status-${appointment.name || appointment.appointment_id}` ? null : `all-desk-status-${appointment.name || appointment.appointment_id}`)}
-                      onClose={() => setOpenActionMenu(null)}
-                      align="left"
-                      trigger={
-                        <button
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium ${getStatusBadgeClass(appointment.status)}`}
-                        >
-                          {appointment.status}
-                          <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                        </button>
-                      }
-                    >
-                      {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
-                        <button
-                          key={s}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenActionMenu(null);
-                            const apptId = appointment.name || appointment.appointment_id;
-                            if (!apptId) return;
-                            updateAppointment({ appointment_id: apptId, status: s } as any, {
-                              onSuccess: () => {
-                                toast.success('Appointment status updated');
-                              }
-                            });
-                          }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </ActionDropdown>
-                  </td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-2">
-                      {renderAppointmentActions(appointment)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{renderAppointmentType(appointment.appointment_type)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{appointment.practitioner_name || 'Dr Avinash'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile View */}
-        <div className="md:hidden divide-y divide-gray-100">
-          {items.map((appointment) => (
-            <div
-              key={appointment.name || appointment.appointment_id}
-              className="p-3 hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
-              onClick={() => handleAppointmentClick(appointment)}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1 min-w-0 mr-2">
-                  <h4 className="font-semibold text-gray-900 text-sm truncate">{appointment.patient_name}</h4>
-                  <p className="text-xs text-gray-500 truncate">{appointment.chief_complaint || 'General Consultation'}</p>
-                  <div className="mt-1">{renderAppointmentType(appointment.appointment_type)}</div>
-                </div>
-                <ActionDropdown
-                  isOpen={openActionMenu === `all-mobile-status-${appointment.name || appointment.appointment_id}`}
-                  onToggle={() => setOpenActionMenu(openActionMenu === `all-mobile-status-${appointment.name || appointment.appointment_id}` ? null : `all-mobile-status-${appointment.name || appointment.appointment_id}`)}
-                  onClose={() => setOpenActionMenu(null)}
-                  align="right"
-                  trigger={
-                    <button
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${getStatusPillClass(appointment.status)}`}
-                    >
-                      {appointment.status}
-                      <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                  }
-                >
-                  {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
-                    <button
-                      key={s}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenActionMenu(null);
-                        const apptId = appointment.name || appointment.appointment_id;
-                        if (!apptId) return;
-                        updateAppointment({ appointment_id: apptId, status: s } as any, {
-                          onSuccess: () => {
-                            toast.success('Appointment status updated');
-                          }
-                        });
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </ActionDropdown>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
-                <div className="flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <span>{new Date(appointment.appointment_datetime).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(appointment.appointment_datetime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                  <span className="truncate max-w-[120px]">{appointment.practitioner_name || 'Dr Avinash'}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-                {renderAppointmentActions(appointment)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const renderAppointmentActions = (appointment: any) => {
     const id = appointment.name || appointment.appointment_id;
@@ -1506,7 +1350,7 @@ const AppointmentsPage: React.FC = () => {
                   </button>
 
                   {/* Filter Chips - Horizontal Scroll on Mobile */}
-                  <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto hide-scrollbar">
                     <button
                       onClick={() => setQueueFilter(queueFilter === 'booking' ? 'all' : 'booking')}
                       className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 ${queueFilter === 'booking' ? 'bg-blue-500 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -1637,7 +1481,7 @@ const AppointmentsPage: React.FC = () => {
               <div className="space-y-6">
                 {!showTodaysOnly ? (
                   // Render a single combined table for All Appointments
-                  renderAllAppointmentsTable(sortedAppointments)
+                  renderQueueSection('All Appointments', sortedAppointments, 'bg-gray-100')
                 ) : (
                   <>
                     {(queueFilter === 'all' || queueFilter === 'waiting') && renderQueueSection('Waiting', groupedAppointments.waiting, 'bg-gray-200')}
@@ -1658,7 +1502,7 @@ const AppointmentsPage: React.FC = () => {
                     <div className="text-sm text-gray-600">
                       Showing {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} appointments
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-2 sm:mt-0">
                       <button
                         onClick={() => handlePageChange(1)}
                         disabled={currentPage === 1}
