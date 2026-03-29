@@ -304,7 +304,7 @@ const HomePage: React.FC = () => {
                 onClick={() => navigate('/patients')}
               />
               <StatCard
-                title="Upcoming"
+                title="Upcoming Appointments"
                 value={upcomingCount}
                 subtitle="Next 7 days"
                 icon={ClockIcon}
@@ -313,7 +313,7 @@ const HomePage: React.FC = () => {
                 onClick={() => navigate('/appointments')}
               />
               <StatCard
-                title="Pending"
+                title="Pending Actions"
                 value={pendingCount}
                 subtitle="Action required"
                 icon={CurrencyDollarIcon}
@@ -325,8 +325,8 @@ const HomePage: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Today's Schedule - Main Column */}
-              <div className="lg:col-span-2 space-y-4">
-                <Flex align="center" justify="between">
+              <div className="lg:col-span-2 flex flex-col">
+                <Flex align="center" justify="between" className="mb-4 min-h-[36px]">
                   <Typography variant="h6" className="font-bold text-gray-900">
                     Today's Schedule
                   </Typography>
@@ -334,7 +334,7 @@ const HomePage: React.FC = () => {
                     size="sm"
                     variant="ghost"
                     onClick={() => navigate('/appointments')}
-                    className="text-primary-600 hover:text-primary-700"
+                    className="text-primary-600 hover:text-primary-700 py-1"
                   >
                     View Calendar
                   </Button>
@@ -463,9 +463,11 @@ const HomePage: React.FC = () => {
               {/* Quick Actions & Upcoming - Side Column */}
               <div className="space-y-6">
                 <div>
-                  <Typography variant="h6" className="font-bold text-gray-900 mb-4">
-                    Quick Actions
-                  </Typography>
+                  <Flex align="center" className="mb-4 min-h-[36px]">
+                    <Typography variant="h6" className="font-bold text-gray-900">
+                      Quick Actions
+                    </Typography>
+                  </Flex>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => navigate('/appointments/new', { state: { backgroundLocation: location } })}
@@ -517,9 +519,11 @@ const HomePage: React.FC = () => {
 
                 {upcomingAppointments.length > 0 && (
                   <div>
-                    <Typography variant="h6" className="font-bold text-gray-900 mb-4">
-                      Up Next
-                    </Typography>
+                    <Flex align="center" className="mb-4 min-h-[36px]">
+                      <Typography variant="h6" className="font-bold text-gray-900">
+                        Up Next
+                      </Typography>
+                    </Flex>
                     <Card className="border border-gray-100 shadow-sm divide-y divide-gray-100">
                       {upcomingAppointments.slice(0, 3).map((apt, i) => (
                         <div

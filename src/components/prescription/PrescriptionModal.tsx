@@ -174,12 +174,12 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 pb-[90px] md:p-6 md:pb-6">
             <div
-                className="my-8 w-full max-w-6xl rounded-xl bg-white shadow-xl"
+                className="flex w-full max-h-full max-w-6xl flex-col rounded-xl bg-white shadow-xl"
                 onClick={event => event.stopPropagation()}
             >
-                <div className="flex items-center justify-between border-b border-gray-200 p-4">
+                <div className="flex-shrink-0 flex items-center justify-between border-b border-gray-200 p-4">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900">Add Prescription</h2>
                         <p className="text-sm font-medium text-primary-600">
@@ -199,22 +199,29 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     </button>
                 </div>
 
-                <div className="space-y-5 p-4">
+                <div className="flex-1 overflow-y-auto space-y-5 p-4 pb-6">
                     <div className="grid gap-4 md:grid-cols-[240px,1fr]">
                         <div>
                             <label className="mb-2 block text-sm font-semibold text-gray-700">Doctor</label>
-                            <select
-                                value={selectedDoctor}
-                                onChange={event => setSelectedDoctor(event.target.value)}
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                disabled={isSubmitting}
-                            >
-                                {doctorOptions.map(option => (
-                                    <option key={option.id} value={option.id}>
-                                        {option.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <select
+                                    value={selectedDoctor}
+                                    onChange={event => setSelectedDoctor(event.target.value)}
+                                    className="w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    disabled={isSubmitting}
+                                >
+                                    {doctorOptions.map(option => (
+                                        <option key={option.id} value={option.id}>
+                                            {option.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5">
+                                    <svg className="h-[14px] w-[14px] text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="relative">
@@ -265,114 +272,228 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto rounded-xl border border-gray-200">
-                        <table className="w-full min-w-[960px] text-sm">
-                            <thead className="bg-gray-50">
-                                <tr className="border-b border-gray-200">
-                                    <th className="px-3 py-3 text-left font-medium text-gray-700">Medicine</th>
-                                    <th className="px-3 py-3 text-left font-medium text-gray-700">Dosage</th>
-                                    <th className="px-3 py-3 text-left font-medium text-gray-700">Frequency</th>
-                                    <th className="px-3 py-3 text-left font-medium text-gray-700">Conditions</th>
-                                    <th className="px-3 py-3 text-left font-medium text-gray-700">Days</th>
-                                    <th className="px-3 py-3 text-left font-medium text-gray-700">Note</th>
-                                    <th className="w-12 px-2 py-3" />
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {medications.map(med => (
-                                    <tr key={med.id} className="border-b border-gray-100 align-top last:border-b-0">
-                                        <td className="px-3 py-3">
-                                            <input
-                                                type="text"
-                                                value={med.medicine_name}
-                                                onChange={event => updateMedication(med.id, 'medicine_name', event.target.value)}
-                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                placeholder="Medicine name"
-                                            />
-                                        </td>
-                                        <td className="px-3 py-3">
+                    <div className="overflow-x-hidden rounded-xl border border-gray-200">
+                        {/* Desktop Table */}
+                        <div className="hidden lg:block overflow-x-auto">
+                            <table className="w-full min-w-[960px] text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr className="border-b border-gray-200">
+                                        <th className="px-3 py-3 text-left font-medium text-gray-700">Medicine</th>
+                                        <th className="px-3 py-3 text-left font-medium text-gray-700">Dosage</th>
+                                        <th className="px-3 py-3 text-left font-medium text-gray-700">Frequency</th>
+                                        <th className="px-3 py-3 text-left font-medium text-gray-700">Conditions</th>
+                                        <th className="px-3 py-3 text-left font-medium text-gray-700">Days</th>
+                                        <th className="px-3 py-3 text-left font-medium text-gray-700">Note</th>
+                                        <th className="w-12 px-2 py-3" />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {medications.map(med => (
+                                        <tr key={med.id} className="border-b border-gray-100 align-top last:border-b-0">
+                                            <td className="px-3 py-3">
+                                                <input
+                                                    type="text"
+                                                    value={med.medicine_name}
+                                                    onChange={event => updateMedication(med.id, 'medicine_name', event.target.value)}
+                                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                    placeholder="Medicine name"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <input
+                                                    type="text"
+                                                    value={med.dosage || ''}
+                                                    onChange={event => updateMedication(med.id, 'dosage', event.target.value)}
+                                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                    placeholder="1 Tablet / 10 ml"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <div className="flex gap-2">
+                                                    {TIMING_FIELDS.map(timing => {
+                                                        const isActive = Boolean(med[timing.key]);
+
+                                                        return (
+                                                            <button
+                                                                key={timing.key}
+                                                                type="button"
+                                                                onClick={() => toggleTiming(med.id, timing.key)}
+                                                                className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-colors ${
+                                                                    isActive
+                                                                        ? 'border-primary-500 bg-primary-500 text-white'
+                                                                        : 'border-gray-300 bg-white text-gray-600 hover:border-primary-300 hover:text-primary-600'
+                                                                }`}
+                                                            >
+                                                                {timing.label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <div className="relative">
+                                                    <select
+                                                        value={med.condition}
+                                                        onChange={event => updateMedication(med.id, 'condition', event.target.value)}
+                                                        className="w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                    >
+                                                        {DOSAGE_CONDITIONS.map(condition => (
+                                                            <option key={condition || 'none'} value={condition}>
+                                                                {condition || 'Select condition'}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                        <svg className="h-[14px] w-[14px] text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="365"
+                                                    value={med.days}
+                                                    onChange={event => updateMedication(med.id, 'days', parseInt(event.target.value, 10) || 1)}
+                                                    className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <input
+                                                    type="text"
+                                                    value={med.note || ''}
+                                                    onChange={event => updateMedication(med.id, 'note', event.target.value)}
+                                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                    placeholder="add note.."
+                                                />
+                                            </td>
+                                            <td className="px-2 py-3 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeMedication(med.id)}
+                                                    className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                                                    title="Remove medicine"
+                                                >
+                                                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile Cards Layout */}
+                        <div className="lg:hidden flex flex-col">
+                            {medications.map(med => (
+                                <div key={med.id} className="p-4 border-b border-gray-100 last:border-b-0">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex-1 font-bold text-lg text-primary-700">
+                                            {med.medicine_name}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeMedication(med.id)}
+                                            className="ml-2 text-red-500 hover:text-red-700 p-1"
+                                            title="Remove medicine"
+                                        >
+                                            <svg className="h-[22px] w-[22px]" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="mb-1 block text-xs font-semibold text-gray-500 uppercase tracking-wider">Dosage</label>
                                             <input
                                                 type="text"
                                                 value={med.dosage || ''}
                                                 onChange={event => updateMedication(med.id, 'dosage', event.target.value)}
                                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                placeholder="1 Tablet / 10 ml"
+                                                placeholder="1 Tablet"
                                             />
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <div className="flex gap-2">
-                                                {TIMING_FIELDS.map(timing => {
-                                                    const isActive = Boolean(med[timing.key]);
-
-                                                    return (
-                                                        <button
-                                                            key={timing.key}
-                                                            type="button"
-                                                            onClick={() => toggleTiming(med.id, timing.key)}
-                                                            className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-colors ${
-                                                                isActive
-                                                                    ? 'border-primary-500 bg-primary-500 text-white'
-                                                                    : 'border-gray-300 bg-white text-gray-600 hover:border-primary-300 hover:text-primary-600'
-                                                            }`}
-                                                        >
-                                                            {timing.label}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <select
-                                                value={med.condition}
-                                                onChange={event => updateMedication(med.id, 'condition', event.target.value)}
-                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                            >
-                                                {DOSAGE_CONDITIONS.map(condition => (
-                                                    <option key={condition || 'none'} value={condition}>
-                                                        {condition || 'Select condition'}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td className="px-3 py-3">
+                                        </div>
+                                        <div>
+                                            <label className="mb-1 block text-xs font-semibold text-gray-500 uppercase tracking-wider">Days</label>
                                             <input
                                                 type="number"
                                                 min="1"
                                                 max="365"
                                                 value={med.days}
                                                 onChange={event => updateMedication(med.id, 'days', parseInt(event.target.value, 10) || 1)}
-                                                className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                            />
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <input
-                                                type="text"
-                                                value={med.note || ''}
-                                                onChange={event => updateMedication(med.id, 'note', event.target.value)}
                                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                placeholder="add note.."
+                                                placeholder="3"
                                             />
-                                        </td>
-                                        <td className="px-2 py-3 text-center">
-                                            <button
-                                                type="button"
-                                                onClick={() => removeMedication(med.id)}
-                                                className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
-                                                title="Remove medicine"
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <label className="mb-1 block text-xs font-semibold text-gray-500 uppercase tracking-wider">Frequency</label>
+                                        <div className="flex gap-1 justify-between">
+                                            {TIMING_FIELDS.map(timing => {
+                                                const isActive = Boolean(med[timing.key]);
+                                                return (
+                                                    <button
+                                                        key={timing.key}
+                                                        type="button"
+                                                        onClick={() => toggleTiming(med.id, timing.key)}
+                                                        className={`flex-1 rounded border py-1.5 text-xs font-semibold tracking-wide transition-colors ${
+                                                            isActive
+                                                                ? 'border-primary-500 bg-primary-500 text-white'
+                                                                : 'border-gray-300 bg-white text-gray-600'
+                                                        }`}
+                                                    >
+                                                        {timing.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <label className="mb-1 block text-xs font-semibold text-gray-500 uppercase tracking-wider">Conditions</label>
+                                        <div className="relative">
+                                            <select
+                                                value={med.condition}
+                                                onChange={event => updateMedication(med.id, 'condition', event.target.value)}
+                                                className="w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                                             >
-                                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                                        clipRule="evenodd"
-                                                    />
+                                                {DOSAGE_CONDITIONS.map(condition => (
+                                                    <option key={condition || 'none'} value={condition}>
+                                                        {condition || 'Condition'}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                <svg className="h-[14px] w-[14px] text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                                 </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-xs font-semibold text-gray-500 uppercase tracking-wider">Note</label>
+                                        <input
+                                            type="text"
+                                            value={med.note || ''}
+                                            onChange={event => updateMedication(med.id, 'note', event.target.value)}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            placeholder="e.g. Swallow with warm water"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
                         {medications.length === 0 && (
                             <div className="px-4 py-10 text-center text-gray-500">
@@ -393,7 +514,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-gray-200 p-4">
+                <div className="flex-shrink-0 flex items-center justify-between rounded-b-xl border-t border-gray-200 bg-gray-50 p-4">
                     <Button
                         variant="outline"
                         onClick={onClose}
