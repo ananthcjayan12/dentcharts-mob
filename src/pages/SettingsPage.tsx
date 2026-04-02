@@ -5,6 +5,7 @@ import Layout from '../components/layout/Layout';
 import ProfileTab from '../components/settings/ProfileTab';
 import ProceduresTab from '../components/settings/ProceduresTab';
 import ConditionsTab from '../components/settings/ConditionsTab';
+import MedicinesTab from '../components/settings/MedicinesTab';
 import BrandingTab from '../components/settings/BrandingTab';
 import InvoiceTab from '../components/settings/InvoiceTab';
 import ConsultantsSettingsTab from '../components/settings/ConsultantsSettingsTab';
@@ -24,6 +25,7 @@ const SettingsPage: React.FC = () => {
                         <Route path="profile" element={<ProfileTab key="profile" />} />
                         <Route path="procedures" element={<ProceduresTab key="procedures" />} />
                         <Route path="conditions" element={<ConditionsTab key="conditions" />} />
+                        <Route path="medicines" element={<MedicinesTab key="medicines" />} />
                         <Route path="branding" element={<BrandingTab key="branding" />} />
                         <Route path="invoice" element={<InvoiceTab key="invoice" />} />
                         <Route path="consultants" element={<ConsultantsSettingsTab key="consultants" />} />

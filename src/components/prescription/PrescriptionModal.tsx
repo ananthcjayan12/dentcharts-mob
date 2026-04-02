@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { medicineService, MedicineTemplate, PrescriptionDraft, PrescriptionMedicine } from '../../api/services/medicine';
 import Button from '../common/Button';
 import toast from 'react-hot-toast';
+import { useClinic } from '../../contexts/ClinicContext';
 
 interface DoctorOption {
     id: string;
@@ -45,6 +46,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     onSubmit,
     isSubmitting = false,
 }) => {
+    const { clinicId } = useClinic();
     const [medications, setMedications] = useState<PrescriptionMedicine[]>([]);
     const [selectedDoctor, setSelectedDoctor] = useState('');
     const [physicianNotes, setPhysicianNotes] = useState('');
@@ -93,7 +95,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
         setIsSearching(true);
         searchTimeoutRef.current = setTimeout(async () => {
             try {
-                const results = await medicineService.searchMedicines(value, 10);
+                const results = await medicineService.searchMedicines(value, 10, clinicId || undefined);
                 setSearchResults(results);
                 setShowSearchDropdown(true);
             } catch (error) {
@@ -102,7 +104,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                 setIsSearching(false);
             }
         }, 300);
-    }, []);
+    }, [clinicId]);
 
     useEffect(() => {
         return () => {

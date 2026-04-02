@@ -35,6 +35,15 @@ const SettingsSidebar: React.FC = () => {
             )
         },
         {
+            name: 'Medicines',
+            path: '/settings/medicines',
+            icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428l-8.856-8.856a2 2 0 00-2.828 0l-3.172 3.172a2 2 0 000 2.828l8.856 8.856a2 2 0 002.828 0l3.172-3.172a2 2 0 000-2.828zM7 7l10 10" />
+                </svg>
+            )
+        },
+        {
             name: 'Branding',
             path: '/settings/branding',
             icon: (

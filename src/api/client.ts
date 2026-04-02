@@ -479,6 +479,18 @@ export const API_ENDPOINTS = {
     GET_TYPES: '/api/method/mob_clinic.mob_clinic.api.conditions.get_condition_types',
   },
 
+  // Medicines Management
+  MEDICINES: {
+    GET: '/api/method/mob_clinic.mob_clinic.api.medicine.get_medicines',
+    SEARCH: '/api/method/mob_clinic.mob_clinic.api.medicine.search_medicines',
+    CREATE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.medicine.create_custom_medicine',
+    UPDATE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.medicine.update_custom_medicine',
+    OVERRIDE_TEMPLATE: '/api/method/mob_clinic.mob_clinic.api.medicine.override_template_medicine',
+    DELETE_CUSTOM: '/api/method/mob_clinic.mob_clinic.api.medicine.delete_custom_medicine',
+    GET_CATEGORIES: '/api/method/mob_clinic.mob_clinic.api.medicine.get_medicine_categories',
+    GET_CONDITIONS: '/api/method/mob_clinic.mob_clinic.api.medicine.get_dosage_conditions',
+  },
+
   // Dashboard Management
   DASHBOARD: {
     GET_STATS: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_financial_stats',
