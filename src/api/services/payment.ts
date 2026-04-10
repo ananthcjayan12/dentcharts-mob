@@ -195,7 +195,8 @@ export class PaymentService {
     mode_of_payment: string,
     payment_date?: string,
     reference_no?: string,
-    reference_date?: string
+    reference_date?: string,
+    appointment_id?: string
   ): Promise<{ payments: any[]; remaining_amount: number }> {
     try {
       const payload = {
@@ -205,6 +206,7 @@ export class PaymentService {
         payment_date,
         reference_no,
         reference_date,
+        appointment_id,
       };
 
       const response = await apiClient.post<any>(API_ENDPOINTS.PAYMENTS.PAY_PENDING, payload);
