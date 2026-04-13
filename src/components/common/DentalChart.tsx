@@ -61,6 +61,12 @@ export interface ToothData {
   status: ToothStatus;
   conditions: ToothCondition[];
   procedures: ToothProcedure[];
+  treatmentNotes?: string;
+  treatmentNotesTimeline?: Array<{
+    text: string;
+    date: string;
+    author?: string;
+  }>;
 }
 
 interface DentalChartProps {
@@ -156,6 +162,44 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             })),
           })),
         };
+
+        // Derive procedure notes and timeline from procedures list
+        const procedures = convertedTeeth[toothNumber].procedures;
+        if (procedures.length > 0) {
+          // Sort procedures by updatedAt to get the latest note
+          const sortedProcs = [...procedures].sort((a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+
+          convertedTeeth[toothNumber].treatmentNotes = sortedProcs[0].notes;
+
+          // Combine all timelines into a single history for the right-side view
+          const allTimelineEntries: Array<{ text: string; date: string; author?: string }> = [];
+          procedures.forEach(proc => {
+            proc.timeline.forEach(entry => {
+              if (entry.notes) {
+                allTimelineEntries.push({
+                  text: entry.notes,
+                  date: entry.timestamp,
+                  author: entry.changed_by
+                });
+              }
+            });
+            // Also include the main procedure note if it's not captured in timeline
+            if (proc.notes && !proc.timeline.some(e => e.notes === proc.notes)) {
+              allTimelineEntries.push({
+                text: proc.notes,
+                date: proc.updatedAt,
+                author: 'Initial Entry'
+              });
+            }
+          });
+
+          // Sort history by date descending
+          convertedTeeth[toothNumber].treatmentNotesTimeline = allTimelineEntries.sort((a, b) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+        }
       });
 
       setTeethData(convertedTeeth);
@@ -476,6 +520,55 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     return formatDateTime(isoString);
   };
 
+  const getToothName = (toothNum: number): string => {
+    const quadrant = Math.floor(toothNum / 10);
+    const position = toothNum % 10;
+
+    let quadName = '';
+    let posName = '';
+
+    // FDI Quadrants
+    switch (quadrant) {
+      case 1: quadName = 'Upper Right'; break;
+      case 2: quadName = 'Upper Left'; break;
+      case 3: quadName = 'Lower Left'; break;
+      case 4: quadName = 'Lower Right'; break;
+      case 5: quadName = 'Upper Right Primary'; break;
+      case 6: quadName = 'Upper Left Primary'; break;
+      case 7: quadName = 'Lower Left Primary'; break;
+      case 8: quadName = 'Lower Right Primary'; break;
+      default: return `Tooth ${toothNum}`;
+    }
+
+    // Tooth Positions
+    switch (position) {
+      case 1: posName = 'Central Incisor'; break;
+      case 2: posName = 'Lateral Incisor'; break;
+      case 3: posName = 'Canine'; break;
+      case 4: posName = quadrant > 4 ? 'First Molar' : 'First Premolar'; break;
+      case 5: posName = quadrant > 4 ? 'Second Molar' : 'Second Premolar'; break;
+      case 6: posName = 'First Molar'; break;
+      case 7: posName = 'Second Molar'; break;
+      case 8: posName = 'Third Molar (Wisdom)'; break;
+      default: posName = `Position ${position}`;
+    }
+
+    return `${quadName} ${posName}`;
+  };
+
+  const isPermanent = (toothNum: number): boolean => toothNum < 50;
+
+  const getProcedureIcon = (procedureName: string) => {
+    const name = procedureName.toLowerCase();
+    if (name.includes('clean') || name.includes('scal')) return '🧹';
+    if (name.includes('fill') || name.includes('compos')) return '🦷';
+    if (name.includes('crown') || name.includes('bridg')) return '👑';
+    if (name.includes('impl')) return '🔩';
+    if (name.includes('extr')) return '❌';
+    if (name.includes('root') || name.includes('canal')) return '🩺';
+    return '💎';
+  };
+
   const teeth = getTeethForChart();
 
   const getConditionIcon = (type: ToothCondition['type']) => {
@@ -526,8 +619,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           <button
             onClick={() => setChartType('adult')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'adult'
-                ? 'bg-primary-600 text-white shadow-md'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-primary-600 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -538,8 +631,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           <button
             onClick={() => setChartType('pediatric')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'pediatric'
-                ? 'bg-primary-600 text-white shadow-md'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-primary-600 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -550,8 +643,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           <button
             onClick={() => setChartType('mixed')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'mixed'
-                ? 'bg-primary-600 text-white shadow-md'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-primary-600 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -612,68 +705,6 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           </div>
           <p className="text-xs text-primary-600 mt-2 font-medium">
             💡 Tip: Hold Shift/Ctrl/Cmd to select multiple teeth, or right-click on teeth
-          </p>
-        </Card>
-      )}
-
-      {/* Summary Button */}
-      {Object.keys(teethData).length > 0 && (
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={() => setShowSummary(true)}
-            className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            View Summary Report
-          </Button>
-        </div>
-      )}
-
-      {/* View Mode Toggle */}
-      {Object.keys(teethData).length > 0 && (
-        <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              <span className="text-sm font-bold text-gray-700">View Mode:</span>
-            </div>
-            <div className="flex items-center bg-white rounded-lg shadow-sm p-1">
-              <button
-                onClick={() => setViewMode('by-tooth')}
-                className={`px-4 py-2 rounded-md font-semibold text-sm transition-all flex items-center gap-2 ${viewMode === 'by-tooth'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                </svg>
-                By Tooth
-              </button>
-              <button
-                onClick={() => setViewMode('by-date')}
-                className={`px-4 py-2 rounded-md font-semibold text-sm transition-all flex items-center gap-2 ${viewMode === 'by-date'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                By Date
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-gray-600 mt-2 font-medium">
-            {viewMode === 'by-tooth'
-              ? '📋 Viewing treatments organized by tooth number'
-              : '📅 Viewing treatments in chronological order'}
           </p>
         </Card>
       )}
@@ -757,105 +788,204 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
         </div>
       </Card>
 
+      {/* Dental Chart Controls: View Mode & Actions */}
+      {Object.keys(teethData).length > 0 && (
+        <Card className="px-6 py-4 bg-white border border-gray-100 shadow-sm rounded-xl">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+
+            {/* Left side: View Mode */}
+            <div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span className="text-sm font-bold text-gray-800">View Mode:</span>
+                </div>
+                <div className="flex items-center bg-white rounded-xl p-1 border border-slate-100 shadow-sm">
+                  <button
+                    onClick={() => setViewMode('by-tooth')}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'by-tooth'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 ${viewMode === 'by-tooth' ? 'border-white' : 'border-slate-400'}`}></div>
+                    By Tooth
+                  </button>
+                  <button
+                    onClick={() => setViewMode('by-date')}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'by-date'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                  >
+                    <svg className={`w-4 h-4 ${viewMode === 'by-date' ? 'text-white' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    By Date
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right side: Actions */}
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                onClick={() => setShowSummary(true)}
+                className="bg-purple-600 hover:bg-purple-700"
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                }
+              >
+                View Summary Report
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={() => console.log('Create Consent triggered')}
+                className="bg-primary-600 hover:bg-primary-700"
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                }
+              >
+                Create Consent Form
+              </Button>
+            </div>
+
+          </div>
+        </Card>
+      )}
+
       {/* Teeth Details */}
       {Object.keys(teethData).length > 0 && (
         <>
           {viewMode === 'by-tooth' ? (
             // BY TOOTH VIEW
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-6">
               {Object.entries(teethData)
                 .filter(([toothNum]) => selectedTeeth.size === 0 || selectedTeeth.has(parseInt(toothNum)))
                 .sort(([a], [b]) => parseInt(a) - parseInt(b))
                 .map(([toothNum, data]) => (
-                  <Card key={toothNum} className="p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between mb-3">
-                      <h4 className="text-base font-bold text-gray-800">Tooth {toothNum}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${data.status === 'healthy' ? 'bg-gray-100 text-gray-700' :
-                          data.status === 'has-condition' ? 'bg-yellow-100 text-yellow-800' :
-                            data.status === 'in-treatment' ? 'bg-cyan-100 text-cyan-800' :
-                              'bg-green-100 text-green-800'
-                        }`}>
-                        {data.status.replace('-', ' ')}
-                      </span>
-                    </div>
+                  <Card key={toothNum} className="p-3 hover:shadow-md transition-shadow">
+                    <div className="flex flex-col xl:flex-row gap-5 items-start mb-1">
+                      {/* Section 1: Tooth Identity */}
+                      <div className="xl:w-44 flex-shrink-0 pt-1 flex flex-col items-start gap-1">
+                        <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-none">Tooth {toothNum}</h2>
+                        <p className="text-[11px] font-bold text-slate-400 mb-2">
+                          {getToothName(parseInt(toothNum))}
+                        </p>
+                        <span className={`inline-block px-2 py-0.5 rounded-lg text-[8px] font-black tracking-widest ${data.status === 'in-treatment' ? 'bg-cyan-50 text-cyan-600 border border-cyan-100' : 'bg-slate-50 text-slate-500 border border-slate-100'
+                          }`}>
+                          {data.status.replace('-', ' ').toUpperCase()}
+                        </span>
+                      </div>
 
-                    {/* Conditions */}
-                    {data.conditions.length > 0 && (
-                      <div className="mb-3">
-                        <h5 className="text-xs font-bold text-gray-600 mb-2">CONDITIONS</h5>
+                      {/* Section 2: Conditions */}
+                      <div className="xl:w-72 flex-shrink-0 min-w-0">
+                        <h5 className="text-[10px] font-black text-slate-400 tracking-widest uppercase mb-2 px-1">CONDITIONS</h5>
                         <div className="space-y-2">
-                          {data.conditions.map((condition) => (
-                            <div
-                              key={condition.name}
-                              className="bg-red-50 border border-red-200 rounded-lg p-2 cursor-pointer hover:bg-red-100 transition-colors"
-                              onClick={() => openEditConditionModal(parseInt(toothNum), condition.name)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg">{getConditionIcon(condition.type)}</span>
-                                  <div>
-                                    <div className="text-sm font-semibold text-gray-800">{getConditionLabel(condition.type)}</div>
-                                    {condition.notes && (
-                                      <div className="text-xs text-gray-600 mt-0.5">{condition.notes}</div>
+                          {data.conditions.length > 0 ? (
+                            data.conditions.map((condition) => (
+                              <div
+                                key={condition.name}
+                                className="bg-slate-50 rounded-2xl p-3 border border-slate-100 hover:border-slate-200 transition-all cursor-pointer group"
+                                onClick={() => openEditConditionModal(parseInt(toothNum), condition.name)}
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-1.5 mb-1 text-sm">
+                                      <h4 className="font-bold text-gray-800">{getConditionLabel(condition.type)}</h4>
+                                      <span className="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[8px] font-black">{condition.notes?.split(' ')[0] || 'GEN'}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 leading-tight">
+                                      Date: {new Date(condition.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
+                                    </p>
+                                  </div>
+                                  <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                                </div>
+
+                              </div>
+                            ))
+                          ) : (
+                            <p className="px-1 text-xs text-slate-400 italic">No conditions recorded.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Section 3: Procedures */}
+                      <div className="flex-1 space-y-2 min-w-0">
+                        <h3 className="text-[10px] font-black text-slate-400 tracking-widest uppercase mb-2 px-1">PROCEDURES</h3>
+
+                        <div className="space-y-2">
+                          {data.procedures.length > 0 ? (
+                            data.procedures.map((procedure) => (
+                              <div key={procedure.name} className="relative group">
+                                <div
+                                  className="bg-slate-50 rounded-2xl p-4 border border-slate-100 hover:border-slate-200 transition-all cursor-pointer"
+                                  onClick={() => openEditProcedureModal(parseInt(toothNum), procedure.name)}
+                                >
+                                  <div className="flex items-start justify-between mb-1">
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between mb-2 px-0.5">
+                                        <h4 className="text-sm font-bold text-gray-800 leading-tight">{procedure.procedure_name}</h4>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getProcedureStatusColor(procedure.status)}`}>
+                                          {procedure.status.toUpperCase()}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-4 text-xs text-gray-500 mb-3 px-0.5">
+                                        <span>Date: {new Date(procedure.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}</span>
+                                        <span className="flex items-center gap-1">
+                                          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                          {procedure.timeline?.[0]?.changed_by?.split('@')[0] || 'Dr Brandotz'}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-stretch gap-4">
+                                        <div className="flex-1 bg-white rounded-2xl p-3 border border-slate-100 shadow-sm relative group/notes">
+                                          <p className="text-xs text-gray-600 leading-snug">
+                                            {procedure.notes || "No notes."}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center justify-center">
+                                          <svg className="w-4 h-4 text-slate-300 group-hover:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-2 text-center">
+                                    {procedure.timeline && procedure.timeline.length > 1 && (
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setShowTimeline({ procedureId: procedure.name, toothNum: parseInt(toothNum) });
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-2 py-1 text-[8px] font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        View Timeline ({procedure.timeline.length})
+                                      </button>
                                     )}
                                   </div>
                                 </div>
-                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">Added: {condition.date}</div>
-                            </div>
-                          ))}
+                            ))
+                          ) : (
+                            <p className="px-1 text-xs text-slate-400 italic">No clinical procedures recorded.</p>
+                          )}
                         </div>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Procedures */}
-                    {data.procedures.length > 0 && (
-                      <div>
-                        <h5 className="text-xs font-bold text-gray-600 mb-2">PROCEDURES</h5>
-                        <div className="space-y-2">
-                          {data.procedures.map((procedure) => (
-                            <div
-                              key={procedure.procedure_name}
-                              className="bg-blue-50 border border-blue-200 rounded-lg p-2"
-                            >
-                              <div
-                                className="cursor-pointer hover:bg-blue-100 transition-colors rounded p-1 -m-1"
-                                onClick={() => openEditProcedureModal(parseInt(toothNum), procedure.name)}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="text-sm font-semibold text-gray-800">{procedure.procedure_name}</div>
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getProcedureStatusColor(procedure.status)}`}>
-                                    {procedure.status}
-                                  </span>
-                                </div>
-                                {procedure.notes && (
-                                  <div className="text-xs text-gray-600 mt-0.5">{procedure.notes}</div>
-                                )}
-                                <div className="text-xs text-gray-500 mt-1">Date: {procedure.date}</div>
-                              </div>
-
-                              {procedure.timeline && procedure.timeline.length > 1 && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowTimeline({ procedureId: procedure.name, toothNum: parseInt(toothNum) });
-                                  }}
-                                  className="w-full mt-2 px-2 py-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors flex items-center justify-center gap-1"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  View Timeline ({procedure.timeline.length} updates)
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </Card>
                 ))}
             </div>
@@ -986,7 +1116,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                       </svg>
-                                      View Timeline ({(item.item as ToothProcedure).timeline.length} updates)
+                                      View Timeline ({(item.item as ToothProcedure).timeline.length})
                                     </button>
                                   )}
                                 </div>
@@ -1034,8 +1164,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                       key={option.value}
                       onClick={() => setConditionType(option.value)}
                       className={`p-3 rounded-lg border-2 transition-all text-left ${conditionType === option.value
-                          ? 'border-primary-500 bg-primary-50 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                        ? 'border-primary-500 bg-primary-50 shadow-md'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
                         }`}
                     >
                       <div className="flex items-center gap-2">
@@ -1146,8 +1276,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   <button
                     onClick={() => setProcedureStatus('planned')}
                     className={`p-3 rounded-lg border-2 transition-all ${procedureStatus === 'planned'
-                        ? 'border-blue-500 bg-blue-50 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
                   >
                     <div className="text-center">
@@ -1158,8 +1288,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   <button
                     onClick={() => setProcedureStatus('in-progress')}
                     className={`p-3 rounded-lg border-2 transition-all ${procedureStatus === 'in-progress'
-                        ? 'border-yellow-500 bg-yellow-50 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      ? 'border-yellow-500 bg-yellow-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
                   >
                     <div className="text-center">
@@ -1170,8 +1300,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   <button
                     onClick={() => setProcedureStatus('completed')}
                     className={`p-3 rounded-lg border-2 transition-all ${procedureStatus === 'completed'
-                        ? 'border-green-500 bg-green-50 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      ? 'border-green-500 bg-green-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
                   >
                     <div className="text-center">
@@ -1347,15 +1477,15 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                         {procedure.timeline.map((entry, index) => (
                           <div key={index} className="relative pl-10">
                             <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 border-white ${entry.status === 'planned' ? 'bg-blue-500' :
-                                entry.status === 'in-progress' ? 'bg-yellow-500' :
-                                  'bg-green-500'
+                              entry.status === 'in-progress' ? 'bg-yellow-500' :
+                                'bg-green-500'
                               }`}></div>
 
                             <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                               <div className="flex items-center justify-between mb-1">
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${entry.status === 'planned' ? 'bg-blue-100 text-blue-800' :
-                                    entry.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-green-100 text-green-800'
+                                  entry.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-green-100 text-green-800'
                                   }`}>
                                   {entry.status}
                                 </span>
