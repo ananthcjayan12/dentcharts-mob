@@ -170,7 +170,7 @@ const HomePage: React.FC = () => {
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto pb-20 lg:pb-4 flex-1" style={{ height: 'calc(100vh - 64px)' }}>
-          <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-6">
+          <div className="app-content-shell p-4 lg:p-8 space-y-6">
 
             {/* Header Section */}
             <Flex align="center" justify="between" className="mb-2">

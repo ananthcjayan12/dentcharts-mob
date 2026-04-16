@@ -534,20 +534,36 @@ const OrthodonticTrackerPanel: React.FC<OrthodonticTrackerPanelProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div
+            className={`w-full lg:w-auto ${
+              summary?.case_id
+                ? 'grid grid-cols-3 gap-2 lg:flex lg:flex-wrap lg:justify-end'
+                : 'flex gap-2'
+            }`}
+          >
             <Button
               size="sm"
               variant="outline"
               onClick={() => setShowCaseModal(true)}
+              className={summary?.case_id ? 'w-full h-8 px-2 text-xs sm:text-sm whitespace-nowrap' : ''}
             >
               {summary?.case_id ? 'Edit Case' : 'Start Case'}
             </Button>
             {summary?.case_id && (
               <>
-                <Button size="sm" onClick={() => setShowVisitModal(true)}>
+                <Button
+                  size="sm"
+                  onClick={() => setShowVisitModal(true)}
+                  className="w-full h-8 px-2 text-xs sm:text-sm whitespace-nowrap"
+                >
                   Add Visit
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setShowLedgerModal(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowLedgerModal(true)}
+                  className="w-full h-8 px-2 text-xs sm:text-sm whitespace-nowrap"
+                >
                   View Details
                 </Button>
               </>
