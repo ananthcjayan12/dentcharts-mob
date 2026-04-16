@@ -299,7 +299,7 @@ const WhatsAppManagerPage: React.FC = () => {
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto pb-20 lg:pb-4 flex-1" style={{ height: 'calc(100vh - 64px)' }}>
-          <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-4">
+          <div className="app-content-shell px-4 sm:px-6 lg:px-8 py-4 lg:py-6 space-y-4">
         <div className="bg-white rounded-xl border border-gray-200 p-2 flex flex-wrap gap-2">
           {visibleTabs.map((tab) => (
             <button

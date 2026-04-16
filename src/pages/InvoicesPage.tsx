@@ -185,7 +185,7 @@ const InvoicesPage: React.FC = () => {
                 <TopBar title="All Invoices" showMenu />
 
                 <div className="flex-1 overflow-y-auto pb-20 lg:pb-4">
-                    <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+                    <div className="app-content-shell px-4 sm:px-6 lg:px-8 py-4 lg:py-6 space-y-6">
 
                         {/* Header & Actions */}
                         <Flex justify="between" align="center" className="flex-wrap gap-4">

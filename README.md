@@ -116,6 +116,18 @@ src/
 
 4. Open [http://localhost:3000](http://localhost:3000) to view in browser
 
+### Local Staging Proxy Runbook
+
+Use this when you need local staging proxy behavior:
+
+```bash
+npm run dev:stg:proxy
+```
+
+Notes:
+- This runs on `http://localhost:3001`.
+- If you see `spawn EPERM` in a restricted/sandboxed terminal, rerun the same command in a normal local terminal session.
+
 ### Building for Production
 
 ```bash

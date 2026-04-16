@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Container, Grid, Stack, Flex, Card, Button, InputField, Typography, Badge, Avatar, Sidebar } from '../components';
+import { Grid, Stack, Flex, Card, Button, InputField, Typography, Badge, Avatar, Sidebar } from '../components';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
 import { usePatientsWithSearch, usePatientStats, useUpdatePatient, useDeletePatient, usePatient } from '../hooks/usePatients';
@@ -197,7 +197,7 @@ const PatientsPage: React.FC = () => {
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto pb-20 lg:pb-4 flex-1" style={{ height: 'calc(100vh - 60px)' }}>
-          <Container size="xl">
+          <div className="app-content-shell px-4 sm:px-6 lg:px-8">
             <Stack spacing={6} className="py-4 sm:py-6">
               {/* Search and Filter */}
               <Card padding="md">
@@ -709,7 +709,7 @@ const PatientsPage: React.FC = () => {
                 </Stack>
               </Card>
             </Stack>
-          </Container>
+          </div>
         </div>
 
         {/* Edit Patient Modal */}

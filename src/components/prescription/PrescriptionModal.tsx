@@ -178,7 +178,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 pb-[90px] md:p-6 md:pb-6">
             <div
-                className="flex w-full max-h-full max-w-6xl flex-col rounded-xl bg-white shadow-xl"
+                className="relative z-50 flex w-full max-h-full max-w-6xl flex-col rounded-xl bg-white shadow-xl"
                 onClick={event => event.stopPropagation()}
             >
                 <div className="flex-shrink-0 flex items-center justify-between border-b border-gray-200 p-4">
@@ -201,7 +201,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-5 p-4 pb-6">
+                <div
+                    className="flex-1 min-h-0 overflow-y-auto space-y-5 p-4 pb-6 touch-pan-y"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
                     <div className="grid gap-4 md:grid-cols-[240px,1fr]">
                         <div>
                             <label className="mb-2 block text-sm font-semibold text-gray-700">Doctor</label>

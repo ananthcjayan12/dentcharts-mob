@@ -92,6 +92,13 @@
 }
 
 @layer components {
+  .app-content-shell {
+    width: 100%;
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .mobile-container {
     @apply relative min-h-screen bg-white;
     /* Mobile viewport handling */

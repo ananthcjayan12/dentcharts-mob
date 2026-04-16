@@ -816,15 +816,15 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <div className="flex min-w-0 items-center gap-2 w-full sm:w-auto">
                                             <input
                                                 type="number"
                                                 min="0"
                                                 value={invoiceData.discount}
                                                 onChange={(e) => setInvoiceData(prev => ({ ...prev, discount: e.target.value }))}
-                                                className="w-24 h-8 px-2 text-right border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                                                className="w-20 sm:w-24 h-8 px-2 text-right border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                                             />
-                                            <span className="w-20 text-right text-sm font-medium text-red-500">
+                                            <span className="min-w-[68px] sm:w-20 text-right text-sm font-medium text-red-500">
                                                 -₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                             </span>
                                         </div>
@@ -833,16 +833,16 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                                     {/* Tax Row */}
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                         <span className="text-sm text-gray-600">Tax (%)</span>
-                                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <div className="flex min-w-0 items-center gap-2 w-full sm:w-auto">
                                             <input
                                                 type="number"
                                                 min="0"
                                                 max="100"
                                                 value={invoiceData.tax}
                                                 onChange={(e) => setInvoiceData(prev => ({ ...prev, tax: e.target.value }))}
-                                                className="w-24 h-8 px-2 text-right border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                                                className="w-20 sm:w-24 h-8 px-2 text-right border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                                             />
-                                            <span className="w-20 text-right text-sm font-medium text-gray-900">
+                                            <span className="min-w-[68px] sm:w-20 text-right text-sm font-medium text-gray-900">
                                                 ₹{taxAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                             </span>
                                         </div>
@@ -860,9 +860,9 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                     </div>
 
                     {/* Footer */}
-                    <div className="border-t border-gray-100 bg-white px-6 py-4 flex flex-shrink-0 items-center justify-end gap-3 z-10">
-                        <Button onClick={onClose} variant="ghost" className="text-gray-600">Cancel</Button>
-                        <Button onClick={handleSubmit} isLoading={isCreating} className="w-full sm:w-auto">
+                    <div className="border-t border-gray-100 bg-white px-4 sm:px-6 py-4 flex flex-shrink-0 items-center gap-3 z-10">
+                        <Button onClick={onClose} variant="ghost" className="flex-1 sm:flex-none text-gray-600">Cancel</Button>
+                        <Button onClick={handleSubmit} isLoading={isCreating} className="flex-1 sm:w-auto">
                             Create Invoice
                         </Button>
                     </div>
