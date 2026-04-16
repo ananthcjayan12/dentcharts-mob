@@ -860,6 +860,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                     </div>
 
                     {/* Footer */}
+<<<<<<< HEAD
                     <div className="border-t border-gray-100 bg-white px-4 sm:px-6 py-4 flex flex-shrink-0 items-center gap-3 z-10 w-full overflow-hidden">
                         <Button onClick={onClose} variant="ghost" className="flex-1 sm:flex-none text-gray-600 sm:w-auto">Cancel</Button>
                         <Button onClick={handleSubmit} isLoading={isCreating} className="flex-[2] sm:flex-none sm:w-auto whitespace-nowrap overflow-hidden text-ellipsis">
