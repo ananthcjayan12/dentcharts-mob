@@ -147,7 +147,6 @@
   .fab {
     @apply fixed bottom-20 right-4 w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 active:scale-90 transition-all duration-200;
   }
-
   .consent-ml-text {
     font-family: 'NotoSansMalayalamLight', 'Noto Sans Malayalam', sans-serif;
   }
