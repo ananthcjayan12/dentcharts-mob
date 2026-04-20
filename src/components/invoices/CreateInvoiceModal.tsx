@@ -451,7 +451,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     return (
         <Portal>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="bg-white border-b border-gray-100 px-4 py-4 sm:px-6 flex items-center justify-between">
                         <div>
@@ -466,7 +466,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-gray-50/50">
+                    <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-6 space-y-6 bg-gray-50/50">
                         {/* Date Fields */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <InputField
@@ -606,8 +606,8 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                                                 </datalist>
                                             </div>
 
-                                            {/* Qty - 3 cols mobile, 2 cols desktop */}
-                                            <div className="col-span-4 sm:col-span-2">
+                                            {/* Qty - 6 cols mobile, 2 cols desktop */}
+                                            <div className="col-span-6 sm:col-span-2">
                                                 <div className="block sm:hidden text-xs font-semibold text-gray-500 mb-1">Qty</div>
                                                 <input
                                                     type="number"
@@ -618,8 +618,8 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                                                 />
                                             </div>
 
-                                            {/* Rate - 4 cols mobile, 2 cols desktop */}
-                                            <div className="col-span-4 sm:col-span-3">
+                                            {/* Rate - 6 cols mobile, 3 cols desktop */}
+                                            <div className="col-span-6 sm:col-span-3">
                                                 <div className="block sm:hidden text-xs font-semibold text-gray-500 mb-1">Rate</div>
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
@@ -633,8 +633,8 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                                                 </div>
                                             </div>
 
-                                            {/* Total - 3 cols mobile, 2 cols desktop - and Delete */}
-                                            <div className="col-span-4 sm:col-span-2 flex items-center justify-between sm:justify-end gap-2 h-10 mt-6 sm:mt-0">
+                                            {/* Total - Full width mobile, 2 cols desktop - and Delete */}
+                                            <div className="col-span-12 sm:col-span-2 flex items-center justify-between sm:justify-end gap-2 h-10 mt-2 sm:mt-0">
                                                 <div className="font-medium text-gray-900">
                                                     ₹{calculateLineAmount(item).toLocaleString()}
                                                 </div>
@@ -860,9 +860,9 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
                     </div>
 
                     {/* Footer */}
-                    <div className="border-t border-gray-100 bg-white px-4 sm:px-6 py-4 flex flex-shrink-0 items-center gap-3 z-10">
-                        <Button onClick={onClose} variant="ghost" className="flex-1 sm:flex-none text-gray-600">Cancel</Button>
-                        <Button onClick={handleSubmit} isLoading={isCreating} className="flex-1 sm:w-auto">
+                    <div className="border-t border-gray-100 bg-white px-4 sm:px-6 py-4 flex flex-shrink-0 items-center gap-3 z-10 w-full overflow-hidden">
+                        <Button onClick={onClose} variant="ghost" className="flex-1 sm:flex-none text-gray-600 sm:w-auto">Cancel</Button>
+                        <Button onClick={handleSubmit} isLoading={isCreating} className="flex-[2] sm:flex-none sm:w-auto whitespace-nowrap overflow-hidden text-ellipsis">
                             Create Invoice
                         </Button>
                     </div>
