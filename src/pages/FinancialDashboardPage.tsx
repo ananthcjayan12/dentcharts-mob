@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Card, Container, Typography, Button } from '../components';
+import { Card, Typography, Button } from '../components';
 import {
     BanknotesIcon,
     ArrowTrendingUpIcon,
@@ -421,10 +421,10 @@ const FinancialDashboardPage: React.FC = () => {
         <div className="flex bg-gray-50 min-h-screen text-gray-900 font-sans selection:bg-blue-100 overflow-x-hidden">
             <Sidebar />
 
-            <main className="flex-1 ml-0 md:ml-64 pb-16 md:pb-0 transition-all duration-300 w-full min-w-0">
+            <main className="flex-1 lg:pl-20 pb-16 md:pb-0 transition-all duration-300 w-full min-w-0">
                 <TopBar title="Dashboard" showClinicSelector={true} />
 
-                <Container className="max-w-[1400px] mx-auto py-8 pb-24 space-y-8">
+                <div className="app-content-shell px-4 sm:px-6 lg:px-8 py-8 pb-24 space-y-8">
 
                     {/* App-like Header & Filters */}
                     <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-2">
@@ -1112,7 +1112,7 @@ const FinancialDashboardPage: React.FC = () => {
 
                         </div>
                     )}
-                </Container>
+                </div>
             </main>
 
             <BottomNav

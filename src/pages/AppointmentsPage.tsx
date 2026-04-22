@@ -3,7 +3,7 @@ import { findNextAvailableSlotTime, normalizeToHHMMSS } from '../utils/slotUtils
 import { formatDateForInput } from '../utils/date';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { queryClient, invalidateQueriesHelper } from '../api/queryClient';
-import { Container, Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar, Button, AppointmentActions, ActionDropdown, Portal } from '../components';
+import { Stack, Card, Typography, Badge, Avatar, Flex, InputField, Sidebar, Button, AppointmentActions, ActionDropdown, Portal } from '../components';
 import Autocomplete from '../components/common/Autocomplete';
 import TopBar from '../components/common/TopBar';
 import BottomNav from '../components/common/BottomNav';
@@ -58,6 +58,7 @@ const AppointmentsPage: React.FC = () => {
   const [selectedPatientForQueue, setSelectedPatientForQueue] = useState<string>('');
   const [patientSearch, setPatientSearch] = useState('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [pageZoom, setPageZoom] = useState(100);
   const { profile } = useClinic();
 
   // File upload modal state
@@ -851,7 +852,7 @@ const AppointmentsPage: React.FC = () => {
   const renderAppointmentType = (type: string) => {
     const isWalkIn = type === 'Walk In';
     return (
-      <div className="flex items-center gap-2">
+      <div className="inline-flex items-center justify-center">
         {isWalkIn ? (
           <svg className="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
             <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.2L8 8v2h2.8l-1 1.9z" />
@@ -861,7 +862,6 @@ const AppointmentsPage: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         )}
-        <span className="text-sm font-medium text-gray-700">{type || 'Booking'}</span>
       </div>
     );
   };
@@ -940,28 +940,28 @@ const AppointmentsPage: React.FC = () => {
         </div>
 
         {/* Desktop View */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block overflow-x-hidden">
           <table className="w-full table-fixed">
             <colgroup>
               <col className="w-[13%]" />
               <col className="w-[10%]" />
-              <col className="w-[9%]" />
-              <col className="w-[15%]" />
-              <col className="w-[23%]" />
+              <col className="w-[12%]" />
               <col className="w-[11%]" />
-              <col className="w-[8%]" />
-              <col className="w-[11%]" />
+              <col className="w-[28%]" />
+              <col className="w-[10%]" />
+              <col className="w-[4%]" />
+              <col className="w-[10%]" />
             </colgroup>
             <thead className="bg-slate-700 text-xs uppercase text-white font-medium">
               <tr>
-                <th className="px-4 py-3 text-left">Full Name</th>
-                <th className="px-4 py-3 text-left">Procedure</th>
-                <th className="px-4 py-3 text-left">Mobile Number</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-center">Actions</th>
-                <th className="px-4 py-3 text-left">Appointment Time</th>
-                <th className="px-4 py-3 text-left">Type</th>
-                <th className="px-4 py-3 text-left">Doctor</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Full Name</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Procedure</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Mobile Number</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">Actions</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Appointment Time</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Type</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Doctor</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -975,44 +975,46 @@ const AppointmentsPage: React.FC = () => {
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{appointment.patient_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.chief_complaint || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{appointment.patient_mobile || '-'}</td>
-                  <td className="px-4 py-3 text-center">
-                    <ActionDropdown
-                      isOpen={openActionMenu === `queue-desk-status-${appointment.name || appointment.appointment_id}`}
-                      onToggle={() => setOpenActionMenu(openActionMenu === `queue-desk-status-${appointment.name || appointment.appointment_id}` ? null : `queue-desk-status-${appointment.name || appointment.appointment_id}`)}
-                      onClose={() => setOpenActionMenu(null)}
-                      align="left"
-                      trigger={
-                        <button
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium ${getStatusBadgeClass(appointment.status)}`}
-                        >
-                          {appointment.status}
-                          <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                        </button>
-                      }
-                    >
-                      {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
-                        <button
-                          key={s}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenActionMenu(null);
-                            const apptId = appointment.name || appointment.appointment_id;
-                            if (!apptId) return;
-                            updateAppointment({ appointment_id: apptId, status: s } as any, {
-                              onSuccess: () => {
-                                toast.success('Appointment status updated');
-                              }
-                            });
-                          }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </ActionDropdown>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-center">
+                      <ActionDropdown
+                        isOpen={openActionMenu === `queue-desk-status-${appointment.name || appointment.appointment_id}`}
+                        onToggle={() => setOpenActionMenu(openActionMenu === `queue-desk-status-${appointment.name || appointment.appointment_id}` ? null : `queue-desk-status-${appointment.name || appointment.appointment_id}`)}
+                        onClose={() => setOpenActionMenu(null)}
+                        align="left"
+                        trigger={
+                          <button
+                            className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[8px] font-medium whitespace-nowrap ${getStatusBadgeClass(appointment.status)}`}
+                          >
+                            {appointment.status}
+                            <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          </button>
+                        }
+                      >
+                        {['Scheduled', 'Confirmed', 'To Be Invoiced', 'Pending Payment', 'Files To Be Uploaded', 'Completed', 'Cancelled', 'Waiting', 'In Progress', 'Open'].map(s => (
+                          <button
+                            key={s}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenActionMenu(null);
+                              const apptId = appointment.name || appointment.appointment_id;
+                              if (!apptId) return;
+                              updateAppointment({ appointment_id: apptId, status: s } as any, {
+                                onSuccess: () => {
+                                  toast.success('Appointment status updated');
+                                }
+                              });
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </ActionDropdown>
+                    </div>
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 flex-nowrap">
                       {renderAppointmentActions(appointment)}
                     </div>
                   </td>
@@ -1048,7 +1050,7 @@ const AppointmentsPage: React.FC = () => {
                   align="right"
                   trigger={
                     <button
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${getStatusPillClass(appointment.status)}`}
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-medium flex-shrink-0 whitespace-nowrap ${getStatusPillClass(appointment.status)}`}
                     >
                       {appointment.status}
                       <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -1108,7 +1110,7 @@ const AppointmentsPage: React.FC = () => {
     const filesMenuKey = `view-files-${id}`;
 
     return (
-      <div className="flex items-center justify-start md:justify-center gap-1.5 flex-wrap">
+      <div className="flex items-center justify-start md:justify-center gap-1.5 flex-wrap md:flex-nowrap [&_button]:whitespace-nowrap [&_button]:text-[7px]">
         {/* New statuses handling */}
         {status === 'to be invoiced' && (
           <>
@@ -1405,22 +1407,46 @@ const AppointmentsPage: React.FC = () => {
     );
   };
 
+  const isBlockingModalOpen =
+    showEditModal ||
+    showAddToQueueModal ||
+    showCreateInvoiceModal ||
+    showPaymentModal ||
+    showFileUploadModal;
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar for Desktop */}
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:pl-20">
+      <div className="relative flex-1 flex flex-col lg:pl-20">
         <TopBar
           title="Clinic Que - Today"
           onBack={() => navigate('/home')}
           showMenu
         />
 
+        {!isBlockingModalOpen && (
+          <div className="hidden md:flex fixed top-3 right-16 z-[60] items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 shadow-sm">
+            <span className="text-[11px] font-medium text-gray-500">Zoom</span>
+            <input
+              type="range"
+              min={85}
+              max={125}
+              step={5}
+              value={pageZoom}
+              onChange={(e) => setPageZoom(Number(e.target.value))}
+              className="w-24 accent-primary-600"
+            />
+            <span className="w-10 text-right text-[11px] font-semibold text-gray-700">{pageZoom}%</span>
+          </div>
+        )}
+
         {/* Scrollable Content */}
         <div className="overflow-y-auto pb-20 lg:pb-4 flex-1" style={{ height: 'calc(100vh - 60px)' }}>
-          <Container size="full" className="px-4 lg:px-8 py-6">
+          <div className="app-content-shell px-4 lg:px-8 py-6">
+            <div style={{ zoom: `${pageZoom}%` } as React.CSSProperties}>
             <Stack spacing={6}>
               {/* Header Controls */}
               <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -1678,7 +1704,8 @@ const AppointmentsPage: React.FC = () => {
                 )}
               </div>
             </Stack>
-          </Container>
+            </div>
+          </div>
         </div>
 
         {/* Edit Appointment Modal */}

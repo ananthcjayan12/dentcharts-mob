@@ -2308,14 +2308,14 @@ const PrescriptionPage: React.FC = () => {
                                 )}
 
                                 {/* Action Buttons */}
-                                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2">
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-2">
                                   {((invoice.outstanding_amount && invoice.outstanding_amount > 0) || (invoice.pending && invoice.pending > 0)) ? (
                                     <Button
                                       size="sm"
-                                      className="w-full bg-primary-600 hover:bg-primary-700 text-white border-0"
+                                      className="w-full whitespace-nowrap bg-primary-600 hover:bg-primary-700 text-white border-0"
                                       onClick={() => handleOpenPaymentModal(invoice)}
                                     >
-                                      Pay Now
+                                      Pay
                                     </Button>
                                   ) : (
                                     <div className="hidden"></div> /* Spacer if paid */

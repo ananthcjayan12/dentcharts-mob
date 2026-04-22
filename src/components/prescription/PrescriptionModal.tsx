@@ -178,7 +178,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 pb-[90px] md:p-6 md:pb-6">
             <div
-                className="flex w-full max-h-full max-w-6xl flex-col rounded-xl bg-white shadow-xl"
+                className="relative z-50 flex w-full max-h-full max-w-6xl flex-col rounded-xl bg-white shadow-xl"
                 onClick={event => event.stopPropagation()}
             >
                 <div className="flex-shrink-0 flex items-center justify-between border-b border-gray-200 p-4">
@@ -201,7 +201,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-5 p-4 pb-6">
+                <div
+                    className="flex-1 min-h-0 overflow-y-auto space-y-5 p-4 pb-6 touch-pan-y"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
                     <div className="grid gap-4 md:grid-cols-[240px,1fr]">
                         <div>
                             <label className="mb-2 block text-sm font-semibold text-gray-700">Doctor</label>
@@ -320,11 +323,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                                                 key={timing.key}
                                                                 type="button"
                                                                 onClick={() => toggleTiming(med.id, timing.key)}
-                                                                className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-colors ${
-                                                                    isActive
+                                                                className={`rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide transition-colors ${isActive
                                                                         ? 'border-primary-500 bg-primary-500 text-white'
                                                                         : 'border-gray-300 bg-white text-gray-600 hover:border-primary-300 hover:text-primary-600'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {timing.label}
                                                             </button>
@@ -357,8 +359,8 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                                     type="number"
                                                     min="1"
                                                     max="365"
-                                                    value={med.days}
-                                                    onChange={event => updateMedication(med.id, 'days', parseInt(event.target.value, 10) || 1)}
+                                                    value={med.days || ''}
+                                                    onChange={event => updateMedication(med.id, 'days', parseInt(event.target.value, 10) || 0)}
                                                     className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                                                 />
                                             </td>
@@ -430,10 +432,9 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                                 type="number"
                                                 min="1"
                                                 max="365"
-                                                value={med.days}
-                                                onChange={event => updateMedication(med.id, 'days', parseInt(event.target.value, 10) || 1)}
+                                                value={med.days || ''}
+                                                onChange={event => updateMedication(med.id, 'days', parseInt(event.target.value, 10) || 0)}
                                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                placeholder="3"
                                             />
                                         </div>
                                     </div>
@@ -448,11 +449,10 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                                         key={timing.key}
                                                         type="button"
                                                         onClick={() => toggleTiming(med.id, timing.key)}
-                                                        className={`flex-1 rounded border py-1.5 text-xs font-semibold tracking-wide transition-colors ${
-                                                            isActive
+                                                        className={`flex-1 rounded border py-1.5 text-xs font-semibold tracking-wide transition-colors ${isActive
                                                                 ? 'border-primary-500 bg-primary-500 text-white'
                                                                 : 'border-gray-300 bg-white text-gray-600'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {timing.label}
                                                     </button>
