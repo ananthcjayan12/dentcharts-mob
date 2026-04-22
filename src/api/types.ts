@@ -583,6 +583,70 @@ export interface DeleteFileRequest {
   file_id: string;
 }
 
+export interface ConsentSection {
+  heading?: string | null;
+  body?: string | null;
+  items?: string[];
+  numbered?: string[];
+  footer?: string | null;
+}
+
+export interface ConsentTemplate {
+  name: string;
+  clinic: string;
+  doctor?: string | null;
+  consent_type_id: string;
+  consent_type_label: string;
+  language: 'en' | 'ml';
+  is_active: number;
+  sort_order: number;
+  source: string;
+  summary_text: string;
+  sections: ConsentSection[];
+  declaration_text: string;
+  guardian_declaration_text: string;
+  meta?: Record<string, any>;
+}
+
+export interface ConsentTemplatesResponse {
+  clinic: string;
+  doctor?: string | null;
+  templates: ConsentTemplate[];
+  consent_types: Array<{
+    consent_type_id: string;
+    consent_type_label: string;
+    languages: Array<'en' | 'ml' | string>;
+  }>;
+}
+
+export interface ConsentShareSession {
+  name: string;
+  token: string;
+  status: 'Created' | 'Signed' | 'Expired';
+  language: 'en' | 'ml';
+  consent_type_id: string;
+  consent_type_label: string;
+  doctor?: string | null;
+  doctor_name?: string | null;
+  summary_text: string;
+  expires_on?: string;
+}
+
+export interface SharedConsentPayload {
+  session: ConsentShareSession;
+  patient?: {
+    name: string;
+    patient_name?: string;
+    mobile?: string;
+    sex?: string;
+    dob?: string;
+    age?: number;
+    primary_clinic?: string;
+  };
+  payload: Record<string, any>;
+  template?: ConsentTemplate | null;
+}
+
 // Dashboard/Statistics types (inferred from the mobile app)
 export interface DashboardStats {
   total_patients: number;

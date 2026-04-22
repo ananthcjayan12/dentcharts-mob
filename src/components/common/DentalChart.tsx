@@ -2,9 +2,17 @@ import React, { useState, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
 import CreateProcedureModal, { SelectedItem } from './CreateProcedureModal';
-import { useDentalChart, useDentalChartActions, useDentalChartSummary } from '../../hooks/useDentalChart';
+import { useDentalChart, useDentalChartActions } from '../../hooks/useDentalChart';
 import { ConditionInput, ProcedureInput } from '../../api/services/dentalChart';
-import { Procedure } from '../../api/services/procedures';
+import { useConditions } from '../../hooks/useConditions';
+import { useProcedures } from '../../hooks/useProcedures';
+import toast from 'react-hot-toast';
+import {
+  CUSTOM_PROCEDURE_VALUE,
+  getConditionOptions,
+  getProcedureOptions,
+  getTodayDate,
+} from './dentalChartUtils';
 
 // Tooth numbering systems
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -28,7 +36,7 @@ export interface ConditionHistoryEntry {
 
 export interface ToothCondition {
   name: string; // Frappe native ID (e.g., 'x9k2m5j1')
-  type: 'cavity' | 'crown' | 'bridge' | 'implant' | 'root-canal' | 'extraction' | 'filling' | 'fracture' | 'abscess' | 'other';
+  type: string;
   notes: string;
   date: string;
   createdAt: string;
@@ -74,41 +82,19 @@ interface DentalChartProps {
   data?: Record<number, ToothData>;
   onChange?: (data: Record<number, ToothData>) => void;
   readOnly?: boolean;
+  onCreateConsentForm?: () => void;
 }
 
 type ModalMode = 'add-condition' | 'add-procedure' | 'edit-condition' | 'edit-procedure' | null;
 
-const CONDITION_OPTIONS = [
-  { value: 'cavity', label: 'Cavity', icon: '🦷', color: 'text-red-600' },
-  { value: 'crown', label: 'Crown', icon: '👑', color: 'text-yellow-600' },
-  { value: 'bridge', label: 'Bridge', icon: '🌉', color: 'text-blue-600' },
-  { value: 'implant', label: 'Implant', icon: '🔩', color: 'text-gray-600' },
-  { value: 'root-canal', label: 'Root Canal', icon: '🩺', color: 'text-purple-600' },
-  { value: 'filling', label: 'Filling', icon: '⚪', color: 'text-green-600' },
-  { value: 'extraction', label: 'Extraction', icon: '❌', color: 'text-red-700' },
-  { value: 'fracture', label: 'Fracture', icon: '⚡', color: 'text-orange-600' },
-  { value: 'abscess', label: 'Abscess', icon: '🔴', color: 'text-red-500' },
-  { value: 'other', label: 'Other', icon: '📝', color: 'text-gray-500' },
-] as const;
-
-const PROCEDURE_OPTIONS = [
-  'Cleaning',
-  'Scaling',
-  'Root Planing',
-  'Whitening',
-  'Polishing',
-  'Fluoride Treatment',
-  'Sealant',
-  'X-Ray',
-  'Consultation',
-  'Other',
-] as const;
-
-const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChange, readOnly = false }) => {
+const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, readOnly = false, onCreateConsentForm }) => {
   // Fetch dental chart data from API
   const { data: dentalChartData, isLoading: isLoadingChart } = useDentalChart(patientId);
-  const { data: summaryData, isLoading: isLoadingSummary } = useDentalChartSummary(patientId);
   const actions = useDentalChartActions(patientId);
+  const { conditions: availableConditions, isLoading: isLoadingConditions } = useConditions();
+  const { procedures: availableProcedures } = useProcedures();
+  const conditionOptions = getConditionOptions(availableConditions);
+  const procedureOptions = getProcedureOptions(availableProcedures);
 
   const [chartType, setChartType] = useState<'adult' | 'pediatric' | 'mixed'>('adult');
   const [selectedTeeth, setSelectedTeeth] = useState<Set<number>>(new Set());
@@ -221,12 +207,31 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
   const [showTimeline, setShowTimeline] = useState<{ procedureId: string; toothNum: number } | null>(null);
 
   // Form states
-  const [conditionType, setConditionType] = useState<ToothCondition['type']>('cavity');
+  const [conditionType, setConditionType] = useState<ToothCondition['type']>('');
+  const [conditionDate, setConditionDate] = useState(getTodayDate());
   const [conditionNotes, setConditionNotes] = useState('');
 
-  const [procedureName, setProcedureName] = useState('Cleaning');
+  const [procedureName, setProcedureName] = useState('');
+  const [procedureDate, setProcedureDate] = useState(getTodayDate());
   const [procedureStatus, setProcedureStatus] = useState<ToothProcedure['status']>('planned');
   const [procedureNotes, setProcedureNotes] = useState('');
+  const [customProcedureName, setCustomProcedureName] = useState('');
+  const [isCustomProcedure, setIsCustomProcedure] = useState(false);
+
+  const selectedConditionOption = conditionOptions.find((option) => option.value === conditionType);
+  const isLegacyConditionType = Boolean(conditionType) && !selectedConditionOption;
+
+  useEffect(() => {
+    if ((modalMode === 'add-condition' || modalMode === 'edit-condition') && !conditionType && conditionOptions.length > 0) {
+      setConditionType(conditionOptions[0].value);
+    }
+  }, [modalMode, conditionOptions, conditionType]);
+
+  useEffect(() => {
+    if ((modalMode === 'add-procedure' || modalMode === 'edit-procedure') && !isCustomProcedure && !procedureName && procedureOptions.length > 0) {
+      setProcedureName(procedureOptions[0]);
+    }
+  }, [modalMode, procedureOptions, procedureName, isCustomProcedure]);
 
   const getTeethForChart = () => {
     switch (chartType) {
@@ -253,20 +258,6 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
       default:
         return 'bg-white border-gray-300 hover:border-primary-400';
     }
-  };
-
-  const updateTeethData = (newData: Record<number, ToothData>) => {
-    setTeethData(newData);
-    onChange?.(newData);
-  };
-
-  const calculateToothStatus = (tooth: ToothData): ToothStatus => {
-    if (tooth.conditions.some(c => c.type === 'extraction')) return 'treated';
-    if (tooth.procedures.some(p => p.status === 'completed')) return 'treated';
-    if (tooth.procedures.some(p => p.status === 'in-progress')) return 'in-treatment';
-    if (tooth.procedures.some(p => p.status === 'planned')) return 'in-treatment';
-    if (tooth.conditions.length > 0) return 'has-condition';
-    return 'healthy';
   };
 
   const handleToothClick = (toothNumber: number, event: React.MouseEvent) => {
@@ -319,14 +310,23 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
 
   const openAddConditionModal = () => {
     if (selectedTeeth.size === 0) return;
-    setConditionType('cavity');
+    if (conditionOptions.length === 0) {
+      toast.error('No active condition templates found. Add them in Settings first.');
+      return;
+    }
+
+    setConditionType(conditionOptions[0].value);
+    setConditionDate(getTodayDate());
     setConditionNotes('');
     setModalMode('add-condition');
   };
 
   const openAddProcedureModal = () => {
     if (selectedTeeth.size === 0) return;
-    setProcedureName('Cleaning');
+    setProcedureName(procedureOptions[0] || '');
+    setCustomProcedureName('');
+    setIsCustomProcedure(false);
+    setProcedureDate(getTodayDate());
     setProcedureStatus('planned');
     setProcedureNotes('');
     setModalMode('add-procedure');
@@ -340,6 +340,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     setEditingToothNumber(toothNum);
     setEditingItemId(conditionId);
     setConditionType(condition.type);
+    setConditionDate(condition.date || getTodayDate());
     setConditionNotes(condition.notes);
     setModalMode('edit-condition');
   };
@@ -352,6 +353,9 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     setEditingToothNumber(toothNum);
     setEditingItemId(procedureId);
     setProcedureName(procedure.procedure_name);
+    setCustomProcedureName(procedure.procedure_name);
+    setIsCustomProcedure(false);
+    setProcedureDate(procedure.date || getTodayDate());
     setProcedureStatus(procedure.status);
     setProcedureNotes(procedure.notes);
     setModalMode('edit-procedure');
@@ -367,18 +371,20 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     const conditionInput: ConditionInput = {
       type: conditionType,
       notes: conditionNotes,
-      date: new Date().toISOString().split('T')[0],
+      date: conditionDate,
     };
 
-    if (modalMode === 'edit-condition' && editingItemId && editingToothNumber) {
-      // Update existing condition via API
-      actions.updateCondition(editingItemId, conditionInput);
-    } else {
-      // Add new condition via API
-      actions.addCondition(teethToUpdate, conditionInput);
-    }
+    try {
+      if (modalMode === 'edit-condition' && editingItemId && editingToothNumber) {
+        await actions.updateCondition(editingItemId, conditionInput);
+      } else {
+        await actions.addCondition(teethToUpdate, conditionInput);
+      }
 
-    closeModal();
+      closeModal();
+    } catch (error) {
+      console.error('Failed to save condition:', error);
+    }
   };
 
   const handleSaveProcedure = async () => {
@@ -388,83 +394,90 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
 
     if (teethToUpdate.length === 0) return;
 
-    const procedureInput: ProcedureInput = {
-      name: procedureName,
-      status: procedureStatus,
-      notes: procedureNotes,
-      date: new Date().toISOString().split('T')[0],
-    };
+    const resolvedProcedureName = (isCustomProcedure ? customProcedureName : procedureName).trim();
 
-    if (modalMode === 'edit-procedure' && editingItemId && editingToothNumber) {
-      // Update existing procedure (backend automatically creates timeline entry if status changed)
-      actions.updateProcedure(editingItemId, procedureInput);
-    } else {
-      // Add new procedure via API
-      actions.addProcedure(teethToUpdate, procedureInput);
+    if (!resolvedProcedureName) {
+      toast.error('Select or enter a procedure name');
+      return;
     }
 
-    closeModal();
+    const procedureInput: ProcedureInput = {
+      name: resolvedProcedureName,
+      status: procedureStatus,
+      notes: procedureNotes,
+      date: procedureDate,
+    };
+
+    try {
+      if (modalMode === 'edit-procedure' && editingItemId && editingToothNumber) {
+        await actions.updateProcedure(editingItemId, procedureInput);
+      } else {
+        await actions.addProcedure(teethToUpdate, procedureInput);
+      }
+
+      closeModal();
+    } catch (error) {
+      console.error('Failed to save procedure:', error);
+    }
   };
 
-  const handleRemoveCondition = (toothNum: number, conditionId: string) => {
-    actions.removeCondition(conditionId, 'User removed condition');
-    closeModal();
+  const handleRemoveCondition = async (toothNum: number, conditionId: string) => {
+    try {
+      await actions.removeCondition(conditionId, 'User removed condition');
+      closeModal();
+    } catch (error) {
+      console.error('Failed to remove condition:', error);
+    }
   };
 
-  const handleRemoveProcedure = (toothNum: number, procedureId: string) => {
-    actions.removeProcedure(procedureId, 'User removed procedure');
-    closeModal();
+  const handleRemoveProcedure = async (toothNum: number, procedureId: string) => {
+    try {
+      await actions.removeProcedure(procedureId, 'User removed procedure');
+      closeModal();
+    } catch (error) {
+      console.error('Failed to remove procedure:', error);
+    }
   };
 
   const handleSaveTreatment = async (items: SelectedItem[]) => {
+    const failedItems: string[] = [];
+
     try {
       // Separate items with conditions from items without
       const itemsWithConditions = items.filter(item => item.condition);
       const itemsWithProcedures = items.filter(item => item.procedure.code !== 'condition-only');
 
-      // Step 1: Add all conditions first (sequentially to avoid race conditions)
       for (const item of itemsWithConditions) {
         try {
           await actions.addCondition(item.teeth, {
-            type: item.condition as any,
+            type: item.condition || 'other',
             notes: '',
-            date: new Date().toISOString().split('T')[0],
+            date: getTodayDate(),
           });
-          console.log('Condition added successfully, waiting for backend...');
-          // Longer delay to ensure backend fully processes the condition
-          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
+          failedItems.push(`condition:${item.condition || 'unknown'}`);
           console.error('Error adding condition:', error);
-          // Continue with other conditions
         }
       }
 
-      // Step 2: After ALL conditions are done, wait a bit more, then add procedures
-      if (itemsWithConditions.length > 0) {
-        console.log('All conditions added, waiting before adding procedures...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      // Step 3: Now add all procedures (sequentially) - skip condition-only items
       for (const item of itemsWithProcedures) {
         try {
           await actions.addProcedure(item.teeth, {
             name: item.procedure.procedure_name,
             status: 'planned',
             notes: '',
-            date: new Date().toISOString().split('T')[0],
+            date: getTodayDate(),
             cost: item.cost || item.procedure.cost,
           });
-          console.log('Procedure added successfully, waiting for backend...');
-          // Delay to ensure backend fully processes the procedure
-          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
+          failedItems.push(`procedure:${item.procedure.procedure_name}`);
           console.error('Error adding procedure:', error);
-          // Continue with other procedures
         }
       }
 
-      console.log('All treatments saved successfully');
+      if (failedItems.length > 0) {
+        toast.error(`Some treatments failed to save (${failedItems.length})`);
+      }
     } catch (error) {
       console.error('Error in handleSaveTreatment:', error);
     } finally {
@@ -478,6 +491,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     setEditingToothNumber(null);
     setSelectedTeeth(new Set());
     setContextMenu(null);
+    setConditionDate(getTodayDate());
+    setProcedureDate(getTodayDate());
+    setCustomProcedureName('');
+    setIsCustomProcedure(false);
   };
 
   const closeContextMenu = () => {
@@ -556,28 +573,41 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
     return `${quadName} ${posName}`;
   };
 
-  const isPermanent = (toothNum: number): boolean => toothNum < 50;
-
-  const getProcedureIcon = (procedureName: string) => {
-    const name = procedureName.toLowerCase();
-    if (name.includes('clean') || name.includes('scal')) return '🧹';
-    if (name.includes('fill') || name.includes('compos')) return '🦷';
-    if (name.includes('crown') || name.includes('bridg')) return '👑';
-    if (name.includes('impl')) return '🔩';
-    if (name.includes('extr')) return '❌';
-    if (name.includes('root') || name.includes('canal')) return '🩺';
-    return '💎';
-  };
-
   const teeth = getTeethForChart();
 
   const getConditionIcon = (type: ToothCondition['type']) => {
-    return CONDITION_OPTIONS.find(opt => opt.value === type)?.icon || '📝';
+    return conditionOptions.find((option) => option.value === type)?.icon || '📝';
   };
 
   const getConditionLabel = (type: ToothCondition['type']) => {
-    return CONDITION_OPTIONS.find(opt => opt.value === type)?.label || type;
+    return conditionOptions.find((option) => option.value === type)?.label || type;
   };
+
+  const handleChartTypeChange = async (nextChartType: 'adult' | 'pediatric' | 'mixed') => {
+    if (nextChartType === chartType) {
+      return;
+    }
+
+    const previousChartType = chartType;
+    setChartType(nextChartType);
+
+    try {
+      await actions.saveDentalChart(nextChartType, teethData);
+    } catch (error) {
+      setChartType(previousChartType);
+      console.error('Failed to update chart type:', error);
+    }
+  };
+
+  const currentProcedureOptions = (() => {
+    const options = [...procedureOptions];
+
+    if (procedureName && !options.includes(procedureName)) {
+      options.unshift(procedureName);
+    }
+
+    return options;
+  })();
 
   const getProcedureStatusColor = (status: ToothProcedure['status']) => {
     switch (status) {
@@ -614,10 +644,10 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
       )}
 
       {/* Chart Type Selector */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setChartType('adult')}
+            onClick={() => handleChartTypeChange('adult')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'adult'
               ? 'bg-primary-600 text-white shadow-md'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -629,7 +659,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             Adult
           </button>
           <button
-            onClick={() => setChartType('pediatric')}
+            onClick={() => handleChartTypeChange('pediatric')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'pediatric'
               ? 'bg-primary-600 text-white shadow-md'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -641,7 +671,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
             Pediatric
           </button>
           <button
-            onClick={() => setChartType('mixed')}
+            onClick={() => handleChartTypeChange('mixed')}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${chartType === 'mixed'
               ? 'bg-primary-600 text-white shadow-md'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -655,7 +685,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-xs font-semibold">
+  <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
           <div className="flex items-center gap-1.5">
             <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded"></div>
             <span>Healthy</span>
@@ -678,7 +708,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
       {/* Action Buttons */}
       {!readOnly && selectedTeeth.size > 0 && (
         <Card className="p-4 bg-primary-50 border-primary-200">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm">
               <span className="font-bold text-primary-900">
                 {selectedTeeth.size} tooth{selectedTeeth.size > 1 ? ' selected' : ' selected'}
@@ -687,7 +717,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                 ({Array.from(selectedTeeth).sort((a, b) => a - b).join(', ')})
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 onClick={() => setIsCreateModalOpen(true)}
@@ -715,7 +745,8 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
           {/* Upper Jaw */}
           <div>
             <h3 className="text-center text-lg font-bold text-gray-800 mb-4">Upper Jaw</h3>
-            <div className="flex justify-center gap-2">
+            <div className="overflow-x-auto pb-2">
+              <div className="flex min-w-max justify-center gap-2 px-1">
               {teeth.upper.map(toothNumber => {
                 const toothData = teethData[toothNumber];
                 const isSelected = selectedTeeth.has(toothNumber);
@@ -726,12 +757,12 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     key={toothNumber}
                     onClick={(e) => handleToothClick(toothNumber, e)}
                     onContextMenu={(e) => handleToothRightClick(toothNumber, e)}
-                    className={`relative w-12 h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
+                    className={`relative w-10 h-16 sm:w-12 sm:h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
                       }`}
                     disabled={readOnly}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-sm font-bold text-gray-700">{toothNumber}</span>
+                      <span className="text-xs sm:text-sm font-bold text-gray-700">{toothNumber}</span>
                     </div>
                     {hasData && (
                       <div className="absolute top-0.5 right-0.5 flex gap-0.5">
@@ -746,13 +777,15 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
 
           {/* Lower Jaw */}
           <div>
             <h3 className="text-center text-lg font-bold text-gray-800 mb-4">Lower Jaw</h3>
-            <div className="flex justify-center gap-2">
+            <div className="overflow-x-auto pb-2">
+              <div className="flex min-w-max justify-center gap-2 px-1">
               {teeth.lower.map(toothNumber => {
                 const toothData = teethData[toothNumber];
                 const isSelected = selectedTeeth.has(toothNumber);
@@ -763,12 +796,12 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                     key={toothNumber}
                     onClick={(e) => handleToothClick(toothNumber, e)}
                     onContextMenu={(e) => handleToothRightClick(toothNumber, e)}
-                    className={`relative w-12 h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
+                    className={`relative w-10 h-16 sm:w-12 sm:h-20 border-2 rounded-lg transition-all ${getStatusColor(toothNumber)} ${isSelected ? 'ring-4 ring-primary-500 ring-offset-2 scale-105 shadow-lg' : 'shadow-sm'
                       }`}
                     disabled={readOnly}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-sm font-bold text-gray-700">{toothNumber}</span>
+                      <span className="text-xs sm:text-sm font-bold text-gray-700">{toothNumber}</span>
                     </div>
                     {hasData && (
                       <div className="absolute top-0.5 right-0.5 flex gap-0.5">
@@ -783,6 +816,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>
@@ -848,7 +882,13 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
 
               <Button
                 size="sm"
-                onClick={() => console.log('Create Consent triggered')}
+                onClick={() => {
+                  if (onCreateConsentForm) {
+                    onCreateConsentForm();
+                    return;
+                  }
+                  console.log('Create Consent triggered');
+                }}
                 className="bg-primary-600 hover:bg-primary-700"
                 leftIcon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1158,25 +1198,44 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
               {/* Condition Type Selection */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-3">Select Condition</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {CONDITION_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setConditionType(option.value)}
-                      className={`p-3 rounded-lg border-2 transition-all text-left ${conditionType === option.value
-                        ? 'border-primary-500 bg-primary-50 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{option.icon}</span>
-                        <span className={`text-sm font-semibold ${option.color}`}>
-                          {option.label}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {isLoadingConditions ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
+                    Loading condition templates...
+                  </div>
+                ) : conditionOptions.length === 0 ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+                    No active condition templates are available for this clinic. Add or enable them in Settings.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {conditionOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setConditionType(option.value)}
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${conditionType === option.value
+                          ? 'border-primary-500 bg-primary-50 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{option.icon}</span>
+                          <span className={`text-sm font-semibold ${option.color}`}>
+                            {option.label}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {isLegacyConditionType && (
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
+                    <div className="font-semibold">Saved condition not in active templates</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-lg">📝</span>
+                      <span>{conditionType}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -1212,6 +1271,7 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
                 <Button
                   onClick={handleSaveCondition}
                   className="flex-1"
+                  disabled={!conditionType || (!isLegacyConditionType && conditionOptions.length === 0)}
                 >
                   {modalMode === 'edit-condition' ? 'Update' : 'Add Condition'}
                 </Button>
@@ -1246,23 +1306,34 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, onChang
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Procedure Name</label>
                 <select
-                  value={procedureName}
-                  onChange={(e) => setProcedureName(e.target.value)}
+                  value={isCustomProcedure ? CUSTOM_PROCEDURE_VALUE : procedureName}
+                  onChange={(e) => {
+                    if (e.target.value === CUSTOM_PROCEDURE_VALUE) {
+                      setIsCustomProcedure(true);
+                      setCustomProcedureName((currentValue) => currentValue || procedureName);
+                      return;
+                    }
+
+                    setIsCustomProcedure(false);
+                    setProcedureName(e.target.value);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-medium"
                 >
-                  {PROCEDURE_OPTIONS.map((option) => (
+                  {currentProcedureOptions.map((option) => (
                     <option key={option} value={option}>{option}</option>
                   ))}
+                  <option value={CUSTOM_PROCEDURE_VALUE}>Other</option>
                 </select>
               </div>
 
               {/* Custom procedure name if "Other" is selected */}
-              {procedureName === 'Other' && (
+              {isCustomProcedure && (
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Custom Procedure Name</label>
                   <input
                     type="text"
-                    onChange={(e) => setProcedureName(e.target.value)}
+                    value={customProcedureName}
+                    onChange={(e) => setCustomProcedureName(e.target.value)}
                     placeholder="Enter procedure name..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                   />

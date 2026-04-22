@@ -1,0 +1,1134 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+
+import { Sidebar } from '../components';
+import TopBar from '../components/common/TopBar';
+import BottomNav from '../components/common/BottomNav';
+import Button from '../components/common/Button';
+import { useAuth } from '../contexts/AuthContext';
+import { useClinic } from '../contexts/ClinicContext';
+import { consentFormService } from '../api/services/consentForm';
+import { dentalChartService, patientService, prescriptionService } from '../api/services';
+import { conditionsService } from '../api/services/conditions';
+import { proceduresService } from '../api/services/procedures';
+import { ConsentTemplate } from '../api/types';
+import {
+  chunkConsentSections,
+  dedupeRepeatedParagraphs,
+  escapeHtml,
+  hydrateConsentSections,
+  replaceConsentPlaceholders,
+  renderSectionHtml,
+} from '../utils/consentForm';
+
+interface ConditionProcedureRow {
+  id: string;
+  condition: string;
+  procedure: string;
+}
+
+const anesthesiaPresets = ['Local', 'Topical', 'IV Sedation', 'Nitrous Oxide', 'General'];
+
+const normalizeSpace = (value: string): string => value.replace(/\s+/g, ' ').trim();
+
+const titleCase = (value: string): string =>
+  value
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+const toDisplayName = (value: string): string => titleCase(value.replace(/[_-]+/g, ' ').trim());
+
+const uniqueStrings = (values: string[]): string[] => {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  values.forEach((entry) => {
+    const normalized = normalizeSpace(entry);
+    if (!normalized) return;
+    const key = normalized.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(normalized);
+    }
+  });
+  return unique;
+};
+
+const notifyConsentSaved = (patientId: string, consentTypeId: string) => {
+  if (!patientId) return;
+
+  const payload = {
+    type: 'mob_clinic:consent-saved',
+    patientId,
+    consentTypeId,
+    timestamp: Date.now(),
+  };
+
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(payload, window.location.origin);
+  }
+};
+
+const ConsentFormBuilderPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const { profile, clinicId } = useClinic();
+
+  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const patientQuery = queryParams.get('patientId') || '';
+  const embedMode = queryParams.get('embed') === '1';
+
+  const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
+  const [templates, setTemplates] = useState<ConsentTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+
+  const [consentTypeId, setConsentTypeId] = useState('');
+  const [language, setLanguage] = useState<'en' | 'ml'>('en');
+
+  const [patientId, setPatientId] = useState(patientQuery);
+  const [patientName, setPatientName] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [patientGender, setPatientGender] = useState('');
+  const [patientPhone, setPatientPhone] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientOptions, setPatientOptions] = useState<any[]>([]);
+  const [mobilePanel, setMobilePanel] = useState<'builder' | 'preview'>('builder');
+
+  const [chiefComplaint, setChiefComplaint] = useState('');
+  const [associatedComplaint, setAssociatedComplaint] = useState('');
+  const [rows, setRows] = useState<ConditionProcedureRow[]>([{ id: crypto.randomUUID(), condition: '', procedure: '' }]);
+  const [conditionOptions, setConditionOptions] = useState<string[]>([]);
+  const [procedureOptions, setProcedureOptions] = useState<string[]>([]);
+  const [conditionTypeMap, setConditionTypeMap] = useState<Record<string, string>>({});
+  const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [treatmentPlan, setTreatmentPlan] = useState('');
+  const [anesthesiaTags, setAnesthesiaTags] = useState<string[]>([]);
+  const [anesthesiaInput, setAnesthesiaInput] = useState('');
+
+  const [minorMode, setMinorMode] = useState(false);
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianRelationship, setGuardianRelationship] = useState('');
+  const [guardianPhone, setGuardianPhone] = useState('');
+
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const [summaryText, setSummaryText] = useState('');
+  const [summaryEdited, setSummaryEdited] = useState(false);
+
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareToken, setShareToken] = useState('');
+  const [isGeneratingShare, setIsGeneratingShare] = useState(false);
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const prefilledPatientRef = useRef<string>('');
+  const [isDrawing, setIsDrawing] = useState(false);
+  const clinicDisplayName = profile?.basic_info?.clinic_name || clinicId || 'Clinic';
+
+  const doctorName = useMemo(() => {
+    const direct = user?.full_name || user?.name || 'Doctor';
+    return direct.trim() || 'Doctor';
+  }, [user]);
+
+  const buildRowsFromChart = useCallback((chartResponse: any): ConditionProcedureRow[] => {
+    const chart = chartResponse?.teeth
+      ? chartResponse
+      : (chartResponse?.data?.teeth ? chartResponse.data : null);
+
+    if (!chart?.teeth || typeof chart.teeth !== 'object') {
+      return [];
+    }
+
+    const extractedPairs: Array<{ condition: string; procedure: string }> = [];
+    Object.values(chart.teeth).forEach((toothEntry: any) => {
+      const conditionsForTooth = (toothEntry?.conditions || [])
+        .map((condition: any) => {
+          const rawType = String(condition?.type || '').trim();
+          if (!rawType) return '';
+          return conditionTypeMap[rawType] || toDisplayName(rawType);
+        })
+        .filter(Boolean);
+
+      const proceduresForTooth = (toothEntry?.procedures || [])
+        .map((procedure: any) => String(procedure?.procedure_name || procedure?.name_of_procedure || '').trim())
+        .filter(Boolean);
+
+      const maxRows = Math.max(conditionsForTooth.length, proceduresForTooth.length);
+      for (let idx = 0; idx < maxRows; idx += 1) {
+        extractedPairs.push({
+          condition: conditionsForTooth[idx] || conditionsForTooth[0] || '',
+          procedure: proceduresForTooth[idx] || proceduresForTooth[0] || '',
+        });
+      }
+    });
+
+    const unique = new Map<string, { condition: string; procedure: string }>();
+    extractedPairs.forEach((entry) => {
+      const key = `${normalizeSpace(entry.condition).toLowerCase()}::${normalizeSpace(entry.procedure).toLowerCase()}`;
+      if (!unique.has(key)) {
+        unique.set(key, {
+          condition: normalizeSpace(entry.condition),
+          procedure: normalizeSpace(entry.procedure),
+        });
+      }
+    });
+
+    return Array.from(unique.values())
+      .filter((entry) => entry.condition || entry.procedure)
+      .map((entry) => ({ id: crypto.randomUUID(), ...entry }));
+  }, [conditionTypeMap]);
+
+  useEffect(() => {
+    const run = async () => {
+      setIsLoadingTemplates(true);
+      try {
+        const response = await consentFormService.getConsentTemplates();
+        const rowsData = response.templates || [];
+        setTemplates(rowsData);
+
+        if (!consentTypeId && rowsData.length > 0) {
+          setConsentTypeId(rowsData[0].consent_type_id);
+        }
+      } catch (error: any) {
+        console.error('Failed to load consent templates', error);
+        toast.error(error?.message || 'Failed to load consent templates');
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+
+    run();
+    // initial load only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const loadCatalogs = async () => {
+      if (!clinicId) {
+        setConditionOptions([]);
+        setProcedureOptions([]);
+        setConditionTypeMap({});
+        return;
+      }
+
+      setIsLoadingCatalogs(true);
+      try {
+        const [conditionRows, procedureRows] = await Promise.all([
+          conditionsService.getConditions(clinicId).catch(() => []),
+          proceduresService.getProcedures(clinicId).catch(() => []),
+        ]);
+
+        const activeConditions = (conditionRows || []).filter((row: any) => row?.is_active !== false);
+        const activeProcedures = (procedureRows || []).filter((row: any) => row?.is_active !== false);
+
+        const conditionMap: Record<string, string> = {};
+        activeConditions.forEach((row: any) => {
+          if (row?.type && row?.condition_name) {
+            conditionMap[String(row.type).trim()] = String(row.condition_name).trim();
+          }
+        });
+
+        setConditionTypeMap(conditionMap);
+        setConditionOptions(uniqueStrings(activeConditions.map((row: any) => String(row?.condition_name || '').trim())));
+        setProcedureOptions(uniqueStrings(activeProcedures.map((row: any) => String(row?.procedure_name || '').trim())));
+      } finally {
+        setIsLoadingCatalogs(false);
+      }
+    };
+
+    loadCatalogs();
+  }, [clinicId]);
+
+  useEffect(() => {
+    const loadPatientContext = async () => {
+      if (!patientId) {
+        prefilledPatientRef.current = '';
+        return;
+      }
+
+      try {
+        const [patientResponse, chartResponse, latestPrescriptions] = await Promise.all([
+          patientService.getPatient(patientId),
+          dentalChartService.getDentalChart(patientId).catch(() => null),
+          prescriptionService.getRecentPrescriptions(patientId, 1).catch(() => []),
+        ]);
+
+        setPatientName(patientResponse.patient_name || patientResponse.name || '');
+        setPatientAge(patientResponse.age !== null && patientResponse.age !== undefined ? String(patientResponse.age) : '');
+        setPatientGender(patientResponse.sex || '');
+        setPatientPhone(patientResponse.mobile || '');
+
+        if (prefilledPatientRef.current !== patientId) {
+          const prefilledRows = buildRowsFromChart(chartResponse);
+          if (prefilledRows.length) {
+            setRows(prefilledRows);
+          } else {
+            setRows([{ id: crypto.randomUUID(), condition: '', procedure: '' }]);
+          }
+          prefilledPatientRef.current = patientId;
+        }
+
+        const latestPrescription = Array.isArray(latestPrescriptions) ? latestPrescriptions[0] : null;
+        if (latestPrescription) {
+          setChiefComplaint((prev) => prev || latestPrescription.chief_complaint || latestPrescription.symptoms || '');
+          setDiagnosis((prev) => prev || latestPrescription.diagnosis || '');
+          setTreatmentPlan((prev) => prev || latestPrescription.treatment_plan || '');
+        }
+      } catch {
+        // keep manual mode when patient id is free typed
+      }
+    };
+
+    loadPatientContext();
+  }, [patientId, buildRowsFromChart]);
+
+  useEffect(() => {
+    const searchPatients = async () => {
+      if (!patientSearch || patientSearch.trim().length < 2) {
+        setPatientOptions([]);
+        return;
+      }
+
+      try {
+        const options = await patientService.searchPatients({
+          search_term: patientSearch.trim(),
+          limit: 8,
+        });
+        setPatientOptions(options || []);
+      } catch {
+        setPatientOptions([]);
+      }
+    };
+
+    const timer = setTimeout(searchPatients, 250);
+    return () => clearTimeout(timer);
+  }, [patientSearch]);
+
+  const consentTypes = useMemo(() => {
+    const seen = new Map<string, string>();
+    templates.forEach((item) => {
+      if (!seen.has(item.consent_type_id)) {
+        seen.set(item.consent_type_id, item.consent_type_label || item.consent_type_id);
+      }
+    });
+    return Array.from(seen.entries()).map(([id, label]) => ({ id, label }));
+  }, [templates]);
+
+  const selectedTemplate = useMemo(() => {
+    if (!consentTypeId) return null;
+
+    const exact = templates.find((item) => item.consent_type_id === consentTypeId && item.language === language);
+    if (exact) return exact;
+
+    return templates.find((item) => item.consent_type_id === consentTypeId && item.language === 'en') || null;
+  }, [templates, consentTypeId, language]);
+
+  useEffect(() => {
+    if (!selectedTemplate) return;
+    if (!summaryEdited) {
+      setSummaryText(selectedTemplate.summary_text || '');
+    }
+  }, [selectedTemplate, summaryEdited]);
+
+  useEffect(() => {
+    if (consentTypeId === 'pediatric') {
+      setMinorMode(true);
+    }
+  }, [consentTypeId]);
+
+  const conditionList = useMemo(
+    () => uniqueStrings(rows.map((row) => row.condition)),
+    [rows]
+  );
+  const procedureList = useMemo(
+    () => uniqueStrings(rows.map((row) => row.procedure)),
+    [rows]
+  );
+  const anesthesiaText = anesthesiaTags.join(', ');
+
+  const placeholderContext = useMemo(
+    () => ({
+      doctor: doctorName,
+      procedure: procedureList.join(', '),
+      condition: conditionList.join(', '),
+      anesthesia: anesthesiaText,
+    }),
+    [doctorName, procedureList, conditionList, anesthesiaText]
+  );
+
+  const hydratedSections = useMemo(
+    () => hydrateConsentSections(selectedTemplate?.sections || [], placeholderContext),
+    [selectedTemplate, placeholderContext]
+  );
+
+  const renderedSummaryText = useMemo(
+    () => dedupeRepeatedParagraphs(replaceConsentPlaceholders(summaryText || selectedTemplate?.summary_text || '', placeholderContext)),
+    [summaryText, selectedTemplate, placeholderContext]
+  );
+
+  const declarationText = useMemo(() => {
+    const source = minorMode
+      ? selectedTemplate?.guardian_declaration_text || selectedTemplate?.declaration_text || ''
+      : selectedTemplate?.declaration_text || '';
+
+    return replaceConsentPlaceholders(source, placeholderContext);
+  }, [minorMode, selectedTemplate, placeholderContext]);
+
+  const consentPages = useMemo(() => chunkConsentSections(hydratedSections, 3), [hydratedSections]);
+
+  const signatoryLabel = minorMode ? 'Parent/Guardian Signature' : 'Patient Signature';
+  const signatoryName = minorMode ? guardianName || '________________' : patientName || '________________';
+
+  const addRow = () => {
+    setRows((prev) => [...prev, { id: crypto.randomUUID(), condition: '', procedure: '' }]);
+  };
+
+  const removeRow = (id: string) => {
+    setRows((prev) => (prev.length > 1 ? prev.filter((row) => row.id !== id) : prev));
+  };
+
+  const updateRow = (id: string, key: keyof ConditionProcedureRow, value: string) => {
+    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, [key]: value } : row)));
+  };
+
+  const addAnesthesiaTag = (value: string) => {
+    const next = value.trim();
+    if (!next) return;
+    if (anesthesiaTags.includes(next)) return;
+    setAnesthesiaTags((prev) => [...prev, next]);
+    setAnesthesiaInput('');
+  };
+
+  const removeAnesthesiaTag = (value: string) => {
+    setAnesthesiaTags((prev) => prev.filter((tag) => tag !== value));
+  };
+
+  const selectPatient = (row: any) => {
+    const id = row.patient_id || row.name;
+    setPatientId(id || '');
+    setPatientName(row.patient_name || row.name || '');
+    setPatientAge(row.age !== null && row.age !== undefined ? String(row.age) : '');
+    setPatientGender(row.sex || '');
+    setPatientPhone(row.mobile || '');
+    setPatientSearch('');
+    setPatientOptions([]);
+    setMobilePanel('builder');
+  };
+
+  const buildCurrentPayload = () => {
+    return {
+      patient_id: patientId,
+      patient_name: patientName,
+      patient_age: patientAge,
+      patient_gender: patientGender,
+      patient_phone: patientPhone,
+      doctor_name: doctorName,
+      language,
+      consent_type_id: consentTypeId,
+      consent_type_label: selectedTemplate?.consent_type_label || consentTypeId,
+      clinic_name: clinicDisplayName,
+      chief_complaint: chiefComplaint,
+      associated_complaint: associatedComplaint,
+      rows,
+      diagnosis,
+      treatment_plan: treatmentPlan,
+      anesthesia_tags: anesthesiaTags,
+      issue_date: issueDate,
+      visit_date: visitDate,
+      minor_mode: minorMode,
+      guardian_name: guardianName,
+      guardian_relationship: guardianRelationship,
+      guardian_phone: guardianPhone,
+      summary_text: renderedSummaryText,
+      declaration_text: declarationText,
+      signature_data_url: signatureDataUrl,
+    };
+  };
+
+  const buildConsentHtml = () => {
+    const sectionsHtml = hydratedSections.map((section) => renderSectionHtml(section)).join('');
+    const tableRowsHtml = rows
+      .map(
+        (row) =>
+          `<tr><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row.condition || '-')}</td><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row.procedure || '-')}</td></tr>`
+      )
+      .join('');
+
+    return `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Consent - ${escapeHtml(patientName || patientId || 'Patient')}</title>
+</head>
+<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;padding:24px;">
+  <h2 style="margin:0 0 12px;">${escapeHtml(clinicDisplayName)}</h2>
+  <p style="margin:0 0 8px;"><strong>Patient:</strong> ${escapeHtml(patientName || patientId || '')}</p>
+  <p style="margin:0 0 8px;"><strong>Consent Type:</strong> ${escapeHtml(selectedTemplate?.consent_type_label || consentTypeId)}</p>
+  <p style="margin:0 0 12px;"><strong>Language:</strong> ${escapeHtml(language.toUpperCase())}</p>
+  <h3 style="margin:16px 0 8px;">Condition / Procedure</h3>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><thead><tr><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Condition</th><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Procedure</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>
+  <h3 style="margin:16px 0 8px;">Summary</h3>
+  <p style="white-space:pre-wrap;margin:0 0 16px;">${escapeHtml(renderedSummaryText)}</p>
+  <h3 style="margin:16px 0 8px;">Consent Content</h3>
+  ${sectionsHtml}
+  <h3 style="margin:16px 0 8px;">Declaration</h3>
+  <p style="white-space:pre-wrap;margin:0 0 16px;">${escapeHtml(declarationText)}</p>
+</body>
+</html>
+    `;
+  };
+
+  const ensureShareLink = async () => {
+    if (!patientId) {
+      toast.error('Select a patient before sharing');
+      return null;
+    }
+
+    if (!consentTypeId) {
+      toast.error('Select a consent type first');
+      return null;
+    }
+
+    setIsGeneratingShare(true);
+    try {
+      const result = await consentFormService.createShareLink({
+        patient_id: patientId,
+        consent_type_id: consentTypeId,
+        language,
+        clinic: clinicId || undefined,
+        payload: buildCurrentPayload(),
+        summary_text: renderedSummaryText,
+        app_base_url: window.location.origin,
+      });
+
+      setShareUrl(result.share_url);
+      setShareToken(result.token);
+      return result.share_url;
+    } catch (error: any) {
+      console.error('Failed to generate share URL', error);
+      toast.error(error?.message || 'Failed to generate share URL');
+      return null;
+    } finally {
+      setIsGeneratingShare(false);
+    }
+  };
+
+  const handleOpenQr = async () => {
+    const url = await ensureShareLink();
+    if (!url) return;
+    setQrModalOpen(true);
+  };
+
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied');
+    } catch {
+      toast.error('Unable to copy link');
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    const url = await ensureShareLink();
+    if (!url) return;
+
+    const phone = (minorMode ? guardianPhone : patientPhone || guardianPhone || '').replace(/[^\d+]/g, '');
+    const message = `${renderedSummaryText || 'Please review the consent form'}\n\n${url}`;
+    const target = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(target, '_blank');
+  };
+
+  const persistArtifacts = async (signatureOverride?: string) => {
+    if (!patientId) return;
+    try {
+      await consentFormService.saveConsentArtifacts({
+        patient_id: patientId,
+        consent_type_id: consentTypeId,
+        language,
+        clinic: clinicId || undefined,
+        summary_text: renderedSummaryText,
+        signature_data_url: signatureOverride || signatureDataUrl || undefined,
+        consent_html: buildConsentHtml(),
+      });
+      notifyConsentSaved(patientId, consentTypeId);
+      toast.success('Saved to patient files');
+    } catch (error: any) {
+      console.error('Failed to save consent artifacts', error);
+      toast.error(error?.message || 'Could not save consent file');
+    }
+  };
+
+  const openSignatureModal = () => {
+    setSignatureModalOpen(true);
+    setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ratio = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.scale(ratio, ratio);
+      context.lineWidth = 2;
+      context.lineJoin = 'round';
+      context.lineCap = 'round';
+      context.strokeStyle = '#1f2937';
+
+      if (signatureDataUrl) {
+        const image = new Image();
+        image.onload = () => context.drawImage(image, 0, 0, width, height);
+        image.src = signatureDataUrl;
+      }
+    }, 50);
+  };
+
+  const draw = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isDrawing) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    context.lineTo(x, y);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(x, y);
+  };
+
+  const startDrawing = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    context.beginPath();
+    context.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const stopDrawing = () => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    context?.beginPath();
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const saveSignature = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    setSignatureDataUrl(dataUrl);
+    setSignatureModalOpen(false);
+    await persistArtifacts(dataUrl);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className={`flex ${embedMode ? 'h-full min-h-[900px]' : 'min-h-screen'} bg-primary-50`}>
+      {!embedMode && <Sidebar />}
+
+      <div className={`flex-1 flex flex-col ${embedMode ? '' : 'lg:pl-20'}`}>
+        {!embedMode && <TopBar title="Consent Form Builder" onBack={() => navigate('/patients')} showMenu />}
+
+        <div className="consent-topbar px-4 sm:px-6 py-3 border-b bg-white flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={handleShareWhatsApp} isLoading={isGeneratingShare}>Share via WhatsApp</Button>
+          <Button size="sm" variant="outline" onClick={handleOpenQr} isLoading={isGeneratingShare}>QR Code</Button>
+          <Button size="sm" variant="outline" onClick={openSignatureModal}>eSignature</Button>
+          <Button size="sm" onClick={handlePrint}>Print</Button>
+        </div>
+
+        <div className="lg:hidden px-4 py-2 border-b bg-white">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMobilePanel('builder')}
+              className={`rounded-lg px-3 py-2 text-sm font-medium border ${mobilePanel === 'builder' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300'}`}
+            >
+              Builder
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobilePanel('preview')}
+              className={`rounded-lg px-3 py-2 text-sm font-medium border ${mobilePanel === 'preview' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300'}`}
+            >
+              Preview
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] h-full">
+            <aside className={`consent-builder-panel overflow-y-auto border-r bg-white px-4 sm:px-6 py-4 space-y-4 ${mobilePanel === 'preview' ? 'hidden lg:block' : ''}`}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Consent Type</label>
+                <select
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white"
+                  value={consentTypeId}
+                  onChange={(event) => {
+                    setConsentTypeId(event.target.value);
+                    setSummaryEdited(false);
+                  }}
+                  disabled={isLoadingTemplates}
+                >
+                  {consentTypes.map((row) => (
+                    <option key={row.id} value={row.id}>{row.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium ${language === 'en' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    onClick={() => {
+                      setLanguage('en');
+                      setSummaryEdited(false);
+                    }}
+                  >
+                    English
+                  </button>
+                  <button
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium ${language === 'ml' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    onClick={() => {
+                      setLanguage('ml');
+                      setSummaryEdited(false);
+                    }}
+                  >
+                    Malayalam
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Search</label>
+                <input
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  value={patientSearch}
+                  onChange={(event) => setPatientSearch(event.target.value)}
+                  placeholder="Search patient by name or ID"
+                />
+                {patientOptions.length > 0 && (
+                  <div className="mt-2 border border-gray-200 rounded-lg max-h-40 overflow-y-auto">
+                    {patientOptions.map((row) => (
+                      <button
+                        type="button"
+                        key={row.patient_id || row.name}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b last:border-b-0"
+                        onClick={() => selectPatient(row)}
+                      >
+                        <p className="text-sm font-medium text-gray-900">{row.patient_name || row.name}</p>
+                        <p className="text-xs text-gray-500">{row.patient_id || row.name} • {row.mobile || '-'}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                  <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientId} onChange={(event) => setPatientId(event.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                  <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientName} onChange={(event) => setPatientName(event.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                    <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientAge} onChange={(event) => setPatientAge(event.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                    <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientGender} onChange={(event) => setPatientGender(event.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientPhone} onChange={(event) => setPatientPhone(event.target.value)} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Issue Date</label>
+                  <input type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date</label>
+                  <input type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2" value={visitDate} onChange={(event) => setVisitDate(event.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chief Complaint</label>
+                <textarea className="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[72px]" value={chiefComplaint} onChange={(event) => setChiefComplaint(event.target.value)} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Associated Complaint</label>
+                <textarea className="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[72px]" value={associatedComplaint} onChange={(event) => setAssociatedComplaint(event.target.value)} />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Condition / Procedure Rows</label>
+                  <button type="button" onClick={addRow} className="text-xs text-primary-600 font-semibold">+ Add Row</button>
+                </div>
+
+                <div className="space-y-2">
+                  {rows.map((row) => (
+                    <div key={row.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                      <div>
+                        <select
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          value={row.condition}
+                          onChange={(event) => updateRow(row.id, 'condition', event.target.value)}
+                        >
+                          <option value="">{isLoadingCatalogs ? 'Loading conditions...' : 'Select condition'}</option>
+                          {row.condition && !conditionOptions.includes(row.condition) && (
+                            <option value={row.condition}>{row.condition}</option>
+                          )}
+                          {conditionOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <select
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          value={row.procedure}
+                          onChange={(event) => updateRow(row.id, 'procedure', event.target.value)}
+                        >
+                          <option value="">{isLoadingCatalogs ? 'Loading procedures...' : 'Select procedure'}</option>
+                          {row.procedure && !procedureOptions.includes(row.procedure) && (
+                            <option value={row.procedure}>{row.procedure}</option>
+                          )}
+                          {procedureOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        className="px-2 py-2 text-red-500 text-sm sm:self-center"
+                        onClick={() => removeRow(row.id)}
+                        title="Remove row"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis & Treatment Plan</label>
+                <textarea className="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[72px]" value={diagnosis} onChange={(event) => setDiagnosis(event.target.value)} placeholder="Diagnosis" />
+                <textarea className="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[72px] mt-2" value={treatmentPlan} onChange={(event) => setTreatmentPlan(event.target.value)} placeholder="Treatment plan" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Anesthesia</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {anesthesiaPresets.map((tag) => (
+                    <button
+                      type="button"
+                      key={tag}
+                      className={`px-2.5 py-1 rounded-full text-xs border ${anesthesiaTags.includes(tag) ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                      onClick={() => (anesthesiaTags.includes(tag) ? removeAnesthesiaTag(tag) : addAnesthesiaTag(tag))}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    value={anesthesiaInput}
+                    placeholder="Add custom anesthesia"
+                    onChange={(event) => setAnesthesiaInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addAnesthesiaTag(anesthesiaInput);
+                      }
+                    }}
+                  />
+                  <Button size="sm" variant="outline" onClick={() => addAnesthesiaTag(anesthesiaInput)}>Add</Button>
+                </div>
+                {anesthesiaTags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {anesthesiaTags.map((tag) => (
+                      <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full text-xs">
+                        {tag}
+                        <button type="button" onClick={() => removeAnesthesiaTag(tag)}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 p-3">
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300"
+                    checked={minorMode}
+                    onChange={(event) => setMinorMode(event.target.checked)}
+                  />
+                  Minor patient flow (guardian required)
+                </label>
+
+                {minorMode && (
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    <input className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={guardianName} onChange={(event) => setGuardianName(event.target.value)} placeholder="Guardian name" />
+                    <input className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={guardianRelationship} onChange={(event) => setGuardianRelationship(event.target.value)} placeholder="Relationship" />
+                    <input className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={guardianPhone} onChange={(event) => setGuardianPhone(event.target.value)} placeholder="Guardian phone" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Consent Summary Text</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSummaryEdited(false);
+                      setSummaryText(selectedTemplate?.summary_text || '');
+                    }}
+                    className="text-xs text-primary-600 font-semibold"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <textarea
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[120px]"
+                  value={summaryText}
+                  onChange={(event) => {
+                    setSummaryEdited(true);
+                    setSummaryText(event.target.value);
+                  }}
+                />
+              </div>
+            </aside>
+
+            <main className={`consent-preview-panel overflow-y-auto bg-gray-100 p-4 sm:p-6 ${mobilePanel === 'builder' ? 'hidden lg:block' : ''}`}>
+              <div className="consent-print-root max-w-[900px] mx-auto space-y-6">
+                {consentPages.map((pageSections, pageIndex) => (
+                  <article
+                    key={`page-${pageIndex}`}
+                    className={`consent-print-page bg-white rounded-xl shadow border border-gray-200 p-6 sm:p-8 ${language === 'ml' ? 'consent-ml-text' : ''}`}
+                  >
+                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-3 mb-4">
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-900">{clinicDisplayName}</h2>
+                        <p className="text-xs text-gray-500">Informed Consent Form</p>
+                      </div>
+                      <div className="text-xs text-gray-600 text-right">
+                        <p><strong>Issue Date:</strong> {issueDate || '-'}</p>
+                        <p><strong>Visit Date:</strong> {visitDate || '-'}</p>
+                        <p><strong>Page:</strong> {pageIndex + 1} / {consentPages.length}</p>
+                      </div>
+                    </header>
+
+                    {pageIndex === 0 && (
+                      <>
+                        <section className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mb-4">
+                          <p><strong>Patient:</strong> {patientName || '-'}</p>
+                          <p><strong>Patient ID:</strong> {patientId || '-'}</p>
+                          <p><strong>Age / Gender:</strong> {[patientAge, patientGender].filter(Boolean).join(' / ') || '-'}</p>
+                          <p><strong>Phone:</strong> {patientPhone || '-'}</p>
+                          <p className="md:col-span-2"><strong>Doctor:</strong> {doctorName}</p>
+                        </section>
+
+                        <section className="mb-4 text-sm">
+                          <p><strong>Chief Complaint:</strong> {chiefComplaint || '-'}</p>
+                          <p className="mt-1"><strong>Associated Complaint:</strong> {associatedComplaint || '-'}</p>
+                        </section>
+
+                        <section className="mb-4">
+                          <table className="w-full border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="border border-gray-200 px-2 py-1 text-left">Condition</th>
+                                <th className="border border-gray-200 px-2 py-1 text-left">Procedure</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rows.map((row) => (
+                                <tr key={row.id}>
+                                  <td className="border border-gray-200 px-2 py-1">{row.condition || '-'}</td>
+                                  <td className="border border-gray-200 px-2 py-1">{row.procedure || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </section>
+
+                        <section className="mb-4 text-sm space-y-1">
+                          <p><strong>Diagnosis:</strong> {diagnosis || '-'}</p>
+                          <p><strong>Treatment Plan:</strong> {treatmentPlan || '-'}</p>
+                          <p><strong>Anesthesia:</strong> {anesthesiaText || '-'}</p>
+                        </section>
+
+                        {minorMode && (
+                          <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                            <p><strong>Guardian Name:</strong> {guardianName || '-'}</p>
+                            <p><strong>Relationship:</strong> {guardianRelationship || '-'}</p>
+                            <p><strong>Guardian Phone:</strong> {guardianPhone || '-'}</p>
+                          </section>
+                        )}
+
+                        <section className="mb-5">
+                          <h3 className="font-semibold text-sm mb-1">Consent Summary</h3>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{renderedSummaryText || '-'}</p>
+                        </section>
+                      </>
+                    )}
+
+                    <section className="space-y-4 text-sm leading-relaxed">
+                      {pageSections.map((section, index) => (
+                        <div key={`${pageIndex}-${index}`}>
+                          {section.heading && <h4 className="font-semibold text-gray-900 mb-1">{section.heading}</h4>}
+                          {section.body && <p className="whitespace-pre-wrap">{section.body}</p>}
+                          {section.items && section.items.length > 0 && (
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              {section.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+                            </ul>
+                          )}
+                          {section.numbered && section.numbered.length > 0 && (
+                            <ol className="list-decimal pl-5 mt-1 space-y-1">
+                              {section.numbered.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+                            </ol>
+                          )}
+                          {section.footer && <p className="whitespace-pre-wrap mt-1">{section.footer}</p>}
+                        </div>
+                      ))}
+                    </section>
+
+                    <footer className="mt-6 border-t border-gray-200 pt-4">
+                      {pageIndex === consentPages.length - 1 && (
+                        <p className="text-sm whitespace-pre-wrap mb-3">{declarationText}</p>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-500 mb-1">Signatory</p>
+                          <p className="font-medium">{signatoryName}</p>
+                          <p className="text-xs text-gray-500">{signatoryLabel}</p>
+                        </div>
+                        <div className="text-right">
+                          {signatureDataUrl ? (
+                            <img src={signatureDataUrl} alt="Signature" className="inline-block max-h-16" />
+                          ) : (
+                            <div className="inline-block w-40 border-b border-gray-400 h-10" />
+                          )}
+                        </div>
+                      </div>
+                    </footer>
+                  </article>
+                ))}
+              </div>
+            </main>
+          </div>
+        </div>
+
+        {!embedMode && (
+          <BottomNav
+            activeTab={activeTab}
+            onTabChange={(tab) => {
+              setActiveTab(tab);
+              if (tab === 'home') navigate('/home');
+              if (tab === 'appointments') navigate('/appointments');
+              if (tab === 'new-appointment') navigate('/appointments/new', { state: { backgroundLocation: location } });
+              if (tab === 'profile') navigate('/profile');
+            }}
+          />
+        )}
+      </div>
+
+      {signatureModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Capture eSignature</h3>
+            <p className="text-sm text-gray-500 mb-3">Draw the signature and save it to apply across all consent pages.</p>
+            <div className="border rounded-lg overflow-hidden bg-white">
+              <canvas
+                ref={canvasRef}
+                className="w-full h-56 touch-none"
+                onPointerDown={startDrawing}
+                onPointerMove={draw}
+                onPointerUp={stopDrawing}
+                onPointerLeave={stopDrawing}
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={clearSignature}>Clear</Button>
+              <Button size="sm" variant="outline" onClick={() => setSignatureModalOpen(false)}>Cancel</Button>
+              <Button size="sm" onClick={saveSignature}>Save Signature</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {qrModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5">
+            <h3 className="text-lg font-semibold text-gray-900">Consent Review QR</h3>
+            <p className="text-sm text-gray-500 mt-1">Scan to open the mobile consent review and signing flow.</p>
+
+            {shareUrl && (
+              <div className="mt-4 text-center">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(shareUrl)}`}
+                  alt="Consent QR"
+                  className="inline-block rounded-lg border border-gray-200"
+                />
+                <p className="text-xs text-gray-500 mt-3 break-all">{shareUrl}</p>
+                {shareToken && <p className="text-[11px] text-gray-400 mt-1">Token: {shareToken}</p>}
+              </div>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => setQrModalOpen(false)}>Close</Button>
+              <Button size="sm" variant="outline" onClick={handleCopyShareUrl}>Copy URL</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ConsentFormBuilderPage;
