@@ -7,38 +7,25 @@ export const useProcedures = (search?: string, category?: string) => {
   const { clinicId } = useClinic();
   const queryClient = useQueryClient();
 
-  console.log('🏥 useProcedures - clinicId:', clinicId);
-  console.log('🔍 useProcedures - search:', search, 'category:', category);
-
   // Fetch procedures
   const query = useQuery({
     queryKey: ['procedures', clinicId, search, category],
     queryFn: () => {
-      console.log('📞 CALLING get_procedures API with clinicId:', clinicId);
       if (!clinicId) {
-        console.warn('⚠️ No clinicId, returning empty array');
         return [];
       }
       return proceduresService.getProcedures(clinicId, search, category);
     },
     enabled: !!clinicId,
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache results
-    refetchOnMount: 'always', // Always refetch when component mounts
-  });
-
-  console.log('📊 Query status:', {
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    isEnabled: !!clinicId,
-    dataLength: query.data?.length || 0,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   // Fetch categories
   const categoriesQuery = useQuery({
     queryKey: ['procedureCategories'],
     queryFn: proceduresService.getCategories,
-    staleTime: 0,
+    staleTime: 10 * 60 * 1000,
   });
 
   // Create Custom Procedure
