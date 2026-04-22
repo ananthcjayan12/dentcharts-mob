@@ -15,23 +15,22 @@ export const useConditions = (search?: string, category?: string) => {
             return conditionsService.getConditions(clinicId, search, category);
         },
         enabled: !!clinicId,
-        staleTime: 0, // Always fetch fresh data
-        gcTime: 0, // Don't cache results
-        refetchOnMount: 'always', // Always refetch when component mounts
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
     });
 
     // Fetch categories
     const categoriesQuery = useQuery({
         queryKey: ['conditionCategories'],
         queryFn: conditionsService.getCategories,
-        staleTime: 0,
+        staleTime: 10 * 60 * 1000,
     });
 
     // Fetch types
     const typesQuery = useQuery({
         queryKey: ['conditionTypes'],
         queryFn: conditionsService.getTypes,
-        staleTime: 0,
+        staleTime: 10 * 60 * 1000,
     });
 
     // Create Custom Condition

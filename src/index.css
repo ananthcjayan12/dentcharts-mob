@@ -1,6 +1,14 @@
 /* Import Poppins font from Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
+@font-face {
+  font-family: 'NotoSansMalayalamLight';
+  src: url('./assets/fonts/NotoSansMalayalam-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -138,5 +146,39 @@
   /* Floating action button */
   .fab {
     @apply fixed bottom-20 right-4 w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 active:scale-90 transition-all duration-200;
+  }
+
+  .consent-ml-text {
+    font-family: 'NotoSansMalayalamLight', 'Noto Sans Malayalam', sans-serif;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .consent-print-root,
+  .consent-print-root * {
+    visibility: visible !important;
+  }
+
+  .consent-print-root {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+  }
+
+  .consent-print-page {
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    page-break-after: always;
+  }
+
+  .consent-print-page:last-child {
+    page-break-after: auto;
   }
 }

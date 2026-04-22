@@ -5,6 +5,12 @@ import Portal from './Portal';
 import { Procedure } from '../../api/services/procedures';
 import { useProcedures } from '../../hooks/useProcedures';
 import { useConditions } from '../../hooks/useConditions';
+import {
+  buildTreatmentItemKey,
+  createClientId,
+  isValidFDIToothNumber,
+  sortNumbers,
+} from './dentalChartUtils';
 
 export interface SelectedItem {
   id: string;
@@ -48,7 +54,7 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
   // Initialize state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setCurrentTeeth(initialSelectedTeeth);
+      setCurrentTeeth(sortNumbers(initialSelectedTeeth.filter(isValidFDIToothNumber)));
       setSelectedCondition(null);
       setSelectedItems([]);
       setConditionSearch('');
@@ -61,8 +67,8 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
     if ((e.key === 'Enter' || e.key === ',' || e.key === ' ') && toothInput) {
       e.preventDefault();
       const num = parseInt(toothInput.trim());
-      if (!isNaN(num) && num > 0 && num < 100 && !currentTeeth.includes(num)) {
-        const newTeeth = [...currentTeeth, num].sort((a, b) => a - b);
+      if (!isNaN(num) && isValidFDIToothNumber(num) && !currentTeeth.includes(num)) {
+        const newTeeth = sortNumbers([...currentTeeth, num]);
         setCurrentTeeth(newTeeth);
         setToothInput('');
 
@@ -81,8 +87,8 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
   const handleToothInputBlur = () => {
     if (toothInput) {
       const num = parseInt(toothInput.trim());
-      if (!isNaN(num) && num > 0 && num < 100 && !currentTeeth.includes(num)) {
-        const newTeeth = [...currentTeeth, num].sort((a, b) => a - b);
+      if (!isNaN(num) && isValidFDIToothNumber(num) && !currentTeeth.includes(num)) {
+        const newTeeth = sortNumbers([...currentTeeth, num]);
         setCurrentTeeth(newTeeth);
         setToothInput('');
 
@@ -103,20 +109,22 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
     setCurrentTeeth(newTeeth);
 
     // Update teeth for all selected items with the new teeth array
-    if (newTeeth.length > 0) {
-      setSelectedItems(prevItems => prevItems.map(item => ({
-        ...item,
-        teeth: [...newTeeth],
-        cost: (item.procedure.cost || 0) * newTeeth.length
-      })));
-    }
+    setSelectedItems(prevItems => prevItems.map(item => ({
+      ...item,
+      teeth: [...newTeeth],
+      cost: (item.procedure.cost || 0) * newTeeth.length
+    })));
   };
 
   const handleToggleProcedure = (procedure: Procedure) => {
+    if (currentTeeth.length === 0) {
+      return;
+    }
+
+    const procedureIdentifier = procedure.code || procedure.procedure_name;
     const existingIndex = selectedItems.findIndex(item =>
-            item.procedure.code === procedure.code &&
-            JSON.stringify(item.teeth.sort()) === JSON.stringify(currentTeeth.sort()) &&
-            item.condition === selectedCondition
+      buildTreatmentItemKey(item.procedure.code || item.procedure.procedure_name, item.teeth, item.condition) ===
+      buildTreatmentItemKey(procedureIdentifier, currentTeeth, selectedCondition)
     );
 
     if (existingIndex >= 0) {
@@ -125,9 +133,9 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
       setSelectedItems(newItems);
     } else {
       const newItem: SelectedItem = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: createClientId(),
         procedure,
-        teeth: [...currentTeeth],
+        teeth: sortNumbers(currentTeeth),
         condition: selectedCondition,
         conditionLabel: availableConditions.find((condition) => condition.type === selectedCondition)?.condition_name || selectedCondition,
         conditionIcon: availableConditions.find((condition) => condition.type === selectedCondition)?.icon || '🦷',
@@ -139,7 +147,11 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
 
   const isProcedureSelected = (code?: string) => {
     if (!code) return false;
-    return selectedItems.some(item => item.procedure.code === code);
+    return selectedItems.some((item) => {
+      const itemIdentifier = item.procedure.code || item.procedure.procedure_name;
+      return buildTreatmentItemKey(itemIdentifier, item.teeth, item.condition) ===
+        buildTreatmentItemKey(code, currentTeeth, selectedCondition);
+    });
   };
 
   const handleRemoveItem = (id: string) => {
@@ -147,12 +159,16 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
   };
 
   const handleSave = () => {
+    if (currentTeeth.length === 0) {
+      return;
+    }
+
     if (selectedItems.length > 0 || (selectedCondition && currentTeeth.length > 0)) {
       if (selectedItems.length === 0 && selectedCondition && currentTeeth.length > 0) {
         const conditionOnlyItem: SelectedItem = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: createClientId(),
           procedure: { code: 'condition-only', procedure_name: 'Condition Only', cost: 0, category: 'General', is_custom: false, source: 'template_default' } as Procedure,
-          teeth: [...currentTeeth],
+          teeth: sortNumbers(currentTeeth),
           condition: selectedCondition,
           conditionLabel: availableConditions.find((condition) => condition.type === selectedCondition)?.condition_name || selectedCondition,
           conditionIcon: availableConditions.find((condition) => condition.type === selectedCondition)?.icon || '🦷',
@@ -160,7 +176,7 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
         };
         onSave([conditionOnlyItem]);
       } else {
-        onSave(selectedItems);
+        onSave(selectedItems.filter((item) => item.teeth.length > 0));
       }
       onClose();
     }
@@ -181,7 +197,7 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
         onClick={onClose}
       >
         <div
-          className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col"
+          className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] h-auto lg:h-[80vh] flex flex-col"
           style={{ zIndex: 100000 }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -201,9 +217,9 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
             {/* Left Panel - Controls */}
-            <div className="w-7/12 p-6 overflow-y-auto border-r border-gray-200 space-y-6">
+            <div className="w-full lg:w-7/12 p-4 sm:p-6 overflow-y-auto lg:border-r border-gray-200 space-y-6">
 
               {/* Selected Teeth */}
               <div>
@@ -339,8 +355,8 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
-                  {availableProcedures.filter(p => !p.is_active || p.is_active).map((proc) => { // Show all active procedures
-                    const isSelected = isProcedureSelected(proc.code);
+                  {availableProcedures.filter((proc) => proc.is_active !== false).map((proc) => {
+                    const isSelected = isProcedureSelected(proc.code || proc.procedure_name);
                     return (
                       <div
                         key={proc.code || proc.procedure_name} // Fallback key
@@ -369,7 +385,7 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
             </div>
 
             {/* Right Panel - Summary */}
-            <div className="w-5/12 bg-gray-50 p-6 flex flex-col border-l border-gray-200">
+            <div className="w-full lg:w-5/12 bg-gray-50 p-4 sm:p-6 flex flex-col border-t lg:border-t-0 lg:border-l border-gray-200 min-h-[240px]">
               <h4 className="text-lg font-bold text-gray-900 mb-4">Selected Procedures</h4>
 
               <div className="flex-1 overflow-y-auto space-y-3">
@@ -442,7 +458,7 @@ const CreateProcedureModal: React.FC<CreateProcedureModalProps> = ({
                     variant="primary"
                     onClick={handleSave}
                     className="flex-1 py-2.5 bg-gray-900 hover:bg-gray-800 text-white"
-                    disabled={selectedItems.length === 0 && !(selectedCondition && currentTeeth.length > 0)}
+                    disabled={currentTeeth.length === 0 || (selectedItems.length === 0 && !(selectedCondition && currentTeeth.length > 0))}
                   >
                     {selectedItems.length === 0 && selectedCondition ? 'Add Condition' : 'Add Treatment'}
                   </Button>

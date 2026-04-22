@@ -322,34 +322,34 @@ export const useDentalChartActions = (patientId: string) => {
   return {
     // Condition actions
     addCondition: (tooth_numbers: number[], condition: ConditionInput) =>
-      addCondition.mutate({ patient_id: patientId, tooth_numbers, condition }),
+      addCondition.mutateAsync({ patient_id: patientId, tooth_numbers, condition }),
     updateCondition: (
       condition_name: string,
       updates: Partial<ConditionInput>
     ) =>
-      updateCondition.mutate({ patient_id: patientId, condition_name, updates }),
+      updateCondition.mutateAsync({ patient_id: patientId, condition_name, updates }),
     removeCondition: (condition_name: string, reason?: string) =>
-      removeCondition.mutate({ patient_id: patientId, condition_name, reason }),
+      removeCondition.mutateAsync({ patient_id: patientId, condition_name, reason }),
 
     // Procedure actions
     addProcedure: (tooth_numbers: number[], procedure: ProcedureInput) =>
-      addProcedure.mutate({ patient_id: patientId, tooth_numbers, procedure }),
+      addProcedure.mutateAsync({ patient_id: patientId, tooth_numbers, procedure }),
     updateProcedure: (
       procedure_name: string,
       updates: Partial<ProcedureInput>
     ) =>
-      updateProcedure.mutate({ patient_id: patientId, procedure_name, updates }),
+      updateProcedure.mutateAsync({ patient_id: patientId, procedure_name, updates }),
     removeProcedure: (procedure_name: string, reason?: string) =>
-      removeProcedure.mutate({ patient_id: patientId, procedure_name, reason }),
+      removeProcedure.mutateAsync({ patient_id: patientId, procedure_name, reason }),
 
     // Chart actions
     saveDentalChart: (
       chart_type: 'adult' | 'pediatric' | 'mixed',
       teeth_data: Record<number, ToothData>
     ) =>
-      saveDentalChart.mutate({ patient_id: patientId, chart_type, teeth_data }),
+      saveDentalChart.mutateAsync({ patient_id: patientId, chart_type, teeth_data }),
     exportChart: (format: 'json' | 'pdf' = 'json') =>
-      exportChart.mutate({ patientId, format }),
+      exportChart.mutateAsync({ patientId, format }),
 
     // Loading states
     isLoading:

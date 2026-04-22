@@ -20,7 +20,11 @@ module.exports = function override(config) {
         ? [sourceMapRule.exclude]
         : [];
 
-    sourceMapRule.exclude = [...exclusions, /html2pdf\.js/];
+    sourceMapRule.exclude = [
+      ...exclusions,
+      /html2pdf\.js/,
+      /SVGPathData\.module\.js/,
+    ];
   }
 
   return config;

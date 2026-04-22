@@ -24,8 +24,10 @@ export class AuthService {
     'appointments',
     'patients',
     'prescriptions',
+    'consent_forms',
     'invoice',
     'financial_dashboard',
+    'whatsapp-manager',
     'settings',
   ];
 
