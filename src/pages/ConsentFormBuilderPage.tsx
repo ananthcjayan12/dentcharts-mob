@@ -13,22 +13,39 @@ import { dentalChartService, patientService, prescriptionService } from '../api/
 import { conditionsService } from '../api/services/conditions';
 import { proceduresService } from '../api/services/procedures';
 import { ConsentTemplate } from '../api/types';
+import { generatePdfBlobFromElement, generatePdfBlobFromHtml, generatePdfBlobFromPageElements } from '../utils/printUtils';
 import {
-  chunkConsentSections,
   dedupeRepeatedParagraphs,
   escapeHtml,
   hydrateConsentSections,
+  paginateConsentSections,
   replaceConsentPlaceholders,
   renderSectionHtml,
 } from '../utils/consentForm';
 
 interface ConditionProcedureRow {
   id: string;
+  toothNumber: string;
   condition: string;
   procedure: string;
 }
 
+interface MedicalHistorySummaryItem {
+  label: string;
+  value: string;
+}
+
 const anesthesiaPresets = ['Local', 'Topical', 'IV Sedation', 'Nitrous Oxide', 'General'];
+const toothNumberPresets = [
+  '18', '17', '16', '15', '14', '13', '12', '11',
+  '21', '22', '23', '24', '25', '26', '27', '28',
+  '48', '47', '46', '45', '44', '43', '42', '41',
+  '31', '32', '33', '34', '35', '36', '37', '38',
+  '55', '54', '53', '52', '51',
+  '61', '62', '63', '64', '65',
+  '85', '84', '83', '82', '81',
+  '71', '72', '73', '74', '75',
+];
 
 const normalizeSpace = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
@@ -56,6 +73,17 @@ const uniqueStrings = (values: string[]): string[] => {
   return unique;
 };
 
+const blobToBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      resolve(result.includes(',') ? result.split(',', 2)[1] : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Failed to read PDF blob'));
+    reader.readAsDataURL(blob);
+  });
+
 const notifyConsentSaved = (patientId: string, consentTypeId: string) => {
   if (!patientId) return;
 
@@ -80,6 +108,8 @@ const ConsentFormBuilderPage: React.FC = () => {
   const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const patientQuery = queryParams.get('patientId') || '';
   const embedMode = queryParams.get('embed') === '1';
+  const returnTo = queryParams.get('returnTo') || '';
+  const lockedPatientContext = Boolean(patientQuery);
 
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [templates, setTemplates] = useState<ConsentTemplate[]>([]);
@@ -93,13 +123,11 @@ const ConsentFormBuilderPage: React.FC = () => {
   const [patientAge, setPatientAge] = useState('');
   const [patientGender, setPatientGender] = useState('');
   const [patientPhone, setPatientPhone] = useState('');
-  const [patientSearch, setPatientSearch] = useState('');
-  const [patientOptions, setPatientOptions] = useState<any[]>([]);
   const [mobilePanel, setMobilePanel] = useState<'builder' | 'preview'>('builder');
 
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [associatedComplaint, setAssociatedComplaint] = useState('');
-  const [rows, setRows] = useState<ConditionProcedureRow[]>([{ id: crypto.randomUUID(), condition: '', procedure: '' }]);
+  const [rows, setRows] = useState<ConditionProcedureRow[]>([{ id: crypto.randomUUID(), toothNumber: '', condition: '', procedure: '' }]);
   const [conditionOptions, setConditionOptions] = useState<string[]>([]);
   const [procedureOptions, setProcedureOptions] = useState<string[]>([]);
   const [conditionTypeMap, setConditionTypeMap] = useState<Record<string, string>>({});
@@ -116,18 +144,17 @@ const ConsentFormBuilderPage: React.FC = () => {
 
   const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
   const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10));
+  const [medicalHistory, setMedicalHistory] = useState<Record<string, any>>({});
 
   const [summaryText, setSummaryText] = useState('');
   const [summaryEdited, setSummaryEdited] = useState(false);
 
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
-  const [qrModalOpen, setQrModalOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState('');
-  const [shareToken, setShareToken] = useState('');
-  const [isGeneratingShare, setIsGeneratingShare] = useState(false);
+  const [isSavingConsent, setIsSavingConsent] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewRootRef = useRef<HTMLDivElement | null>(null);
   const prefilledPatientRef = useRef<string>('');
   const [isDrawing, setIsDrawing] = useState(false);
   const clinicDisplayName = profile?.basic_info?.clinic_name || clinicId || 'Clinic';
@@ -146,8 +173,8 @@ const ConsentFormBuilderPage: React.FC = () => {
       return [];
     }
 
-    const extractedPairs: Array<{ condition: string; procedure: string }> = [];
-    Object.values(chart.teeth).forEach((toothEntry: any) => {
+    const extractedPairs: Array<{ toothNumber: string; condition: string; procedure: string }> = [];
+    Object.entries(chart.teeth).forEach(([toothNumber, toothEntry]: [string, any]) => {
       const conditionsForTooth = (toothEntry?.conditions || [])
         .map((condition: any) => {
           const rawType = String(condition?.type || '').trim();
@@ -163,17 +190,19 @@ const ConsentFormBuilderPage: React.FC = () => {
       const maxRows = Math.max(conditionsForTooth.length, proceduresForTooth.length);
       for (let idx = 0; idx < maxRows; idx += 1) {
         extractedPairs.push({
+          toothNumber: String(toothNumber || '').trim(),
           condition: conditionsForTooth[idx] || conditionsForTooth[0] || '',
           procedure: proceduresForTooth[idx] || proceduresForTooth[0] || '',
         });
       }
     });
 
-    const unique = new Map<string, { condition: string; procedure: string }>();
+    const unique = new Map<string, { toothNumber: string; condition: string; procedure: string }>();
     extractedPairs.forEach((entry) => {
-      const key = `${normalizeSpace(entry.condition).toLowerCase()}::${normalizeSpace(entry.procedure).toLowerCase()}`;
+      const key = `${normalizeSpace(entry.toothNumber).toLowerCase()}::${normalizeSpace(entry.condition).toLowerCase()}::${normalizeSpace(entry.procedure).toLowerCase()}`;
       if (!unique.has(key)) {
         unique.set(key, {
+          toothNumber: normalizeSpace(entry.toothNumber),
           condition: normalizeSpace(entry.condition),
           procedure: normalizeSpace(entry.procedure),
         });
@@ -264,13 +293,24 @@ const ConsentFormBuilderPage: React.FC = () => {
         setPatientAge(patientResponse.age !== null && patientResponse.age !== undefined ? String(patientResponse.age) : '');
         setPatientGender(patientResponse.sex || '');
         setPatientPhone(patientResponse.mobile || '');
+        setMedicalHistory(
+          (() => {
+            try {
+              const raw = (patientResponse as any)?.medical_history;
+              if (!raw) return {};
+              return typeof raw === 'string' ? JSON.parse(raw) : raw;
+            } catch {
+              return {};
+            }
+          })()
+        );
 
         if (prefilledPatientRef.current !== patientId) {
           const prefilledRows = buildRowsFromChart(chartResponse);
           if (prefilledRows.length) {
             setRows(prefilledRows);
           } else {
-            setRows([{ id: crypto.randomUUID(), condition: '', procedure: '' }]);
+            setRows([{ id: crypto.randomUUID(), toothNumber: '', condition: '', procedure: '' }]);
           }
           prefilledPatientRef.current = patientId;
         }
@@ -288,28 +328,6 @@ const ConsentFormBuilderPage: React.FC = () => {
 
     loadPatientContext();
   }, [patientId, buildRowsFromChart]);
-
-  useEffect(() => {
-    const searchPatients = async () => {
-      if (!patientSearch || patientSearch.trim().length < 2) {
-        setPatientOptions([]);
-        return;
-      }
-
-      try {
-        const options = await patientService.searchPatients({
-          search_term: patientSearch.trim(),
-          limit: 8,
-        });
-        setPatientOptions(options || []);
-      } catch {
-        setPatientOptions([]);
-      }
-    };
-
-    const timer = setTimeout(searchPatients, 250);
-    return () => clearTimeout(timer);
-  }, [patientSearch]);
 
   const consentTypes = useMemo(() => {
     const seen = new Map<string, string>();
@@ -351,7 +369,44 @@ const ConsentFormBuilderPage: React.FC = () => {
     () => uniqueStrings(rows.map((row) => row.procedure)),
     [rows]
   );
+  const teethList = useMemo(
+    () => uniqueStrings(rows.map((row) => row.toothNumber)),
+    [rows]
+  );
   const anesthesiaText = anesthesiaTags.join(', ');
+
+  const medicalHistoryItems = useMemo<MedicalHistorySummaryItem[]>(() => {
+    if (!medicalHistory || typeof medicalHistory !== 'object') {
+      return [];
+    }
+
+    const preferredOrder = [
+      'nrmh',
+      'diabetic',
+      'cardiac_history',
+      'allergies',
+      'family_heart_disease',
+      'covid_vaccinated',
+      'blood_pressure',
+    ];
+
+    const orderedKeys = [
+      ...preferredOrder.filter((key) => key in medicalHistory),
+      ...Object.keys(medicalHistory).filter((key) => !preferredOrder.includes(key)),
+    ];
+
+    return orderedKeys
+      .filter((key) => medicalHistory[key] !== null && medicalHistory[key] !== undefined && medicalHistory[key] !== '' && medicalHistory[key] !== false)
+      .map((key) => ({
+        label: toDisplayName(key),
+        value: typeof medicalHistory[key] === 'boolean' ? 'Yes' : String(medicalHistory[key]),
+      }));
+  }, [medicalHistory]);
+
+  const toothOptions = useMemo(
+    () => uniqueStrings([...toothNumberPresets, ...teethList]),
+    [teethList]
+  );
 
   const placeholderContext = useMemo(
     () => ({
@@ -381,13 +436,38 @@ const ConsentFormBuilderPage: React.FC = () => {
     return replaceConsentPlaceholders(source, placeholderContext);
   }, [minorMode, selectedTemplate, placeholderContext]);
 
-  const consentPages = useMemo(() => chunkConsentSections(hydratedSections, 3), [hydratedSections]);
+  const consentPages = useMemo(() => {
+    const summaryWeightBoost = Math.min((renderedSummaryText || '').length * 0.25, 700);
+    const complaintsBoost = Math.min((chiefComplaint.length + associatedComplaint.length) * 0.15, 250);
+    const rowsBoost = rows.length * 60;
+    const historyBoost = medicalHistoryItems.length * 40;
+    const firstPagePenalty = summaryWeightBoost + complaintsBoost + rowsBoost + historyBoost + (minorMode ? 160 : 0);
+
+    const baseFirstCapacity = language === 'en' ? 3400 : 3600;
+    const adjustedFirstCapacity = Math.max(2200, baseFirstCapacity - firstPagePenalty);
+    const otherCapacity = language === 'en' ? 4200 : 4500;
+
+    return paginateConsentSections(hydratedSections, {
+      firstPageCapacity: adjustedFirstCapacity,
+      otherPageCapacity: otherCapacity,
+      maxSectionsPerPage: language === 'en' ? 3 : 4,
+    });
+  }, [
+    hydratedSections,
+    renderedSummaryText,
+    chiefComplaint,
+    associatedComplaint,
+    rows.length,
+    medicalHistoryItems.length,
+    minorMode,
+    language,
+  ]);
 
   const signatoryLabel = minorMode ? 'Parent/Guardian Signature' : 'Patient Signature';
   const signatoryName = minorMode ? guardianName || '________________' : patientName || '________________';
 
   const addRow = () => {
-    setRows((prev) => [...prev, { id: crypto.randomUUID(), condition: '', procedure: '' }]);
+    setRows((prev) => [...prev, { id: crypto.randomUUID(), toothNumber: '', condition: '', procedure: '' }]);
   };
 
   const removeRow = (id: string) => {
@@ -410,18 +490,6 @@ const ConsentFormBuilderPage: React.FC = () => {
     setAnesthesiaTags((prev) => prev.filter((tag) => tag !== value));
   };
 
-  const selectPatient = (row: any) => {
-    const id = row.patient_id || row.name;
-    setPatientId(id || '');
-    setPatientName(row.patient_name || row.name || '');
-    setPatientAge(row.age !== null && row.age !== undefined ? String(row.age) : '');
-    setPatientGender(row.sex || '');
-    setPatientPhone(row.mobile || '');
-    setPatientSearch('');
-    setPatientOptions([]);
-    setMobilePanel('builder');
-  };
-
   const buildCurrentPayload = () => {
     return {
       patient_id: patientId,
@@ -436,6 +504,7 @@ const ConsentFormBuilderPage: React.FC = () => {
       clinic_name: clinicDisplayName,
       chief_complaint: chiefComplaint,
       associated_complaint: associatedComplaint,
+      medical_history: medicalHistory,
       rows,
       diagnosis,
       treatment_plan: treatmentPlan,
@@ -453,12 +522,120 @@ const ConsentFormBuilderPage: React.FC = () => {
   };
 
   const buildConsentHtml = () => {
-    const sectionsHtml = hydratedSections.map((section) => renderSectionHtml(section)).join('');
     const tableRowsHtml = rows
       .map(
         (row) =>
-          `<tr><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row.condition || '-')}</td><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row.procedure || '-')}</td></tr>`
+          `<tr><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row.toothNumber || '-')}</td><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row.condition || '-')}</td><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row.procedure || '-')}</td></tr>`
       )
+      .join('');
+    const medicalHistoryHtml = medicalHistoryItems.length
+      ? medicalHistoryItems
+          .map(
+            (item) =>
+              `<div style="margin:0 0 6px;"><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>`
+          )
+          .join('')
+      : '<div style="margin:0;color:#6b7280;">No significant medical history recorded.</div>';
+    const signatureHtml = signatureDataUrl
+      ? `<img src="${signatureDataUrl}" alt="Signature" style="max-height:72px;display:inline-block;" />`
+      : '<div style="display:inline-block;width:180px;border-bottom:1px solid #9ca3af;height:40px;"></div>';
+    const pageBlocksHtml = consentPages
+      .map((pageSections, pageIndex) => {
+        const sectionsHtml = pageSections.map((section) => renderSectionHtml(section)).join('');
+        const firstPageHtml = pageIndex === 0
+          ? `
+          <section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:13px;margin-bottom:16px;">
+            <p><strong>Patient:</strong> ${escapeHtml(patientName || '-')}</p>
+            <p><strong>Patient ID:</strong> ${escapeHtml(patientId || '-')}</p>
+            <p><strong>Age / Gender:</strong> ${escapeHtml([patientAge, patientGender].filter(Boolean).join(' / ') || '-')}</p>
+            <p><strong>Phone:</strong> ${escapeHtml(patientPhone || '-')}</p>
+            <p style="grid-column:1 / -1;"><strong>Doctor:</strong> ${escapeHtml(doctorName)}</p>
+          </section>
+
+          <section style="margin-bottom:16px;font-size:13px;">
+            <p><strong>Chief Complaint:</strong> ${escapeHtml(chiefComplaint || '-')}</p>
+            <p style="margin-top:6px;"><strong>Associated Complaint:</strong> ${escapeHtml(associatedComplaint || '-')}</p>
+          </section>
+
+          <section style="margin-bottom:16px;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead>
+                <tr style="background:#f9fafb;">
+                  <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Tooth</th>
+                  <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Condition</th>
+                  <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Procedure</th>
+                </tr>
+              </thead>
+              <tbody>${tableRowsHtml}</tbody>
+            </table>
+          </section>
+
+          <section style="margin-bottom:16px;font-size:13px;">
+            <h3 style="font-weight:600;font-size:14px;margin:0 0 6px;">Medical History</h3>
+            ${medicalHistoryHtml}
+          </section>
+
+          <section style="margin-bottom:16px;font-size:13px;">
+            <p><strong>Diagnosis:</strong> ${escapeHtml(diagnosis || '-')}</p>
+            <p><strong>Treatment Plan:</strong> ${escapeHtml(treatmentPlan || '-')}</p>
+            <p><strong>Anesthesia:</strong> ${escapeHtml(anesthesiaText || '-')}</p>
+          </section>
+
+          ${minorMode ? `
+          <section style="margin-bottom:16px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:12px;font-size:13px;">
+            <p><strong>Guardian Name:</strong> ${escapeHtml(guardianName || '-')}</p>
+            <p><strong>Relationship:</strong> ${escapeHtml(guardianRelationship || '-')}</p>
+            <p><strong>Guardian Phone:</strong> ${escapeHtml(guardianPhone || '-')}</p>
+          </section>
+          ` : ''}
+
+          <section style="margin-bottom:18px;">
+            <h3 style="font-weight:600;font-size:14px;margin:0 0 6px;">Consent Summary</h3>
+            <p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">${escapeHtml(renderedSummaryText || '-')}</p>
+          </section>
+          `
+          : '';
+
+        const declarationHtml = pageIndex === consentPages.length - 1
+          ? `<p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0 0 12px;">${escapeHtml(declarationText)}</p>`
+          : '';
+
+        return `
+        <article class="consent-print-page ${language === 'ml' ? 'consent-ml-text' : ''}">
+          <header style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid #e5e7eb;padding-bottom:12px;margin-bottom:14px;">
+            <div>
+              <h2 style="font-size:28px;line-height:1.2;font-weight:700;margin:0;">${escapeHtml(clinicDisplayName)}</h2>
+              <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">Informed Consent Form</p>
+            </div>
+            <div style="font-size:12px;color:#4b5563;text-align:right;">
+              <p style="margin:0;"><strong>Issue Date:</strong> ${escapeHtml(issueDate || '-')}</p>
+              <p style="margin:2px 0 0;"><strong>Visit Date:</strong> ${escapeHtml(visitDate || '-')}</p>
+              <p style="margin:2px 0 0;"><strong>Page:</strong> ${pageIndex + 1} / ${consentPages.length}</p>
+            </div>
+          </header>
+
+          ${firstPageHtml}
+
+          <section style="font-size:13px;line-height:1.6;display:flex;flex-direction:column;gap:12px;">
+            ${sectionsHtml}
+          </section>
+
+          <footer style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px;">
+            ${declarationHtml}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;">
+              <div>
+                <p style="color:#6b7280;margin:0 0 4px;">Signatory</p>
+                <p style="font-weight:600;margin:0;">${escapeHtml(signatoryName)}</p>
+                <p style="font-size:12px;color:#6b7280;margin:2px 0 0;">${escapeHtml(signatoryLabel)}</p>
+              </div>
+              <div style="text-align:right;">
+                ${signatureHtml}
+              </div>
+            </div>
+          </footer>
+        </article>
+        `;
+      })
       .join('');
 
     return `
@@ -467,103 +644,128 @@ const ConsentFormBuilderPage: React.FC = () => {
 <head>
   <meta charset="utf-8" />
   <title>Consent - ${escapeHtml(patientName || patientId || 'Patient')}</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    body {
+      margin: 0;
+      background: #f3f4f6;
+      color: #111827;
+      font-family: Arial, sans-serif;
+    }
+    .consent-print-root {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+    }
+    .consent-print-page {
+      width: 100%;
+      box-sizing: border-box;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+      padding: 24px;
+      margin: 0 0 16px 0;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      break-after: page;
+      page-break-after: always;
+    }
+    .consent-print-page:last-child {
+      break-after: auto;
+      page-break-after: auto;
+    }
+    .consent-ml-text {
+      font-family: 'NotoSansMalayalamLight', 'Noto Sans Malayalam', sans-serif;
+    }
+  </style>
 </head>
-<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;padding:24px;">
-  <h2 style="margin:0 0 12px;">${escapeHtml(clinicDisplayName)}</h2>
-  <p style="margin:0 0 8px;"><strong>Patient:</strong> ${escapeHtml(patientName || patientId || '')}</p>
-  <p style="margin:0 0 8px;"><strong>Consent Type:</strong> ${escapeHtml(selectedTemplate?.consent_type_label || consentTypeId)}</p>
-  <p style="margin:0 0 12px;"><strong>Language:</strong> ${escapeHtml(language.toUpperCase())}</p>
-  <h3 style="margin:16px 0 8px;">Condition / Procedure</h3>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><thead><tr><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Condition</th><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Procedure</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>
-  <h3 style="margin:16px 0 8px;">Summary</h3>
-  <p style="white-space:pre-wrap;margin:0 0 16px;">${escapeHtml(renderedSummaryText)}</p>
-  <h3 style="margin:16px 0 8px;">Consent Content</h3>
-  ${sectionsHtml}
-  <h3 style="margin:16px 0 8px;">Declaration</h3>
-  <p style="white-space:pre-wrap;margin:0 0 16px;">${escapeHtml(declarationText)}</p>
+<body>
+  <div class="consent-print-root">
+    ${pageBlocksHtml}
+  </div>
 </body>
 </html>
     `;
   };
 
-  const ensureShareLink = async () => {
+  const generateConsentPdfBlob = async () => {
+    const fileLabel = `${patientName || patientId || 'patient'}-${selectedTemplate?.consent_type_label || consentTypeId || 'consent'}`
+      .replace(/[^a-z0-9-_]+/gi, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    const filename = `${fileLabel || 'consent-form'}.pdf`;
+
+    const previewRoot = previewRootRef.current;
+    const previewVisible = Boolean(previewRoot && previewRoot.offsetParent !== null);
+    if (previewRoot && previewVisible) {
+      const pageElements = Array.from(previewRoot.querySelectorAll('.consent-print-page')) as HTMLElement[];
+      if (pageElements.length > 0) {
+        return generatePdfBlobFromPageElements(pageElements, filename);
+      }
+      return generatePdfBlobFromElement(previewRoot, filename);
+    }
+
+    return generatePdfBlobFromHtml(buildConsentHtml(), filename);
+  };
+
+  const handleSaveConsent = async () => {
     if (!patientId) {
-      toast.error('Select a patient before sharing');
-      return null;
+      toast.error('Patient context is required before saving');
+      return;
     }
 
     if (!consentTypeId) {
       toast.error('Select a consent type first');
-      return null;
+      return;
     }
 
-    setIsGeneratingShare(true);
+    setIsSavingConsent(true);
     try {
-      const result = await consentFormService.createShareLink({
-        patient_id: patientId,
-        consent_type_id: consentTypeId,
-        language,
-        clinic: clinicId || undefined,
-        payload: buildCurrentPayload(),
-        summary_text: renderedSummaryText,
-        app_base_url: window.location.origin,
-      });
+      const pdfBlob = await generateConsentPdfBlob();
+      const pdfBase64 = await blobToBase64(pdfBlob);
+      const fileName = `${patientId}-${consentTypeId}-${new Date().toISOString().slice(0, 10)}.pdf`;
 
-      setShareUrl(result.share_url);
-      setShareToken(result.token);
-      return result.share_url;
-    } catch (error: any) {
-      console.error('Failed to generate share URL', error);
-      toast.error(error?.message || 'Failed to generate share URL');
-      return null;
-    } finally {
-      setIsGeneratingShare(false);
-    }
-  };
-
-  const handleOpenQr = async () => {
-    const url = await ensureShareLink();
-    if (!url) return;
-    setQrModalOpen(true);
-  };
-
-  const handleCopyShareUrl = async () => {
-    if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success('Link copied');
-    } catch {
-      toast.error('Unable to copy link');
-    }
-  };
-
-  const handleShareWhatsApp = async () => {
-    const url = await ensureShareLink();
-    if (!url) return;
-
-    const phone = (minorMode ? guardianPhone : patientPhone || guardianPhone || '').replace(/[^\d+]/g, '');
-    const message = `${renderedSummaryText || 'Please review the consent form'}\n\n${url}`;
-    const target = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(target, '_blank');
-  };
-
-  const persistArtifacts = async (signatureOverride?: string) => {
-    if (!patientId) return;
-    try {
       await consentFormService.saveConsentArtifacts({
         patient_id: patientId,
         consent_type_id: consentTypeId,
+        consent_type_label: selectedTemplate?.consent_type_label || consentTypeId,
         language,
         clinic: clinicId || undefined,
         summary_text: renderedSummaryText,
-        signature_data_url: signatureOverride || signatureDataUrl || undefined,
-        consent_html: buildConsentHtml(),
+        signature_data_url: signatureDataUrl || undefined,
+        consent_pdf_base64: pdfBase64,
+        consent_pdf_filename: fileName,
+        payload: buildCurrentPayload(),
+        signer_name: minorMode ? guardianName || patientName : patientName,
+        signer_role: minorMode ? 'Parent/Guardian' : 'Patient',
       });
+
       notifyConsentSaved(patientId, consentTypeId);
-      toast.success('Saved to patient files');
+      setSignatureDataUrl('');
+      toast.success('Consent form saved');
     } catch (error: any) {
       console.error('Failed to save consent artifacts', error);
-      toast.error(error?.message || 'Could not save consent file');
+      toast.error(error?.message || 'Could not save consent form');
+    } finally {
+      setIsSavingConsent(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    try {
+      toast.loading('Preparing PDF...', { id: 'consent-pdf' });
+      const pdfBlob = await generateConsentPdfBlob();
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(pdfBlob);
+      link.href = url;
+      link.download = `${patientId || 'patient'}-${consentTypeId || 'consent'}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF ready', { id: 'consent-pdf' });
+    } catch (error) {
+      console.error('Failed to generate consent PDF', error);
+      toast.error('Failed to generate PDF', { id: 'consent-pdf' });
     }
   };
 
@@ -644,24 +846,25 @@ const ConsentFormBuilderPage: React.FC = () => {
     const dataUrl = canvas.toDataURL('image/png');
     setSignatureDataUrl(dataUrl);
     setSignatureModalOpen(false);
-    await persistArtifacts(dataUrl);
-  };
-
-  const handlePrint = () => {
-    window.print();
+    toast.success('Signature applied to preview');
   };
 
   return (
-    <div className={`flex ${embedMode ? 'h-full min-h-[900px]' : 'min-h-screen'} bg-primary-50`}>
+    <div className={`flex ${embedMode ? 'h-full min-h-[900px]' : 'h-[100dvh] overflow-hidden'} bg-primary-50`}>
       {!embedMode && <Sidebar />}
 
-      <div className={`flex-1 flex flex-col ${embedMode ? '' : 'lg:pl-20'}`}>
-        {!embedMode && <TopBar title="Consent Form Builder" onBack={() => navigate('/patients')} showMenu />}
+      <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${embedMode ? '' : 'lg:pl-20'}`}>
+        {!embedMode && (
+          <TopBar
+            title="Consent Form Builder"
+            onBack={() => navigate(returnTo || (patientQuery ? `/prescriptions/${patientQuery}?section=consent` : '/patients'))}
+            showMenu
+          />
+        )}
 
         <div className="consent-topbar px-4 sm:px-6 py-3 border-b bg-white flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={handleShareWhatsApp} isLoading={isGeneratingShare}>Share via WhatsApp</Button>
-          <Button size="sm" variant="outline" onClick={handleOpenQr} isLoading={isGeneratingShare}>QR Code</Button>
           <Button size="sm" variant="outline" onClick={openSignatureModal}>eSignature</Button>
+          <Button size="sm" onClick={handleSaveConsent} isLoading={isSavingConsent}>Save</Button>
           <Button size="sm" onClick={handlePrint}>Print</Button>
         </div>
 
@@ -684,9 +887,9 @@ const ConsentFormBuilderPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] h-full">
-            <aside className={`consent-builder-panel overflow-y-auto border-r bg-white px-4 sm:px-6 py-4 space-y-4 ${mobilePanel === 'preview' ? 'hidden lg:block' : ''}`}>
+        <div className="flex-1 overflow-hidden min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-[480px_minmax(0,1fr)] h-full min-h-0">
+            <aside className={`consent-builder-panel overflow-y-auto overscroll-contain min-h-0 border-r bg-white px-4 sm:px-6 py-4 space-y-4 ${mobilePanel === 'preview' ? 'hidden lg:block' : ''}`}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Consent Type</label>
                 <select
@@ -728,66 +931,45 @@ const ConsentFormBuilderPage: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Search</label>
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                  value={patientSearch}
-                  onChange={(event) => setPatientSearch(event.target.value)}
-                  placeholder="Search patient by name or ID"
-                />
-                {patientOptions.length > 0 && (
-                  <div className="mt-2 border border-gray-200 rounded-lg max-h-40 overflow-y-auto">
-                    {patientOptions.map((row) => (
-                      <button
-                        type="button"
-                        key={row.patient_id || row.name}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b last:border-b-0"
-                        onClick={() => selectPatient(row)}
-                      >
-                        <p className="text-sm font-medium text-gray-900">{row.patient_name || row.name}</p>
-                        <p className="text-xs text-gray-500">{row.patient_id || row.name} • {row.mobile || '-'}</p>
-                      </button>
-                    ))}
+              {!lockedPatientContext && (
+                <>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                      <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientId} onChange={(event) => setPatientId(event.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                      <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientName} onChange={(event) => setPatientName(event.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                        <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientAge} onChange={(event) => setPatientAge(event.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                        <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientGender} onChange={(event) => setPatientGender(event.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientPhone} onChange={(event) => setPatientPhone(event.target.value)} />
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
-                  <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientId} onChange={(event) => setPatientId(event.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
-                  <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientName} onChange={(event) => setPatientName(event.target.value)} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                    <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientAge} onChange={(event) => setPatientAge(event.target.value)} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Issue Date</label>
+                      <input type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date</label>
+                      <input type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2" value={visitDate} onChange={(event) => setVisitDate(event.target.value)} />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                    <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientGender} onChange={(event) => setPatientGender(event.target.value)} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input className="w-full rounded-lg border border-gray-300 px-3 py-2" value={patientPhone} onChange={(event) => setPatientPhone(event.target.value)} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Issue Date</label>
-                  <input type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Visit Date</label>
-                  <input type="date" className="w-full rounded-lg border border-gray-300 px-3 py-2" value={visitDate} onChange={(event) => setVisitDate(event.target.value)} />
-                </div>
-              </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Chief Complaint</label>
@@ -807,7 +989,22 @@ const ConsentFormBuilderPage: React.FC = () => {
 
                 <div className="space-y-2">
                   {rows.map((row) => (
-                    <div key={row.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                    <div key={row.id} className="grid grid-cols-1 sm:grid-cols-[110px_1fr_1fr_auto] gap-2 items-start">
+                      <div>
+                        <select
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          value={row.toothNumber}
+                          onChange={(event) => updateRow(row.id, 'toothNumber', event.target.value)}
+                        >
+                          <option value="">Tooth no.</option>
+                          {row.toothNumber && !toothOptions.includes(row.toothNumber) && (
+                            <option value={row.toothNumber}>{row.toothNumber}</option>
+                          )}
+                          {toothOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
                       <div>
                         <select
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
@@ -840,11 +1037,13 @@ const ConsentFormBuilderPage: React.FC = () => {
                       </div>
                       <button
                         type="button"
-                        className="px-2 py-2 text-red-500 text-sm sm:self-center"
+                        className="h-10 w-10 inline-flex items-center justify-center text-red-500 sm:self-center hover:bg-red-50 rounded-lg"
                         onClick={() => removeRow(row.id)}
                         title="Remove row"
                       >
-                        Remove
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        </svg>
                       </button>
                     </div>
                   ))}
@@ -933,7 +1132,7 @@ const ConsentFormBuilderPage: React.FC = () => {
                   </button>
                 </div>
                 <textarea
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[120px]"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 min-h-[280px] resize-y"
                   value={summaryText}
                   onChange={(event) => {
                     setSummaryEdited(true);
@@ -943,8 +1142,8 @@ const ConsentFormBuilderPage: React.FC = () => {
               </div>
             </aside>
 
-            <main className={`consent-preview-panel overflow-y-auto bg-gray-100 p-4 sm:p-6 ${mobilePanel === 'builder' ? 'hidden lg:block' : ''}`}>
-              <div className="consent-print-root max-w-[900px] mx-auto space-y-6">
+            <main className={`consent-preview-panel overflow-y-auto overscroll-contain min-h-0 bg-gray-100 p-4 sm:p-6 ${mobilePanel === 'builder' ? 'hidden lg:block' : ''}`}>
+              <div ref={previewRootRef} className="consent-print-root max-w-[900px] mx-auto space-y-6">
                 {consentPages.map((pageSections, pageIndex) => (
                   <article
                     key={`page-${pageIndex}`}
@@ -981,6 +1180,7 @@ const ConsentFormBuilderPage: React.FC = () => {
                           <table className="w-full border-collapse text-sm">
                             <thead>
                               <tr className="bg-gray-50">
+                                <th className="border border-gray-200 px-2 py-1 text-left">Tooth</th>
                                 <th className="border border-gray-200 px-2 py-1 text-left">Condition</th>
                                 <th className="border border-gray-200 px-2 py-1 text-left">Procedure</th>
                               </tr>
@@ -988,12 +1188,28 @@ const ConsentFormBuilderPage: React.FC = () => {
                             <tbody>
                               {rows.map((row) => (
                                 <tr key={row.id}>
+                                  <td className="border border-gray-200 px-2 py-1">{row.toothNumber || '-'}</td>
                                   <td className="border border-gray-200 px-2 py-1">{row.condition || '-'}</td>
                                   <td className="border border-gray-200 px-2 py-1">{row.procedure || '-'}</td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
+                        </section>
+
+                        <section className="mb-4 text-sm space-y-1">
+                          <h3 className="font-semibold text-sm mb-1">Medical History</h3>
+                          {medicalHistoryItems.length > 0 ? (
+                            <div className="space-y-1">
+                              {medicalHistoryItems.map((item) => (
+                                <p key={`${item.label}-${item.value}`}>
+                                  <strong>{item.label}:</strong> {item.value}
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-gray-500">No significant medical history recorded.</p>
+                          )}
                         </section>
 
                         <section className="mb-4 text-sm space-y-1">
@@ -1096,33 +1312,7 @@ const ConsentFormBuilderPage: React.FC = () => {
             <div className="mt-4 flex justify-end gap-2">
               <Button size="sm" variant="outline" onClick={clearSignature}>Clear</Button>
               <Button size="sm" variant="outline" onClick={() => setSignatureModalOpen(false)}>Cancel</Button>
-              <Button size="sm" onClick={saveSignature}>Save Signature</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {qrModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5">
-            <h3 className="text-lg font-semibold text-gray-900">Consent Review QR</h3>
-            <p className="text-sm text-gray-500 mt-1">Scan to open the mobile consent review and signing flow.</p>
-
-            {shareUrl && (
-              <div className="mt-4 text-center">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(shareUrl)}`}
-                  alt="Consent QR"
-                  className="inline-block rounded-lg border border-gray-200"
-                />
-                <p className="text-xs text-gray-500 mt-3 break-all">{shareUrl}</p>
-                {shareToken && <p className="text-[11px] text-gray-400 mt-1">Token: {shareToken}</p>}
-              </div>
-            )}
-
-            <div className="mt-5 flex justify-end gap-2">
-              <Button size="sm" variant="outline" onClick={() => setQrModalOpen(false)}>Close</Button>
-              <Button size="sm" variant="outline" onClick={handleCopyShareUrl}>Copy URL</Button>
+              <Button size="sm" onClick={saveSignature}>Apply Signature</Button>
             </div>
           </div>
         </div>

@@ -647,6 +647,24 @@ export interface SharedConsentPayload {
   template?: ConsentTemplate | null;
 }
 
+export interface ConsentRecord {
+  name: string;
+  status: 'Created' | 'Signed' | 'Expired';
+  language: 'en' | 'ml' | string;
+  consent_type_id: string;
+  consent_type_label: string;
+  doctor?: string | null;
+  doctor_name?: string | null;
+  summary_text: string;
+  signed_on?: string | null;
+  signed_by?: string | null;
+  signer_role?: 'Patient' | 'Parent/Guardian' | string | null;
+  creation: string;
+  modified?: string;
+  consent_file_id?: string | null;
+  payload: Record<string, any>;
+}
+
 // Dashboard/Statistics types (inferred from the mobile app)
 export interface DashboardStats {
   total_patients: number;
