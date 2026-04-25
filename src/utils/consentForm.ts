@@ -91,6 +91,64 @@ export const chunkConsentSections = (sections: ConsentSection[], pageSize = 3): 
   return pages;
 };
 
+const sectionWeight = (section: ConsentSection): number => {
+  const headingWeight = (section.heading || '').length * 0.6;
+  const bodyWeight = (section.body || '').length;
+  const itemsWeight = (section.items || []).reduce((sum, item) => sum + item.length, 0) * 0.9;
+  const numberedWeight = (section.numbered || []).reduce((sum, item) => sum + item.length, 0) * 0.9;
+  const footerWeight = (section.footer || '').length;
+  // Each section has a fixed visual overhead: spacing, margins, and optional list bullets.
+  const structuralOverhead = 220;
+  return headingWeight + bodyWeight + itemsWeight + numberedWeight + footerWeight + structuralOverhead;
+};
+
+export const paginateConsentSections = (
+  sections: ConsentSection[],
+  options?: {
+    firstPageCapacity?: number;
+    otherPageCapacity?: number;
+    maxSectionsPerPage?: number;
+  }
+): ConsentSection[][] => {
+  if (!sections.length) {
+    return [[]];
+  }
+
+  const firstPageCapacity = options?.firstPageCapacity ?? 3600;
+  const otherPageCapacity = options?.otherPageCapacity ?? 4300;
+  const maxSectionsPerPage = options?.maxSectionsPerPage ?? 4;
+
+  const pages: ConsentSection[][] = [];
+  let currentPage: ConsentSection[] = [];
+  let currentWeight = 0;
+
+  const pushPage = () => {
+    if (!currentPage.length) return;
+    pages.push(currentPage);
+    currentPage = [];
+    currentWeight = 0;
+  };
+
+  sections.forEach((section) => {
+    const pageIndex = pages.length;
+    const capacity = pageIndex === 0 ? firstPageCapacity : otherPageCapacity;
+    const weight = sectionWeight(section);
+
+    const exceedsWeight = currentWeight + weight > capacity;
+    const exceedsCount = currentPage.length >= maxSectionsPerPage;
+
+    if ((exceedsWeight || exceedsCount) && currentPage.length > 0) {
+      pushPage();
+    }
+
+    currentPage.push(section);
+    currentWeight += weight;
+  });
+
+  pushPage();
+  return pages.length ? pages : [[]];
+};
+
 export const renderSectionHtml = (section: ConsentSection): string => {
   const parts: string[] = [];
   if (section.heading) {

@@ -33,6 +33,7 @@ import {
   clinicProfileService,
   prescriptionService
 } from '../api/services';
+import { consentFormService } from '../api/services/consentForm';
 import toast from 'react-hot-toast';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import ImageViewerModal from '../components/common/ImageViewerModal';
@@ -132,6 +133,14 @@ const dedupeFilesById = (files: any[]): any[] => {
 
 const CONSENT_SAVED_MESSAGE = 'mob_clinic:consent-saved';
 
+const resolveInitialSection = (search: string): 'medical' | 'payments' | 'dental-chart' | 'consent' => {
+  const section = new URLSearchParams(search).get('section');
+  if (section === 'payments' || section === 'dental-chart' || section === 'consent') {
+    return section;
+  }
+  return 'medical';
+};
+
 const fetchPatientContextFiles = async (patientId: string, appointmentId?: string | null): Promise<any[]> => {
   if (!patientId) {
     return [];
@@ -189,11 +198,13 @@ const PrescriptionPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart' | 'consent'>('medical');
+  const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart' | 'consent'>(() => resolveInitialSection(location.search));
   const [dentalChartData, setDentalChartData] = useState<Record<number, ToothData>>({});
   const [showFileUploadModal, setShowFileUploadModal] = useState(false);
   const [patientFiles, setPatientFiles] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [consentRecords, setConsentRecords] = useState<any[]>([]);
+  const [isLoadingConsentRecords, setIsLoadingConsentRecords] = useState(false);
   const [selectedFileCategory, setSelectedFileCategory] = useState<string>('all');
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [viewerImages, setViewerImages] = useState<Array<{ url: string; caption?: string }>>([]);
@@ -321,6 +332,24 @@ const PrescriptionPage: React.FC = () => {
     }
   }, [patientId, appointmentId]);
 
+  const refreshPatientConsents = React.useCallback(async () => {
+    if (!patientId) {
+      setConsentRecords([]);
+      return;
+    }
+
+    setIsLoadingConsentRecords(true);
+    try {
+      const records = await consentFormService.listPatientConsents(patientId, clinicId || undefined);
+      setConsentRecords(records || []);
+    } catch (error) {
+      console.error('Error fetching patient consent records:', error);
+      toast.error('Failed to load consent forms');
+    } finally {
+      setIsLoadingConsentRecords(false);
+    }
+  }, [patientId, clinicId]);
+
   const prescriptionDoctorOptions = React.useMemo(() => {
     const options = new Map<string, string>();
     const practitioners = practitionersData?.data || [];
@@ -434,6 +463,10 @@ const PrescriptionPage: React.FC = () => {
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
+    setCurrentSection(resolveInitialSection(location.search));
+  }, [location.search]);
+
+  React.useEffect(() => {
     let isMounted = true;
 
     const loadFiles = async () => {
@@ -468,6 +501,10 @@ const PrescriptionPage: React.FC = () => {
   }, [patientId, appointmentId]);
 
   React.useEffect(() => {
+    refreshPatientConsents();
+  }, [refreshPatientConsents]);
+
+  React.useEffect(() => {
     const handleConsentSaved = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) {
         return;
@@ -483,11 +520,12 @@ const PrescriptionPage: React.FC = () => {
       }
 
       refreshPatientFiles();
+      refreshPatientConsents();
     };
 
     window.addEventListener('message', handleConsentSaved);
     return () => window.removeEventListener('message', handleConsentSaved);
-  }, [patientId, refreshPatientFiles]);
+  }, [patientId, refreshPatientFiles, refreshPatientConsents]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -563,23 +601,26 @@ const PrescriptionPage: React.FC = () => {
     return Array.from(categories);
   }, [patientFiles]);
 
-  const consentFiles = React.useMemo(() => {
-    return patientFiles
-      .filter((file: any) => {
-        if (file.file_category !== 'consent') {
-          return false;
-        }
+  const consentEntries = React.useMemo(() => {
+    const fileById = new Map<string, any>();
+    patientFiles.forEach((file: any) => {
+      const key = String(file.file_id || file.name || '');
+      if (key) {
+        fileById.set(key, file);
+      }
+    });
 
-        const fileName = String(file.file_name || '').toLowerCase();
-        const description = String(file.description || '').toLowerCase();
-        return !fileName.startsWith('consent-signature-') && !description.includes('consent signature');
-      })
+    return [...consentRecords]
       .sort((left: any, right: any) => {
-        const leftTime = new Date(left.modified || left.creation || 0).getTime();
-        const rightTime = new Date(right.modified || right.creation || 0).getTime();
+        const leftTime = new Date(left.signed_on || left.creation || 0).getTime();
+        const rightTime = new Date(right.signed_on || right.creation || 0).getTime();
         return rightTime - leftTime;
-      });
-  }, [patientFiles]);
+      })
+      .map((record: any) => ({
+        record,
+        file: record.consent_file_id ? fileById.get(String(record.consent_file_id)) || null : null,
+      }));
+  }, [consentRecords, patientFiles]);
 
   const consentEmbedUrl = React.useMemo(() => {
     const params = new URLSearchParams();
@@ -591,13 +632,23 @@ const PrescriptionPage: React.FC = () => {
   }, [patientId]);
 
   const consentFullPageUrl = React.useMemo(() => {
+    const returnParams = new URLSearchParams(location.search);
+    returnParams.set('section', 'consent');
+    if (appointmentId) {
+      returnParams.set('appointmentId', String(appointmentId));
+    }
+
     const params = new URLSearchParams();
     if (patientId) {
       params.set('patientId', patientId);
     }
+    if (appointmentId) {
+      params.set('appointmentId', String(appointmentId));
+    }
+    params.set('returnTo', `${location.pathname}?${returnParams.toString()}`);
     const query = params.toString();
     return query ? `/consent-forms?${query}` : '/consent-forms';
-  }, [patientId]);
+  }, [appointmentId, location.pathname, location.search, patientId]);
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -2491,54 +2542,101 @@ const PrescriptionPage: React.FC = () => {
                                 <div>
                                   <h3 className="text-base lg:text-lg font-bold text-gray-800">Existing Consent Forms</h3>
                                   <p className="text-sm text-gray-500 mt-1">
-                                    Signed or saved consent documents attached to this patient.
+                                    Saved consent PDFs with clinical context for this patient.
                                   </p>
                                 </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={refreshPatientFiles}
-                                >
+                                <Button size="sm" variant="outline" onClick={() => {
+                                  refreshPatientFiles();
+                                  refreshPatientConsents();
+                                }}>
                                   Refresh
                                 </Button>
                               </div>
 
-                              {isLoadingFiles ? (
+                              {isLoadingFiles || isLoadingConsentRecords ? (
                                 <div className="text-sm text-gray-500">Loading consent forms...</div>
-                              ) : consentFiles.length > 0 ? (
+                              ) : consentEntries.length > 0 ? (
                                 <div className="space-y-3">
-                                  {consentFiles.map((file: any) => (
-                                    <div key={file.file_id} className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-gray-900 truncate">{file.file_name}</p>
-                                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                                          <span className="capitalize">{file.file_category || 'consent'}</span>
-                                          <span>{fileUploadService.formatFileDate(file)}</span>
-                                          {file.description ? <span className="truncate">{file.description}</span> : null}
+                                  {consentEntries.map(({ record, file }: any) => {
+                                    const previewUrl = file ? fileUploadService.getPreviewUrl(file) : '';
+                                    const consentDate = record.signed_on || record.creation;
+                                    const payload = record.payload || {};
+
+                                    return (
+                                      <div key={record.name} className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-4">
+                                        <div>
+                                          {previewUrl ? (
+                                            <a
+                                              href={previewUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="block rounded-lg overflow-hidden border border-gray-200 bg-gray-50 hover:border-primary-300 transition-colors"
+                                              title="Open saved consent PDF"
+                                            >
+                                              <iframe
+                                                src={previewUrl}
+                                                title={file?.file_name || record.consent_type_label || 'Consent PDF'}
+                                                className="w-full h-52 border-0 pointer-events-none bg-white"
+                                              />
+                                            </a>
+                                          ) : (
+                                            <div className="h-52 rounded-lg border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500 flex items-center justify-center text-center px-4">
+                                              PDF preview will appear after file sync completes.
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div className="min-w-0 flex flex-col justify-between gap-4">
+                                          <div className="space-y-3">
+                                            <div>
+                                              <p className="text-sm font-semibold text-gray-900">{record.consent_type_label || 'Consent Form'}</p>
+                                              <p className="text-xs text-gray-500 mt-1">
+                                                {consentDate ? new Date(consentDate).toLocaleString() : '-'}
+                                              </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Chief Complaint</p>
+                                                <p className="text-gray-800 mt-1 whitespace-pre-wrap">{payload.chief_complaint || '-'}</p>
+                                              </div>
+                                              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Diagnosis & Treatment Plan</p>
+                                                <p className="text-gray-800 mt-1 whitespace-pre-wrap">
+                                                  {payload.diagnosis || payload.treatment_plan
+                                                    ? [payload.diagnosis, payload.treatment_plan].filter(Boolean).join('\n')
+                                                    : '-'}
+                                                </p>
+                                              </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                              <span>Status: {record.status}</span>
+                                              <span>Language: {String(record.language || '').toUpperCase() || '-'}</span>
+                                              <span>Signer: {record.signed_by || '-'}</span>
+                                              <span>Role: {record.signer_role || '-'}</span>
+                                              {file?.file_name ? <span className="truncate">{file.file_name}</span> : null}
+                                            </div>
+                                          </div>
+
+                                          {file?.file_id ? (
+                                            <div className="flex justify-end">
+                                              <button
+                                                onClick={() => handleDeleteFile(file.file_id)}
+                                                className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50"
+                                              >
+                                                Delete
+                                              </button>
+                                            </div>
+                                          ) : null}
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <a
-                                          href={fileUploadService.getDownloadUrl(file)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                                        >
-                                          Open
-                                        </a>
-                                        <button
-                                          onClick={() => handleDeleteFile(file.file_id)}
-                                          className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50"
-                                        >
-                                          Delete
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                                  No consent forms saved yet. Capture a signature or complete a shared signing flow and the consent will appear here.
+                                  No consent forms saved yet. The form will appear here only after you use the Save button in the consent builder.
                                 </div>
                               )}
                             </Card>

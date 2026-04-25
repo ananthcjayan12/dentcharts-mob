@@ -27,5 +27,21 @@ module.exports = function override(config) {
     ];
   }
 
+  const existingIgnoreWarnings = Array.isArray(config.ignoreWarnings)
+    ? config.ignoreWarnings
+    : [];
+
+  config.ignoreWarnings = [
+    ...existingIgnoreWarnings,
+    (warning) => {
+      const message = warning?.message || '';
+      const moduleResource = warning?.module?.resource || '';
+      return (
+        message.includes('Failed to parse source map') &&
+        (moduleResource.includes('html2pdf.js') || message.includes('SVGPathData.module.js.map'))
+      );
+    },
+  ];
+
   return config;
 };

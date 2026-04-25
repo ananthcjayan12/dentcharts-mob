@@ -1,5 +1,5 @@
 import { apiClient, API_ENDPOINTS } from '../client';
-import { ConsentTemplate, ConsentTemplatesResponse, SharedConsentPayload } from '../types';
+import { ConsentRecord, ConsentTemplate, ConsentTemplatesResponse, SharedConsentPayload } from '../types';
 
 export interface GetConsentTemplatesParams {
   clinic?: string;
@@ -45,17 +45,25 @@ export interface AcceptSharedConsentPayload {
   signer_phone?: string;
   signature_data_url: string;
   consent_html?: string;
+  consent_pdf_base64?: string;
+  consent_pdf_filename?: string;
   summary_text?: string;
 }
 
 export interface SaveConsentArtifactsPayload {
   patient_id: string;
   consent_type_id: string;
+  consent_type_label?: string;
   language: 'en' | 'ml';
   clinic?: string;
   summary_text?: string;
   signature_data_url?: string;
   consent_html?: string;
+  consent_pdf_base64?: string;
+  consent_pdf_filename?: string;
+  payload?: Record<string, any>;
+  signer_name?: string;
+  signer_role?: 'Patient' | 'Parent/Guardian';
 }
 
 class ConsentFormService {
@@ -104,6 +112,21 @@ class ConsentFormService {
     return response.data;
   }
 
+  async listPatientConsents(patientId: string, clinic?: string): Promise<ConsentRecord[]> {
+    const query = new URLSearchParams({ patient_id: patientId });
+    if (clinic) query.set('clinic', clinic);
+
+    const response = await apiClient.get<{ patient_id: string; records: ConsentRecord[] }>(
+      `${API_ENDPOINTS.CONSENT_FORMS.LIST_PATIENT}?${query.toString()}`
+    );
+
+    if (!response.data) {
+      throw new Error(response.message || 'Failed to load patient consents');
+    }
+
+    return response.data.records || [];
+  }
+
   async createShareLink(payload: CreateConsentShareLinkPayload): Promise<{
     session_id: string;
     token: string;
@@ -127,6 +150,7 @@ class ConsentFormService {
     summary_text: string;
     signature_file_id?: string;
     consent_file_id?: string;
+    consent_record?: ConsentRecord;
   }> {
     const response = await apiClient.post<any>(API_ENDPOINTS.CONSENT_FORMS.SAVE_ARTIFACTS, payload);
 
