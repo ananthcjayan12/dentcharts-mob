@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Button from '../components/common/Button';
 import { consentFormService } from '../api/services/consentForm';
 import { SharedConsentPayload } from '../api/types';
+import { generatePdfBlobFromHtml } from '../utils/printUtils';
 import {
   dedupeRepeatedParagraphs,
   escapeHtml,
@@ -12,6 +13,17 @@ import {
   replaceConsentPlaceholders,
   renderSectionHtml,
 } from '../utils/consentForm';
+
+const blobToBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      resolve(result.includes(',') ? result.split(',', 2)[1] : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Failed to read PDF blob'));
+    reader.readAsDataURL(blob);
+  });
 
 const ConsentReviewPage: React.FC = () => {
   const { token = '' } = useParams();
@@ -89,7 +101,15 @@ const ConsentReviewPage: React.FC = () => {
     const tableRowsHtml = (payload.rows || [])
       .map(
         (row: any) =>
-          `<tr><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row?.condition || '-')}</td><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row?.procedure || '-')}</td></tr>`
+          `<tr><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row?.toothNumber || '-')}</td><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row?.condition || '-')}</td><td style="border:1px solid #d1d5db;padding:8px;">${escapeHtml(row?.procedure || '-')}</td></tr>`
+      )
+      .join('');
+    const medicalHistory = payload.medical_history && typeof payload.medical_history === 'object' ? payload.medical_history : {};
+    const medicalHistoryRows = Object.entries(medicalHistory)
+      .filter(([, value]) => value !== null && value !== undefined && value !== '' && value !== false)
+      .map(
+        ([key, value]) =>
+          `<div style="margin:0 0 6px;"><strong>${escapeHtml(key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()))}:</strong> ${escapeHtml(typeof value === 'boolean' ? 'Yes' : String(value))}</div>`
       )
       .join('');
 
@@ -105,8 +125,10 @@ const ConsentReviewPage: React.FC = () => {
   <p style="margin:0 0 8px;"><strong>Patient:</strong> ${escapeHtml(data?.patient?.patient_name || data?.patient?.name || '')}</p>
   <p style="margin:0 0 8px;"><strong>Consent Type:</strong> ${escapeHtml(data?.session?.consent_type_label || '')}</p>
   <p style="margin:0 0 12px;"><strong>Language:</strong> ${escapeHtml((data?.session?.language || '').toUpperCase())}</p>
+  <h3 style="margin:16px 0 8px;">Medical History</h3>
+  <div style="margin-bottom:12px;">${medicalHistoryRows || '<div style="margin:0;color:#6b7280;">No significant medical history recorded.</div>'}</div>
   <h3 style="margin:16px 0 8px;">Condition / Procedure</h3>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><thead><tr><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Condition</th><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Procedure</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><thead><tr><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Tooth</th><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Condition</th><th style="border:1px solid #d1d5db;padding:8px;text-align:left;">Procedure</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>
   <h3 style="margin:16px 0 8px;">Summary</h3>
   <p style="white-space:pre-wrap;margin:0 0 16px;">${escapeHtml(summary)}</p>
   <h3 style="margin:16px 0 8px;">Consent Content</h3>
@@ -179,6 +201,10 @@ const ConsentReviewPage: React.FC = () => {
       toast.error('Signature pad not ready');
       return;
     }
+    if (!data) {
+      toast.error('Consent data is unavailable');
+      return;
+    }
 
     const signatureDataUrl = canvas.toDataURL('image/png');
     if (!signerName.trim()) {
@@ -188,13 +214,21 @@ const ConsentReviewPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      const patientLabel = data.patient?.patient_name || data.patient?.name || 'patient';
+      const consentTypeId = data.session?.consent_type_id || 'consent';
+      const pdfBlob = await generatePdfBlobFromHtml(
+        buildConsentHtml(),
+        `${patientLabel}-consent.pdf`
+      );
+      const pdfBase64 = await blobToBase64(pdfBlob);
       await consentFormService.acceptSharedConsent({
         token,
         signer_name: signerName,
         signer_phone: signerPhone,
         signer_role: minorMode ? 'Parent/Guardian' : 'Patient',
         signature_data_url: signatureDataUrl,
-        consent_html: buildConsentHtml(),
+        consent_pdf_base64: pdfBase64,
+        consent_pdf_filename: `${patientLabel}-${consentTypeId}.pdf`,
         summary_text: summary,
       });
       setAccepted(true);
