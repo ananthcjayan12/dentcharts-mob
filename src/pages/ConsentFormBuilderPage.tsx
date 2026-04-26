@@ -13,12 +13,11 @@ import { dentalChartService, patientService, prescriptionService } from '../api/
 import { conditionsService } from '../api/services/conditions';
 import { proceduresService } from '../api/services/procedures';
 import { ConsentTemplate } from '../api/types';
-import { generatePdfBlobFromElement, generatePdfBlobFromHtml, generatePdfBlobFromPageElements } from '../utils/printUtils';
+import { generatePdfBlobFromElementWithRepeatedFooter, generatePdfBlobFromHtml } from '../utils/printUtils';
 import {
   dedupeRepeatedParagraphs,
   escapeHtml,
   hydrateConsentSections,
-  paginateConsentSections,
   replaceConsentPlaceholders,
   renderSectionHtml,
 } from '../utils/consentForm';
@@ -436,35 +435,12 @@ const ConsentFormBuilderPage: React.FC = () => {
     return replaceConsentPlaceholders(source, placeholderContext);
   }, [minorMode, selectedTemplate, placeholderContext]);
 
-  const consentPages = useMemo(() => {
-    const summaryWeightBoost = Math.min((renderedSummaryText || '').length * 0.25, 700);
-    const complaintsBoost = Math.min((chiefComplaint.length + associatedComplaint.length) * 0.15, 250);
-    const rowsBoost = rows.length * 60;
-    const historyBoost = medicalHistoryItems.length * 40;
-    const firstPagePenalty = summaryWeightBoost + complaintsBoost + rowsBoost + historyBoost + (minorMode ? 160 : 0);
-
-    const baseFirstCapacity = language === 'en' ? 3400 : 3600;
-    const adjustedFirstCapacity = Math.max(2200, baseFirstCapacity - firstPagePenalty);
-    const otherCapacity = language === 'en' ? 4200 : 4500;
-
-    return paginateConsentSections(hydratedSections, {
-      firstPageCapacity: adjustedFirstCapacity,
-      otherPageCapacity: otherCapacity,
-      maxSectionsPerPage: language === 'en' ? 3 : 4,
-    });
-  }, [
-    hydratedSections,
-    renderedSummaryText,
-    chiefComplaint,
-    associatedComplaint,
-    rows.length,
-    medicalHistoryItems.length,
-    minorMode,
-    language,
-  ]);
-
-  const signatoryLabel = minorMode ? 'Parent/Guardian Signature' : 'Patient Signature';
+  const signatoryLabel = minorMode ? 'Signature of Parent / Guardian' : 'Signature of Patient';
   const signatoryName = minorMode ? guardianName || '________________' : patientName || '________________';
+  const signatoryNameLabel = minorMode
+    ? (guardianRelationship.trim().toLowerCase() === 'parent' ? 'Parent Name' : 'Guardian Name')
+    : 'Patient Name';
+  const signatoryDate = visitDate || issueDate || new Date().toISOString().slice(0, 10);
 
   const addRow = () => {
     setRows((prev) => [...prev, { id: crypto.randomUUID(), toothNumber: '', condition: '', procedure: '' }]);
@@ -536,107 +512,10 @@ const ConsentFormBuilderPage: React.FC = () => {
           )
           .join('')
       : '<div style="margin:0;color:#6b7280;">No significant medical history recorded.</div>';
+    const sectionsHtml = hydratedSections.map((section) => renderSectionHtml(section)).join('');
     const signatureHtml = signatureDataUrl
-      ? `<img src="${signatureDataUrl}" alt="Signature" style="max-height:72px;display:inline-block;" />`
-      : '<div style="display:inline-block;width:180px;border-bottom:1px solid #9ca3af;height:40px;"></div>';
-    const pageBlocksHtml = consentPages
-      .map((pageSections, pageIndex) => {
-        const sectionsHtml = pageSections.map((section) => renderSectionHtml(section)).join('');
-        const firstPageHtml = pageIndex === 0
-          ? `
-          <section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:13px;margin-bottom:16px;">
-            <p><strong>Patient:</strong> ${escapeHtml(patientName || '-')}</p>
-            <p><strong>Patient ID:</strong> ${escapeHtml(patientId || '-')}</p>
-            <p><strong>Age / Gender:</strong> ${escapeHtml([patientAge, patientGender].filter(Boolean).join(' / ') || '-')}</p>
-            <p><strong>Phone:</strong> ${escapeHtml(patientPhone || '-')}</p>
-            <p style="grid-column:1 / -1;"><strong>Doctor:</strong> ${escapeHtml(doctorName)}</p>
-          </section>
-
-          <section style="margin-bottom:16px;font-size:13px;">
-            <p><strong>Chief Complaint:</strong> ${escapeHtml(chiefComplaint || '-')}</p>
-            <p style="margin-top:6px;"><strong>Associated Complaint:</strong> ${escapeHtml(associatedComplaint || '-')}</p>
-          </section>
-
-          <section style="margin-bottom:16px;">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead>
-                <tr style="background:#f9fafb;">
-                  <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Tooth</th>
-                  <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Condition</th>
-                  <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Procedure</th>
-                </tr>
-              </thead>
-              <tbody>${tableRowsHtml}</tbody>
-            </table>
-          </section>
-
-          <section style="margin-bottom:16px;font-size:13px;">
-            <h3 style="font-weight:600;font-size:14px;margin:0 0 6px;">Medical History</h3>
-            ${medicalHistoryHtml}
-          </section>
-
-          <section style="margin-bottom:16px;font-size:13px;">
-            <p><strong>Diagnosis:</strong> ${escapeHtml(diagnosis || '-')}</p>
-            <p><strong>Treatment Plan:</strong> ${escapeHtml(treatmentPlan || '-')}</p>
-            <p><strong>Anesthesia:</strong> ${escapeHtml(anesthesiaText || '-')}</p>
-          </section>
-
-          ${minorMode ? `
-          <section style="margin-bottom:16px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:12px;font-size:13px;">
-            <p><strong>Guardian Name:</strong> ${escapeHtml(guardianName || '-')}</p>
-            <p><strong>Relationship:</strong> ${escapeHtml(guardianRelationship || '-')}</p>
-            <p><strong>Guardian Phone:</strong> ${escapeHtml(guardianPhone || '-')}</p>
-          </section>
-          ` : ''}
-
-          <section style="margin-bottom:18px;">
-            <h3 style="font-weight:600;font-size:14px;margin:0 0 6px;">Consent Summary</h3>
-            <p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">${escapeHtml(renderedSummaryText || '-')}</p>
-          </section>
-          `
-          : '';
-
-        const declarationHtml = pageIndex === consentPages.length - 1
-          ? `<p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0 0 12px;">${escapeHtml(declarationText)}</p>`
-          : '';
-
-        return `
-        <article class="consent-print-page ${language === 'ml' ? 'consent-ml-text' : ''}">
-          <header style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid #e5e7eb;padding-bottom:12px;margin-bottom:14px;">
-            <div>
-              <h2 style="font-size:28px;line-height:1.2;font-weight:700;margin:0;">${escapeHtml(clinicDisplayName)}</h2>
-              <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">Informed Consent Form</p>
-            </div>
-            <div style="font-size:12px;color:#4b5563;text-align:right;">
-              <p style="margin:0;"><strong>Issue Date:</strong> ${escapeHtml(issueDate || '-')}</p>
-              <p style="margin:2px 0 0;"><strong>Visit Date:</strong> ${escapeHtml(visitDate || '-')}</p>
-              <p style="margin:2px 0 0;"><strong>Page:</strong> ${pageIndex + 1} / ${consentPages.length}</p>
-            </div>
-          </header>
-
-          ${firstPageHtml}
-
-          <section style="font-size:13px;line-height:1.6;display:flex;flex-direction:column;gap:12px;">
-            ${sectionsHtml}
-          </section>
-
-          <footer style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px;">
-            ${declarationHtml}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;">
-              <div>
-                <p style="color:#6b7280;margin:0 0 4px;">Signatory</p>
-                <p style="font-weight:600;margin:0;">${escapeHtml(signatoryName)}</p>
-                <p style="font-size:12px;color:#6b7280;margin:2px 0 0;">${escapeHtml(signatoryLabel)}</p>
-              </div>
-              <div style="text-align:right;">
-                ${signatureHtml}
-              </div>
-            </div>
-          </footer>
-        </article>
-        `;
-      })
-      .join('');
+      ? `<img src="${signatureDataUrl}" class="print-repeat-sign-image" alt="Signature" />`
+      : '<div class="print-repeat-sign-line"></div>';
 
     return `
 <!doctype html>
@@ -648,32 +527,79 @@ const ConsentFormBuilderPage: React.FC = () => {
     @page { size: A4; margin: 0; }
     body {
       margin: 0;
-      background: #f3f4f6;
+      background: #ffffff;
       color: #111827;
       font-family: Arial, sans-serif;
     }
     .consent-print-root {
-      width: 100%;
+      width: 794px;
+      max-width: 794px;
+      margin: 0 auto;
       box-sizing: border-box;
-      padding: 12px;
+      padding: 0;
     }
     .consent-print-page {
       width: 100%;
       box-sizing: border-box;
       background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
-      padding: 24px;
-      margin: 0 0 16px 0;
-      break-inside: avoid;
-      page-break-inside: avoid;
-      break-after: page;
-      page-break-after: always;
+      padding: 24px 28px 20px;
     }
-    .consent-print-page:last-child {
-      break-after: auto;
-      page-break-after: auto;
+    .print-table { width: 100%; border-collapse: collapse; }
+    .print-thead { display: table-row-group; }
+    .print-tbody { display: table-row-group; }
+    .print-tfoot { display: table-row-group; }
+    .print-page-top-spacer { height: 10mm; }
+    .print-footer-content {
+      border-top: 1px solid #e5e7eb;
+      padding: 8px 0 12px 34px;
+      background: #ffffff;
+    }
+    .print-repeat-inner {
+      display: grid;
+      grid-template-columns: 1fr 150px;
+      gap: 16px;
+      align-items: end;
+    }
+    .print-repeat-sign-label,
+    .print-repeat-date-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    .print-repeat-sign-image {
+      max-height: 44px;
+      max-width: 100%;
+      object-fit: contain;
+      display: block;
+      border-bottom: 1px solid #9ca3af;
+      margin-bottom: 4px;
+    }
+    .print-repeat-sign-line {
+      height: 30px;
+      border-bottom: 1px solid #9ca3af;
+      margin-bottom: 4px;
+    }
+    .print-repeat-name {
+      font-size: 12px;
+      color: #374151;
+    }
+    .print-repeat-date-value {
+      font-size: 12px;
+      color: #111827;
+      border-bottom: 1px solid #9ca3af;
+      padding-bottom: 4px;
+    }
+    .sig-block-inflow {
+      margin-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 12px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    @media print {
+      .print-thead { display: table-header-group; }
+      .print-tfoot { display: table-footer-group; }
     }
     .consent-ml-text {
       font-family: 'NotoSansMalayalamLight', 'Noto Sans Malayalam', sans-serif;
@@ -682,7 +608,110 @@ const ConsentFormBuilderPage: React.FC = () => {
 </head>
 <body>
   <div class="consent-print-root">
-    ${pageBlocksHtml}
+    <table class="print-table">
+      <thead class="print-thead">
+        <tr>
+          <td>
+            <div class="print-page-top-spacer"></div>
+          </td>
+        </tr>
+      </thead>
+      <tbody class="print-tbody">
+        <tr>
+          <td>
+            <article class="consent-print-page ${language === 'ml' ? 'consent-ml-text' : ''}">
+              <header style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid #e5e7eb;padding-bottom:12px;margin-bottom:14px;">
+                <div>
+                  <h2 style="font-size:28px;line-height:1.2;font-weight:700;margin:0;">${escapeHtml(clinicDisplayName)}</h2>
+                  <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">Informed Consent Form</p>
+                </div>
+                <div style="font-size:12px;color:#4b5563;text-align:right;">
+                  <p style="margin:0;"><strong>Issue Date:</strong> ${escapeHtml(issueDate || '-')}</p>
+                  <p style="margin:2px 0 0;"><strong>Visit Date:</strong> ${escapeHtml(visitDate || '-')}</p>
+                </div>
+              </header>
+
+              <section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:13px;margin-bottom:16px;">
+                <p><strong>Patient:</strong> ${escapeHtml(patientName || '-')}</p>
+                <p><strong>Patient ID:</strong> ${escapeHtml(patientId || '-')}</p>
+                <p><strong>Age / Gender:</strong> ${escapeHtml([patientAge, patientGender].filter(Boolean).join(' / ') || '-')}</p>
+                <p><strong>Phone:</strong> ${escapeHtml(patientPhone || '-')}</p>
+                <p style="grid-column:1 / -1;"><strong>Doctor:</strong> ${escapeHtml(doctorName)}</p>
+              </section>
+
+              <section style="margin-bottom:16px;font-size:13px;">
+                <p><strong>Chief Complaint:</strong> ${escapeHtml(chiefComplaint || '-')}</p>
+                <p style="margin-top:6px;"><strong>Associated Complaint:</strong> ${escapeHtml(associatedComplaint || '-')}</p>
+              </section>
+
+              <section style="margin-bottom:16px;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                  <thead>
+                    <tr style="background:#f9fafb;">
+                      <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Tooth</th>
+                      <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Condition</th>
+                      <th style="border:1px solid #e5e7eb;padding:6px;text-align:left;">Procedure</th>
+                    </tr>
+                  </thead>
+                  <tbody>${tableRowsHtml}</tbody>
+                </table>
+              </section>
+
+              <section style="margin-bottom:16px;font-size:13px;">
+                <h3 style="font-weight:600;font-size:14px;margin:0 0 6px;">Medical History</h3>
+                ${medicalHistoryHtml}
+              </section>
+
+              <section style="margin-bottom:16px;font-size:13px;">
+                <p><strong>Diagnosis:</strong> ${escapeHtml(diagnosis || '-')}</p>
+                <p><strong>Treatment Plan:</strong> ${escapeHtml(treatmentPlan || '-')}</p>
+                <p><strong>Anesthesia:</strong> ${escapeHtml(anesthesiaText || '-')}</p>
+              </section>
+
+              ${minorMode ? `
+              <section style="margin-bottom:16px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:12px;font-size:13px;">
+                <p><strong>Guardian Name:</strong> ${escapeHtml(guardianName || '-')}</p>
+                <p><strong>Relationship:</strong> ${escapeHtml(guardianRelationship || '-')}</p>
+                <p><strong>Guardian Phone:</strong> ${escapeHtml(guardianPhone || '-')}</p>
+              </section>
+              ` : ''}
+
+              <section style="margin-bottom:18px;">
+                <h3 style="font-weight:600;font-size:14px;margin:0 0 6px;">Consent Summary</h3>
+                <p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">${escapeHtml(renderedSummaryText || '-')}</p>
+              </section>
+
+              <section style="font-size:13px;line-height:1.6;display:flex;flex-direction:column;gap:12px;">
+                ${sectionsHtml}
+              </section>
+
+              <section class="sig-block-inflow">
+                <p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">${escapeHtml(declarationText)}</p>
+              </section>
+            </article>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot class="print-tfoot">
+        <tr>
+          <td>
+            <div class="print-footer-content ${language === 'ml' ? 'consent-ml-text' : ''}">
+              <div class="print-repeat-inner">
+                <div>
+                  <div class="print-repeat-sign-label">${escapeHtml(signatoryLabel)}</div>
+                  ${signatureHtml}
+                  <div class="print-repeat-name">${escapeHtml(signatoryNameLabel)}: ${escapeHtml(signatoryName)}</div>
+                </div>
+                <div>
+                  <div class="print-repeat-date-label">Date</div>
+                  <div class="print-repeat-date-value">${escapeHtml(signatoryDate)}</div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
 </body>
 </html>
@@ -697,13 +726,11 @@ const ConsentFormBuilderPage: React.FC = () => {
     const filename = `${fileLabel || 'consent-form'}.pdf`;
 
     const previewRoot = previewRootRef.current;
-    const previewVisible = Boolean(previewRoot && previewRoot.offsetParent !== null);
-    if (previewRoot && previewVisible) {
-      const pageElements = Array.from(previewRoot.querySelectorAll('.consent-print-page')) as HTMLElement[];
-      if (pageElements.length > 0) {
-        return generatePdfBlobFromPageElements(pageElements, filename);
-      }
-      return generatePdfBlobFromElement(previewRoot, filename);
+    if (previewRoot) {
+      return generatePdfBlobFromElementWithRepeatedFooter(previewRoot, '.print-footer-content', {
+        topMarginMm: 12,
+        footerGapMm: 5,
+      });
     }
 
     return generatePdfBlobFromHtml(buildConsentHtml(), filename);
@@ -754,18 +781,32 @@ const ConsentFormBuilderPage: React.FC = () => {
 
   const handlePrint = async () => {
     try {
-      toast.loading('Preparing PDF...', { id: 'consent-pdf' });
+      toast.loading('Preparing print preview...', { id: 'consent-print' });
       const pdfBlob = await generateConsentPdfBlob();
-      const link = document.createElement('a');
       const url = URL.createObjectURL(pdfBlob);
-      link.href = url;
-      link.download = `${patientId || 'patient'}-${consentTypeId || 'consent'}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-      toast.success('PDF ready', { id: 'consent-pdf' });
+      const printWindow = window.open(url, '_blank');
+
+      if (!printWindow) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${patientId || 'patient'}-${consentTypeId || 'consent'}.pdf`;
+        link.click();
+      } else {
+        setTimeout(() => {
+          try {
+            printWindow.focus();
+            printWindow.print();
+          } catch (e) {
+            console.error('Auto print failed', e);
+          }
+        }, 700);
+      }
+
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      toast.success('Print preview opened', { id: 'consent-print' });
     } catch (error) {
-      console.error('Failed to generate consent PDF', error);
-      toast.error('Failed to generate PDF', { id: 'consent-pdf' });
+      console.error('Failed to open print preview', error);
+      toast.error('Failed to open print preview', { id: 'consent-print' });
     }
   };
 
@@ -1143,138 +1184,142 @@ const ConsentFormBuilderPage: React.FC = () => {
             </aside>
 
             <main className={`consent-preview-panel overflow-y-auto overscroll-contain min-h-0 bg-gray-100 p-4 sm:p-6 ${mobilePanel === 'builder' ? 'hidden lg:block' : ''}`}>
-              <div ref={previewRootRef} className="consent-print-root max-w-[900px] mx-auto space-y-6">
-                {consentPages.map((pageSections, pageIndex) => (
-                  <article
-                    key={`page-${pageIndex}`}
-                    className={`consent-print-page bg-white rounded-xl shadow border border-gray-200 p-6 sm:p-8 ${language === 'ml' ? 'consent-ml-text' : ''}`}
-                  >
-                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-3 mb-4">
-                      <div>
-                        <h2 className="text-lg sm:text-xl font-bold text-gray-900">{clinicDisplayName}</h2>
-                        <p className="text-xs text-gray-500">Informed Consent Form</p>
-                      </div>
-                      <div className="text-xs text-gray-600 text-right">
-                        <p><strong>Issue Date:</strong> {issueDate || '-'}</p>
-                        <p><strong>Visit Date:</strong> {visitDate || '-'}</p>
-                        <p><strong>Page:</strong> {pageIndex + 1} / {consentPages.length}</p>
-                      </div>
-                    </header>
-
-                    {pageIndex === 0 && (
-                      <>
-                        <section className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mb-4">
-                          <p><strong>Patient:</strong> {patientName || '-'}</p>
-                          <p><strong>Patient ID:</strong> {patientId || '-'}</p>
-                          <p><strong>Age / Gender:</strong> {[patientAge, patientGender].filter(Boolean).join(' / ') || '-'}</p>
-                          <p><strong>Phone:</strong> {patientPhone || '-'}</p>
-                          <p className="md:col-span-2"><strong>Doctor:</strong> {doctorName}</p>
-                        </section>
-
-                        <section className="mb-4 text-sm">
-                          <p><strong>Chief Complaint:</strong> {chiefComplaint || '-'}</p>
-                          <p className="mt-1"><strong>Associated Complaint:</strong> {associatedComplaint || '-'}</p>
-                        </section>
-
-                        <section className="mb-4">
-                          <table className="w-full border-collapse text-sm">
-                            <thead>
-                              <tr className="bg-gray-50">
-                                <th className="border border-gray-200 px-2 py-1 text-left">Tooth</th>
-                                <th className="border border-gray-200 px-2 py-1 text-left">Condition</th>
-                                <th className="border border-gray-200 px-2 py-1 text-left">Procedure</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {rows.map((row) => (
-                                <tr key={row.id}>
-                                  <td className="border border-gray-200 px-2 py-1">{row.toothNumber || '-'}</td>
-                                  <td className="border border-gray-200 px-2 py-1">{row.condition || '-'}</td>
-                                  <td className="border border-gray-200 px-2 py-1">{row.procedure || '-'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </section>
-
-                        <section className="mb-4 text-sm space-y-1">
-                          <h3 className="font-semibold text-sm mb-1">Medical History</h3>
-                          {medicalHistoryItems.length > 0 ? (
-                            <div className="space-y-1">
-                              {medicalHistoryItems.map((item) => (
-                                <p key={`${item.label}-${item.value}`}>
-                                  <strong>{item.label}:</strong> {item.value}
-                                </p>
-                              ))}
+              <div ref={previewRootRef} className="consent-print-root max-w-[900px] mx-auto">
+                <table className="print-table w-full border-collapse">
+                  <tbody className="print-tbody">
+                    <tr>
+                      <td>
+                        <article className={`consent-print-page bg-white rounded-xl shadow border border-gray-200 p-6 sm:p-8 ${language === 'ml' ? 'consent-ml-text' : ''}`}>
+                          <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-3 mb-4">
+                            <div>
+                              <h2 className="text-lg sm:text-xl font-bold text-gray-900">{clinicDisplayName}</h2>
+                              <p className="text-xs text-gray-500">Informed Consent Form</p>
                             </div>
-                          ) : (
-                            <p className="text-gray-500">No significant medical history recorded.</p>
-                          )}
-                        </section>
+                            <div className="text-xs text-gray-600 text-right">
+                              <p><strong>Issue Date:</strong> {issueDate || '-'}</p>
+                              <p><strong>Visit Date:</strong> {visitDate || '-'}</p>
+                            </div>
+                          </header>
 
-                        <section className="mb-4 text-sm space-y-1">
-                          <p><strong>Diagnosis:</strong> {diagnosis || '-'}</p>
-                          <p><strong>Treatment Plan:</strong> {treatmentPlan || '-'}</p>
-                          <p><strong>Anesthesia:</strong> {anesthesiaText || '-'}</p>
-                        </section>
-
-                        {minorMode && (
-                          <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-                            <p><strong>Guardian Name:</strong> {guardianName || '-'}</p>
-                            <p><strong>Relationship:</strong> {guardianRelationship || '-'}</p>
-                            <p><strong>Guardian Phone:</strong> {guardianPhone || '-'}</p>
+                          <section className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mb-4">
+                            <p><strong>Patient:</strong> {patientName || '-'}</p>
+                            <p><strong>Patient ID:</strong> {patientId || '-'}</p>
+                            <p><strong>Age / Gender:</strong> {[patientAge, patientGender].filter(Boolean).join(' / ') || '-'}</p>
+                            <p><strong>Phone:</strong> {patientPhone || '-'}</p>
+                            <p className="md:col-span-2"><strong>Doctor:</strong> {doctorName}</p>
                           </section>
-                        )}
 
-                        <section className="mb-5">
-                          <h3 className="font-semibold text-sm mb-1">Consent Summary</h3>
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{renderedSummaryText || '-'}</p>
-                        </section>
-                      </>
-                    )}
+                          <section className="mb-4 text-sm">
+                            <p><strong>Chief Complaint:</strong> {chiefComplaint || '-'}</p>
+                            <p className="mt-1"><strong>Associated Complaint:</strong> {associatedComplaint || '-'}</p>
+                          </section>
 
-                    <section className="space-y-4 text-sm leading-relaxed">
-                      {pageSections.map((section, index) => (
-                        <div key={`${pageIndex}-${index}`}>
-                          {section.heading && <h4 className="font-semibold text-gray-900 mb-1">{section.heading}</h4>}
-                          {section.body && <p className="whitespace-pre-wrap">{section.body}</p>}
-                          {section.items && section.items.length > 0 && (
-                            <ul className="list-disc pl-5 mt-1 space-y-1">
-                              {section.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
-                            </ul>
+                          <section className="mb-4">
+                            <table className="w-full border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-gray-50">
+                                  <th className="border border-gray-200 px-2 py-1 text-left">Tooth</th>
+                                  <th className="border border-gray-200 px-2 py-1 text-left">Condition</th>
+                                  <th className="border border-gray-200 px-2 py-1 text-left">Procedure</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rows.map((row) => (
+                                  <tr key={row.id}>
+                                    <td className="border border-gray-200 px-2 py-1">{row.toothNumber || '-'}</td>
+                                    <td className="border border-gray-200 px-2 py-1">{row.condition || '-'}</td>
+                                    <td className="border border-gray-200 px-2 py-1">{row.procedure || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </section>
+
+                          <section className="mb-4 text-sm space-y-1">
+                            <h3 className="font-semibold text-sm mb-1">Medical History</h3>
+                            {medicalHistoryItems.length > 0 ? (
+                              <div className="space-y-1">
+                                {medicalHistoryItems.map((item) => (
+                                  <p key={`${item.label}-${item.value}`}>
+                                    <strong>{item.label}:</strong> {item.value}
+                                  </p>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-500">No significant medical history recorded.</p>
+                            )}
+                          </section>
+
+                          <section className="mb-4 text-sm space-y-1">
+                            <p><strong>Diagnosis:</strong> {diagnosis || '-'}</p>
+                            <p><strong>Treatment Plan:</strong> {treatmentPlan || '-'}</p>
+                            <p><strong>Anesthesia:</strong> {anesthesiaText || '-'}</p>
+                          </section>
+
+                          {minorMode && (
+                            <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                              <p><strong>Guardian Name:</strong> {guardianName || '-'}</p>
+                              <p><strong>Relationship:</strong> {guardianRelationship || '-'}</p>
+                              <p><strong>Guardian Phone:</strong> {guardianPhone || '-'}</p>
+                            </section>
                           )}
-                          {section.numbered && section.numbered.length > 0 && (
-                            <ol className="list-decimal pl-5 mt-1 space-y-1">
-                              {section.numbered.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
-                            </ol>
-                          )}
-                          {section.footer && <p className="whitespace-pre-wrap mt-1">{section.footer}</p>}
-                        </div>
-                      ))}
-                    </section>
 
-                    <footer className="mt-6 border-t border-gray-200 pt-4">
-                      {pageIndex === consentPages.length - 1 && (
-                        <p className="text-sm whitespace-pre-wrap mb-3">{declarationText}</p>
-                      )}
+                          <section className="mb-5">
+                            <h3 className="font-semibold text-sm mb-1">Consent Summary</h3>
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{renderedSummaryText || '-'}</p>
+                          </section>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500 mb-1">Signatory</p>
-                          <p className="font-medium">{signatoryName}</p>
-                          <p className="text-xs text-gray-500">{signatoryLabel}</p>
+                          <section className="space-y-4 text-sm leading-relaxed">
+                            {hydratedSections.map((section, index) => (
+                              <div key={index}>
+                                {section.heading && <h4 className="font-semibold text-gray-900 mb-1">{section.heading}</h4>}
+                                {section.body && <p className="whitespace-pre-wrap">{section.body}</p>}
+                                {section.items && section.items.length > 0 && (
+                                  <ul className="list-disc pl-5 mt-1 space-y-1">
+                                    {section.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+                                  </ul>
+                                )}
+                                {section.numbered && section.numbered.length > 0 && (
+                                  <ol className="list-decimal pl-5 mt-1 space-y-1">
+                                    {section.numbered.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+                                  </ol>
+                                )}
+                                {section.footer && <p className="whitespace-pre-wrap mt-1">{section.footer}</p>}
+                              </div>
+                            ))}
+                          </section>
+
+                          <section className="sig-block-inflow mt-6 border-t border-gray-200 pt-4">
+                            <p className="text-sm whitespace-pre-wrap">{declarationText}</p>
+                          </section>
+                        </article>
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot className="print-tfoot">
+                    <tr>
+                      <td>
+                            <div className={`print-footer-content bg-white border-t border-gray-200 pl-10 pr-6 sm:pl-12 sm:pr-8 py-3 ${language === 'ml' ? 'consent-ml-text' : ''}`}>
+                          <div className="print-repeat-inner grid grid-cols-[1fr_150px] gap-4 items-end">
+                            <div>
+                              <p className="print-repeat-sign-label text-xs font-semibold text-gray-500 mb-1">{signatoryLabel}</p>
+                              {signatureDataUrl ? (
+                                <img src={signatureDataUrl} alt="Signature" className="print-repeat-sign-image max-h-11 max-w-full object-contain border-b border-gray-400 mb-1" />
+                              ) : (
+                                <div className="print-repeat-sign-line h-8 border-b border-gray-400 mb-1" />
+                              )}
+                              <p className="print-repeat-name text-xs text-gray-700">{signatoryNameLabel}: {signatoryName}</p>
+                            </div>
+                            <div>
+                              <p className="print-repeat-date-label text-xs font-semibold text-gray-500 mb-1">Date</p>
+                              <p className="print-repeat-date-value text-xs text-gray-900 border-b border-gray-400 pb-1">{signatoryDate}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          {signatureDataUrl ? (
-                            <img src={signatureDataUrl} alt="Signature" className="inline-block max-h-16" />
-                          ) : (
-                            <div className="inline-block w-40 border-b border-gray-400 h-10" />
-                          )}
-                        </div>
-                      </div>
-                    </footer>
-                  </article>
-                ))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </main>
           </div>

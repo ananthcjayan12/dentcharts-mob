@@ -98,7 +98,6 @@ export const generatePdfBlobFromPageElements = async (
     });
 
     const pdfWidth = 210;
-    const pdfHeight = 297;
 
     // Render each page from an isolated clone so capture never depends on
     // the live panel's scroll/overflow state.
@@ -147,11 +146,11 @@ export const generatePdfBlobFromPageElements = async (
             if (!canvasWidth || !canvasHeight) {
                 throw new Error('Captured consent page has invalid canvas size');
             }
-            const scale = Math.min(pdfWidth / canvasWidth, pdfHeight / canvasHeight);
+            const scale = pdfWidth / canvasWidth;
             const renderWidth = canvasWidth * scale;
             const renderHeight = canvasHeight * scale;
-            const offsetX = (pdfWidth - renderWidth) / 2;
-            const offsetY = (pdfHeight - renderHeight) / 2;
+            const offsetX = 0;
+            const offsetY = 0;
 
             if (index > 0) {
                 pdf.addPage();
@@ -167,6 +166,230 @@ export const generatePdfBlobFromPageElements = async (
                 undefined,
                 'FAST'
             );
+        }
+    } finally {
+        if (document.body.contains(stagingRoot)) {
+            document.body.removeChild(stagingRoot);
+        }
+    }
+
+    return pdf.output('blob');
+};
+
+export const generatePdfBlobFromElementWithRepeatedFooter = async (
+    sourceElement: HTMLElement,
+    footerSelector: string,
+    options?: {
+        topMarginMm?: number;
+        footerGapMm?: number;
+    }
+) => {
+    if (document.fonts?.ready) {
+        await document.fonts.ready;
+    }
+
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+    });
+
+    const pdfWidth = 210;
+    const pdfHeight = 297;
+    const topMarginMm = options?.topMarginMm ?? 10;
+    const footerGapMm = options?.footerGapMm ?? 3;
+
+    const findWhitespaceBreakRow = (
+        canvas: HTMLCanvasElement,
+        targetRow: number,
+        minRow: number,
+        maxRow: number
+    ): number => {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return targetRow;
+
+        const safeMin = Math.max(0, Math.min(minRow, canvas.height - 1));
+        const safeMax = Math.max(safeMin, Math.min(maxRow, canvas.height - 1));
+        const bandHeight = safeMax - safeMin + 1;
+        if (bandHeight <= 1) return targetRow;
+
+        const imageData = ctx.getImageData(0, safeMin, canvas.width, bandHeight).data;
+        const width = canvas.width;
+        const strideY = 1;
+        const strideX = Math.max(1, Math.floor(width / 220));
+        let bestRow = targetRow;
+        let bestScore = Number.POSITIVE_INFINITY;
+
+        for (let y = 0; y < bandHeight; y += strideY) {
+            let darkSamples = 0;
+            let samples = 0;
+            const rowOffset = y * width * 4;
+            for (let x = 0; x < width; x += strideX) {
+                const px = rowOffset + x * 4;
+                const r = imageData[px];
+                const g = imageData[px + 1];
+                const b = imageData[px + 2];
+                const brightness = (r + g + b) / 3;
+                if (brightness < 245) {
+                    darkSamples += 1;
+                }
+                samples += 1;
+            }
+
+            const darknessRatio = samples > 0 ? darkSamples / samples : 1;
+            const absoluteRow = safeMin + y;
+            const distancePenalty = Math.abs(absoluteRow - targetRow) / 10000;
+            const score = darknessRatio + distancePenalty;
+            if (score < bestScore) {
+                bestScore = score;
+                bestRow = absoluteRow;
+            }
+        }
+
+        return bestRow;
+    };
+
+    const stagingRoot = document.createElement('div');
+    stagingRoot.style.position = 'fixed';
+    stagingRoot.style.left = '0';
+    stagingRoot.style.top = '0';
+    stagingRoot.style.width = '794px';
+    stagingRoot.style.maxWidth = '794px';
+    stagingRoot.style.background = '#ffffff';
+    stagingRoot.style.pointerEvents = 'none';
+    stagingRoot.style.zIndex = '-1';
+    stagingRoot.style.overflow = 'visible';
+    document.body.appendChild(stagingRoot);
+
+    try {
+        const clone = sourceElement.cloneNode(true) as HTMLElement;
+        clone.style.width = '794px';
+        clone.style.maxWidth = '794px';
+        clone.style.margin = '0';
+        clone.style.background = '#ffffff';
+        clone.style.boxShadow = 'none';
+        clone.style.transform = 'none';
+        clone.style.filter = 'none';
+        stagingRoot.appendChild(clone);
+
+        const footerNode = clone.querySelector(footerSelector) as HTMLElement | null;
+        if (!footerNode) {
+            return generatePdfBlobFromElement(clone, 'consent.pdf');
+        }
+
+        const footerCanvas = await html2canvas(footerNode, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: Math.max(footerNode.scrollWidth, 794),
+            windowHeight: Math.max(footerNode.scrollHeight, 200),
+            imageTimeout: 0,
+            logging: false,
+        });
+
+        const originalFooterDisplay = footerNode.style.display;
+        footerNode.style.display = 'none';
+
+        const bodyCanvas = await html2canvas(clone, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: Math.max(clone.scrollWidth, 794),
+            windowHeight: Math.max(clone.scrollHeight, 1123),
+            imageTimeout: 0,
+            logging: false,
+        });
+
+        footerNode.style.display = originalFooterDisplay;
+
+        if (!bodyCanvas.width || !bodyCanvas.height) {
+            throw new Error('Captured consent content has invalid size');
+        }
+
+        const scale = pdfWidth / bodyCanvas.width;
+        const footerHeightMm = footerCanvas.height > 0 ? footerCanvas.height * scale : 0;
+        const availableBodyHeightMm = Math.max(40, pdfHeight - topMarginMm - footerHeightMm - footerGapMm);
+        const pageBodySlicePx = Math.max(1, Math.floor(availableBodyHeightMm / scale));
+
+        let offsetY = 0;
+        let pageIndex = 0;
+        while (offsetY < bodyCanvas.height) {
+            const remaining = bodyCanvas.height - offsetY;
+            let sliceHeight = Math.min(pageBodySlicePx, remaining);
+            let nextOffset = offsetY + sliceHeight;
+            const isBoundaryPage = nextOffset < bodyCanvas.height;
+            if (isBoundaryPage) {
+                const searchRadiusPx = Math.min(120, Math.floor(pageBodySlicePx * 0.18));
+                const minBreak = Math.max(offsetY + Math.floor(pageBodySlicePx * 0.72), nextOffset - searchRadiusPx);
+                const maxBreak = Math.min(bodyCanvas.height - 1, nextOffset + searchRadiusPx);
+                const adjustedBreak = findWhitespaceBreakRow(bodyCanvas, nextOffset, minBreak, maxBreak);
+                if (adjustedBreak > offsetY + 50) {
+                    nextOffset = adjustedBreak;
+                    sliceHeight = nextOffset - offsetY;
+                }
+            }
+
+            const isLastPage = nextOffset >= bodyCanvas.height;
+            const pageSliceCanvas = document.createElement('canvas');
+            pageSliceCanvas.width = bodyCanvas.width;
+            pageSliceCanvas.height = sliceHeight;
+            const sliceCtx = pageSliceCanvas.getContext('2d');
+            if (!sliceCtx) {
+                throw new Error('Failed to prepare consent page slice');
+            }
+
+            sliceCtx.drawImage(
+                bodyCanvas,
+                0,
+                offsetY,
+                bodyCanvas.width,
+                sliceHeight,
+                0,
+                0,
+                bodyCanvas.width,
+                sliceHeight
+            );
+
+            if (pageIndex > 0) {
+                pdf.addPage();
+            }
+
+            const bodyRenderHeightMm = sliceHeight * scale;
+            pdf.addImage(
+                pageSliceCanvas.toDataURL('image/jpeg', 0.98),
+                'JPEG',
+                0,
+                topMarginMm,
+                pdfWidth,
+                bodyRenderHeightMm,
+                undefined,
+                'FAST'
+            );
+
+            if (footerCanvas.height > 0) {
+                const minFooterY = topMarginMm + bodyRenderHeightMm + footerGapMm;
+                const footerY = isLastPage
+                    ? Math.min(pdfHeight - footerHeightMm, minFooterY)
+                    : Math.max(minFooterY, pdfHeight - footerHeightMm);
+                pdf.addImage(
+                    footerCanvas.toDataURL('image/jpeg', 0.98),
+                    'JPEG',
+                    0,
+                    footerY,
+                    pdfWidth,
+                    footerHeightMm,
+                    undefined,
+                    'FAST'
+                );
+            }
+
+            offsetY = nextOffset;
+            pageIndex += 1;
         }
     } finally {
         if (document.body.contains(stagingRoot)) {
