@@ -170,15 +170,72 @@
     width: 100% !important;
   }
 
+  .print-table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .print-tbody {
+    display: table-row-group !important;
+  }
+
+  .print-thead {
+    display: table-header-group !important;
+  }
+
+  .print-tfoot {
+    display: table-footer-group !important;
+  }
+
+  .print-page-top-spacer {
+    height: 10mm !important;
+  }
+
+  .print-footer-content {
+    border-top: 1px solid #e5e7eb !important;
+    padding-top: 8px !important;
+    padding-bottom: 10px !important;
+    padding-left: 34px !important;
+  }
+
+  .sig-block-inflow {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   .consent-print-page {
     border: 0 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     margin: 0 !important;
-    page-break-after: always;
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
+}
 
-  .consent-print-page:last-child {
-    page-break-after: auto;
-  }
+.consent-save-force-print .print-table {
+  display: table !important;
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+
+.consent-save-force-print .print-thead {
+  display: table-header-group !important;
+}
+
+.consent-save-force-print .print-tbody {
+  display: table-row-group !important;
+}
+
+.consent-save-force-print .print-tfoot {
+  display: table-footer-group !important;
+}
+
+.consent-save-force-print .print-page-top-spacer {
+  height: 10mm !important;
+}
+
+.consent-save-force-print .print-footer-content {
+  padding-left: 34px !important;
 }
