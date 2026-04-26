@@ -622,15 +622,6 @@ const PrescriptionPage: React.FC = () => {
       }));
   }, [consentRecords, patientFiles]);
 
-  const consentEmbedUrl = React.useMemo(() => {
-    const params = new URLSearchParams();
-    if (patientId) {
-      params.set('patientId', patientId);
-    }
-    params.set('embed', '1');
-    return `/consent-forms?${params.toString()}`;
-  }, [patientId]);
-
   const consentFullPageUrl = React.useMemo(() => {
     const returnParams = new URLSearchParams(location.search);
     returnParams.set('section', 'consent');
@@ -2537,6 +2528,28 @@ const PrescriptionPage: React.FC = () => {
                           </Card>
                         ) : (
                           <>
+                            <Card className="p-4 lg:p-5">
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-start">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => navigate(consentFullPageUrl)}
+                                    className="bg-primary-600 hover:bg-primary-700"
+                                    leftIcon={
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                      </svg>
+                                    }
+                                  >
+                                    Create Consent Form
+                                  </Button>
+                                </div>
+                                <p className="text-sm text-gray-500">
+                                  Generate a consent form by selecting the consent type, language, and diagnosis.
+                                </p>
+                              </div>
+                            </Card>
+
                             <Card className="p-4 lg:p-6">
                               <div className="flex items-center justify-between gap-3 mb-4">
                                 <div>
@@ -2639,24 +2652,6 @@ const PrescriptionPage: React.FC = () => {
                                   No consent forms saved yet. The form will appear here only after you use the Save button in the consent builder.
                                 </div>
                               )}
-                            </Card>
-
-                            <Card className="p-0 overflow-hidden">
-                              <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-gray-200 bg-white">
-                                <h3 className="text-sm lg:text-base font-bold text-gray-800">Consent Form Builder</h3>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => navigate(consentFullPageUrl)}
-                                >
-                                  Open Full Screen
-                                </Button>
-                              </div>
-                              <iframe
-                                title="Consent Form Builder"
-                                src={consentEmbedUrl}
-                                className="w-full border-0 h-[1100px] lg:h-[1200px]"
-                              />
                             </Card>
                           </>
                         )}
