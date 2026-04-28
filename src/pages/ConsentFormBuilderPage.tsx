@@ -248,13 +248,20 @@ const ConsentFormBuilderPage: React.FC = () => {
 
       setIsLoadingCatalogs(true);
       try {
+        const consentCutoff = issueDate ? new Date(`${issueDate}T23:59:59`) : null;
         const [conditionRows, procedureRows] = await Promise.all([
           conditionsService.getConditions(clinicId).catch(() => []),
           proceduresService.getProcedures(clinicId).catch(() => []),
         ]);
 
-        const activeConditions = (conditionRows || []).filter((row: any) => row?.is_active !== false);
-        const activeProcedures = (procedureRows || []).filter((row: any) => row?.is_active !== false);
+        const withinCutoff = (row: any) => {
+          if (!consentCutoff || !row?.creation) return true;
+          const createdAt = new Date(row.creation);
+          return !Number.isNaN(createdAt.getTime()) && createdAt.getTime() <= consentCutoff.getTime();
+        };
+
+        const activeConditions = (conditionRows || []).filter((row: any) => row?.is_active !== false && withinCutoff(row));
+        const activeProcedures = (procedureRows || []).filter((row: any) => row?.is_active !== false && withinCutoff(row));
 
         const conditionMap: Record<string, string> = {};
         activeConditions.forEach((row: any) => {
@@ -272,7 +279,7 @@ const ConsentFormBuilderPage: React.FC = () => {
     };
 
     loadCatalogs();
-  }, [clinicId]);
+  }, [clinicId, issueDate]);
 
   useEffect(() => {
     const loadPatientContext = async () => {

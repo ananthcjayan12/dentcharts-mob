@@ -602,25 +602,14 @@ const PrescriptionPage: React.FC = () => {
   }, [patientFiles]);
 
   const consentEntries = React.useMemo(() => {
-    const fileById = new Map<string, any>();
-    patientFiles.forEach((file: any) => {
-      const key = String(file.file_id || file.name || '');
-      if (key) {
-        fileById.set(key, file);
-      }
-    });
-
     return [...consentRecords]
       .sort((left: any, right: any) => {
         const leftTime = new Date(left.signed_on || left.creation || 0).getTime();
         const rightTime = new Date(right.signed_on || right.creation || 0).getTime();
         return rightTime - leftTime;
       })
-      .map((record: any) => ({
-        record,
-        file: record.consent_file_id ? fileById.get(String(record.consent_file_id)) || null : null,
-      }));
-  }, [consentRecords, patientFiles]);
+      .map((record: any) => ({ record }));
+  }, [consentRecords]);
 
   const consentFullPageUrl = React.useMemo(() => {
     const returnParams = new URLSearchParams(location.search);
@@ -995,6 +984,20 @@ const PrescriptionPage: React.FC = () => {
     } catch (error: any) {
       console.error('Delete file error:', error);
       toast.error(error?.message || 'Failed to delete file');
+    }
+  };
+
+  const handleDeleteConsent = async (consentSessionId: string) => {
+    if (!window.confirm('Are you sure you want to delete this consent form?')) return;
+
+    try {
+      await consentFormService.deletePatientConsent(consentSessionId, clinicId || undefined);
+      toast.success('Consent form deleted');
+      refreshPatientConsents();
+      refreshPatientFiles();
+    } catch (error: any) {
+      console.error('Delete consent error:', error);
+      toast.error(error?.message || 'Failed to delete consent form');
     }
   };
 
@@ -2570,8 +2573,10 @@ const PrescriptionPage: React.FC = () => {
                                 <div className="text-sm text-gray-500">Loading consent forms...</div>
                               ) : consentEntries.length > 0 ? (
                                 <div className="space-y-3">
-                                  {consentEntries.map(({ record, file }: any) => {
-                                    const previewUrl = file ? fileUploadService.getPreviewUrl(file) : '';
+                                  {consentEntries.map(({ record }: any) => {
+                                    const previewUrl = record?.consent_file_id
+                                      ? `${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.file_upload.download_file?file_id=${encodeURIComponent(record.consent_file_id)}`
+                                      : '';
                                     const consentDate = record.signed_on || record.creation;
                                     const payload = record.payload || {};
 
@@ -2583,18 +2588,19 @@ const PrescriptionPage: React.FC = () => {
                                               href={previewUrl}
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              className="block rounded-lg overflow-hidden border border-gray-200 bg-gray-50 hover:border-primary-300 transition-colors"
+                                              className="block rounded-lg overflow-hidden border border-gray-200 bg-gray-50 hover:border-primary-300 transition-colors p-4"
                                               title="Open saved consent PDF"
                                             >
-                                              <iframe
-                                                src={previewUrl}
-                                                title={file?.file_name || record.consent_type_label || 'Consent PDF'}
-                                                className="w-full h-52 border-0 pointer-events-none bg-white"
-                                              />
+                                              <div className="h-44 flex flex-col items-center justify-center text-center">
+                                                <div className="w-14 h-16 rounded-lg border border-red-100 bg-red-50 text-red-600 flex items-center justify-center text-xl font-bold">
+                                                  PDF
+                                                </div>
+                                                <p className="text-xs text-gray-600 mt-3">Open consent PDF</p>
+                                              </div>
                                             </a>
                                           ) : (
                                             <div className="h-52 rounded-lg border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500 flex items-center justify-center text-center px-4">
-                                              PDF preview will appear after file sync completes.
+                                              Consent PDF is not available for this record.
                                             </div>
                                           )}
                                         </div>
@@ -2628,14 +2634,14 @@ const PrescriptionPage: React.FC = () => {
                                               <span>Language: {String(record.language || '').toUpperCase() || '-'}</span>
                                               <span>Signer: {record.signed_by || '-'}</span>
                                               <span>Role: {record.signer_role || '-'}</span>
-                                              {file?.file_name ? <span className="truncate">{file.file_name}</span> : null}
+                                              {record?.consent_file_id ? <span className="truncate">File ID: {record.consent_file_id}</span> : null}
                                             </div>
                                           </div>
 
-                                          {file?.file_id ? (
+                                          {record?.name ? (
                                             <div className="flex justify-end">
                                               <button
-                                                onClick={() => handleDeleteFile(file.file_id)}
+                                                onClick={() => handleDeleteConsent(record.name)}
                                                 className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50"
                                               >
                                                 Delete

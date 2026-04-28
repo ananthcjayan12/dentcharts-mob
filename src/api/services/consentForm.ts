@@ -1,5 +1,6 @@
 import { apiClient, API_ENDPOINTS } from '../client';
 import { ConsentRecord, ConsentTemplate, ConsentTemplatesResponse, SharedConsentPayload } from '../types';
+import { consentTemplateSource, LocalConsentTemplateSource } from '../../data/consentTemplateSource';
 
 export interface GetConsentTemplatesParams {
   clinic?: string;
@@ -67,6 +68,111 @@ export interface SaveConsentArtifactsPayload {
 }
 
 class ConsentFormService {
+  private buildTemplatesFromLocalSource(source: LocalConsentTemplateSource): ConsentTemplatesResponse {
+    const templates: ConsentTemplate[] = [];
+
+    const pushLanguageRows = (language: 'en' | 'ml', rows: Record<string, any>) => {
+      Object.entries(rows || {}).forEach(([consentTypeId, payload], index) => {
+        templates.push({
+          name: `local-${consentTypeId}-${language}`,
+          clinic: 'local',
+          doctor: null,
+          consent_type_id: consentTypeId,
+          consent_type_label: payload.label || payload.short || payload.title || consentTypeId.replace(/_/g, ' '),
+          language,
+          is_active: 1,
+          sort_order: index,
+          source: 'seed',
+          summary_text: payload.text || '',
+          sections: Array.isArray(payload.sections) ? payload.sections.map((section: any) => {
+            if (typeof section === 'string') {
+              return { heading: null, body: section, items: [], numbered: [], footer: '' };
+            }
+            return {
+              heading: section?.heading ?? null,
+              body: section?.body || '',
+              items: Array.isArray(section?.items) ? section.items : [],
+              numbered: Array.isArray(section?.numbered) ? section.numbered : [],
+              footer: section?.footer || '',
+            };
+          }) : [],
+          declaration_text: '',
+          guardian_declaration_text: '',
+          meta: {},
+        });
+      });
+    };
+
+    pushLanguageRows('en', source.en || {});
+    pushLanguageRows('ml', source.ml || {});
+
+    const consentTypesMap = new Map<string, { consent_type_id: string; consent_type_label: string; languages: Array<'en' | 'ml'> }>();
+    templates.forEach((row) => {
+      if (!consentTypesMap.has(row.consent_type_id)) {
+        consentTypesMap.set(row.consent_type_id, {
+          consent_type_id: row.consent_type_id,
+          consent_type_label: row.consent_type_label || row.consent_type_id,
+          languages: [],
+        });
+      }
+      const entry = consentTypesMap.get(row.consent_type_id)!;
+      if (!entry.languages.includes(row.language as 'en' | 'ml')) {
+        entry.languages.push(row.language as 'en' | 'ml');
+      }
+    });
+
+    return {
+      clinic: 'local',
+      doctor: 'local',
+      templates,
+      consent_types: Array.from(consentTypesMap.values()),
+    };
+  }
+
+  private mergeWithLocalSource(
+    base: ConsentTemplatesResponse,
+    source: LocalConsentTemplateSource
+  ): ConsentTemplatesResponse {
+    const local = this.buildTemplatesFromLocalSource(source);
+    const mergedMap = new Map<string, ConsentTemplate>();
+
+    (base.templates || []).forEach((row) => {
+      mergedMap.set(`${row.consent_type_id}::${row.language}`, row);
+    });
+
+    (local.templates || []).forEach((row) => {
+      mergedMap.set(`${row.consent_type_id}::${row.language}`, row);
+    });
+
+    const templates = Array.from(mergedMap.values()).sort((a, b) => {
+      const sortGap = (a.sort_order || 0) - (b.sort_order || 0);
+      if (sortGap !== 0) return sortGap;
+      return (a.consent_type_label || a.consent_type_id).localeCompare(b.consent_type_label || b.consent_type_id);
+    });
+
+    const consentTypesMap = new Map<string, { consent_type_id: string; consent_type_label: string; languages: Array<'en' | 'ml'> }>();
+    templates.forEach((row) => {
+      if (!consentTypesMap.has(row.consent_type_id)) {
+        consentTypesMap.set(row.consent_type_id, {
+          consent_type_id: row.consent_type_id,
+          consent_type_label: row.consent_type_label || row.consent_type_id,
+          languages: [],
+        });
+      }
+      const entry = consentTypesMap.get(row.consent_type_id)!;
+      if (!entry.languages.includes(row.language as 'en' | 'ml')) {
+        entry.languages.push(row.language as 'en' | 'ml');
+      }
+    });
+
+    return {
+      clinic: base.clinic,
+      doctor: base.doctor,
+      templates,
+      consent_types: Array.from(consentTypesMap.values()),
+    };
+  }
+
   async getConsentTemplates(params: GetConsentTemplatesParams = {}): Promise<ConsentTemplatesResponse> {
     const query = new URLSearchParams();
     if (params.clinic) query.set('clinic', params.clinic);
@@ -81,6 +187,10 @@ class ConsentFormService {
 
     if (!response.data) {
       throw new Error(response.message || 'Failed to load consent templates');
+    }
+
+    if (!params.for_settings) {
+      return this.mergeWithLocalSource(response.data, consentTemplateSource);
     }
 
     return response.data;
@@ -125,6 +235,22 @@ class ConsentFormService {
     }
 
     return response.data.records || [];
+  }
+
+  async deletePatientConsent(consentSessionId: string, clinic?: string): Promise<{ consent_session_id: string; deleted_file_id?: string }> {
+    const response = await apiClient.post<{ consent_session_id: string; deleted_file_id?: string }>(
+      API_ENDPOINTS.CONSENT_FORMS.DELETE_PATIENT_CONSENT,
+      {
+        consent_session_id: consentSessionId,
+        clinic,
+      }
+    );
+
+    if (!response.data) {
+      throw new Error(response.message || 'Failed to delete consent record');
+    }
+
+    return response.data;
   }
 
   async createShareLink(payload: CreateConsentShareLinkPayload): Promise<{
