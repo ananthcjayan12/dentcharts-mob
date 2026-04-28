@@ -372,6 +372,7 @@ export const API_ENDPOINTS = {
     GET_TEMPLATES: '/api/method/mob_clinic.mob_clinic.api.consent_form.get_consent_templates',
     SAVE_TEMPLATE: '/api/method/mob_clinic.mob_clinic.api.consent_form.save_consent_template',
     DELETE_TEMPLATE: '/api/method/mob_clinic.mob_clinic.api.consent_form.delete_consent_template',
+    DELETE_PATIENT_CONSENT: '/api/method/mob_clinic.mob_clinic.api.consent_form.delete_patient_consent',
     LIST_PATIENT: '/api/method/mob_clinic.mob_clinic.api.consent_form.list_patient_consents',
     CREATE_SHARE_LINK: '/api/method/mob_clinic.mob_clinic.api.consent_form.create_consent_share_link',
     SAVE_ARTIFACTS: '/api/method/mob_clinic.mob_clinic.api.consent_form.save_consent_artifacts',
