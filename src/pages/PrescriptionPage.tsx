@@ -2824,6 +2824,7 @@ const PrescriptionPage: React.FC = () => {
               defaultDoctorId={defaultPrescriptionDoctorId}
               onSubmit={handleNewPrescriptionSubmit}
               isSubmitting={isCreating}
+              medicalHistory={medicalHistory}
             />
 
             {/* Create Invoice Modal */}

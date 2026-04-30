@@ -1,4 +1,4 @@
-export type LocalConsentLanguage = 'en' | 'ml';
+﻿export type LocalConsentLanguage = 'en' | 'ml';
 
 type LocalConsentSection = {
   heading?: string | null;
@@ -29,49 +29,8 @@ export const consentTemplateSource: LocalConsentTemplateSource =
     "general": {
       "label": "General Dentistry Informed Consent Form",
       "short": "General dentistry",
-      "sections": [
-        {
-          "heading": "1. Examination and X-rays",
-          "body": "I understand that the initial visit may require radiographs in order to complete the examination, diagnosis, and treatment plan."
-        },
-        {
-          "heading": "2. Drugs, Medication and Sedation",
-          "body": "I have been informed and understand that antibiotic, analgesics, and other medications can cause allergic reactions causing redness, swelling of tissues, pain, itching, vomiting, and/or anaphylactic shock (severe allergic reaction). They may cause drowsiness and lack of awareness and coordination, which can be increased by the use of alcohol or other drugs. I understand that and fully agree not to operate any vehicle or hazardous device for at least 12 hours or until fully recovered from the effects of the anesthetic medication and drugs that may have been given me in the office for my treatment. I understand that failure to take medications prescribed for me in the manner prescribed may offer risks of continued or aggravated infection, pain, and potential resistance to effect treatment of my condition. I understand that antibiotics can reduce the effectiveness of oral contraceptives."
-        },
-        {
-          "heading": "3. Changes in Treatment Plan",
-          "body": "I understand that during treatment, it may be necessary to change or add procedures because of conditions found while working on teeth that were not discovered during examination, the most common being root canal therapy following routine restorative procedures. I give my permission to the Dentist to make any or all changes and additions as necessary."
-        },
-        {
-          "heading": "4. Temporomandibular Joint Dysfunctions (TMJ)",
-          "body": "I understand that symptoms of popping, clicking, locking and pain can intensify or develop in the joint of the lower (near the ear) subsequent to routine dental treatment wherein the mouth is held in the open position. However, symptoms of TMJ associated with dental treatment are usually transitory in nature and well tolerated by most patients. I understand that should the need for treatment arise, then I will be referred to a specialist for treatment, and the cost of which is my responsibility."
-        },
-        {
-          "heading": "5. Fillings",
-          "body": "I understand that care must be exercised in chewing on filling during the first 24 hours to avoid breakage, and tooth sensitivity is common after-effect of a newly placed filling."
-        },
-        {
-          "heading": "6. Removal of Teeth (Extraction)",
-          "body": "Alternative to removal has been explained to me (root canal therapy, crowns, periodontal surgery, etc.) and I authorize the Dentist to remove the following teeth and any others necessary for the reasons in paragraph #3. I understand removing teeth does not always remove all infection if present and it may be necessary to have further treatment. I understand the risks involved is having teeth removed, some of which are pain, swelling, and spread of infection, dry socket, loss of feeling in my teeth, lips, tongue, and surrounding tissue (parathesia) that can last for an indefinite period of time or fractured jaw. I understand I may need further treatment by a specialist or even hospitalization if complications arise during or following treatment, the cost of which is my responsibility."
-        },
-        {
-          "heading": "7. Crowns, Bridges, Veneers and Bonding",
-          "body": "I understand that sometimes it is not possible to match the color of natural teeth exactly with artificial teeth. I further understand that I may be wearing temporary crowns, which may come off easily and that I must be careful to ensure that they are kept on until the permanent crowns are delivered. I realized that the final opportunity to make changes in my new crowns, bridge or cap (including shape, fit, size, placement, and color) will be done before cementation. It has been explained to me that, in very few cases, cosmetic procedures may result in the need for future root canal treatment, which cannot always be predicted or anticipated. I understand that cosmetic procedures may affect tooth surfaces and may require modification of daily cleaning procedures."
-        },
-        {
-          "heading": "8. Dentures – Complete or Partial",
-          "body": "I realize that full or partial dentures are artificial, constructed of plastic, metal and or porcelain. The problems of wearing those appliances have been explained to me including looseness, soreness, and possible breakage. I realize the final opportunity to make changes in my new denture (including shape, fit, size, placement, and color) will be “teeth in wax” try-in visit. I understand that most dentures require relining approximately three to twelve months after initial placement. The cost for this procedure is not the initial denture fee."
-        },
-        {
-          "heading": "9. Endodontic Treatment (Root Canal)",
-          "body": "I realize there is no guarantee that root canal treatment will save my tooth and those complications can occur from the treatment and that occasionally metal objects are cemented in the tooth, or extend through the root, which does not necessarily affect the success of the treatment. I understand that occasionally additional surgical procedures may be necessary following root canal treatment (apicoectomy)."
-        },
-        {
-          "heading": "10. Periodontal Treatment",
-          "body": "I understand that I have a serious condition causing gum inflammation and/or bone loss and that it can lead to the loss of my teeth. Alternative treatment plans have been explained to me, including non-surgical cleaning, gum surgery and/or extractions. I understand the success of a treatment depends in part on my efforts to brush and floss daily, receive regular cleaning as directed, following a healthy diet, avoid tobacco products and follow other recommendations."
-        }
-      ],
-      "text": "I understand that the initial visit may require radiographs in order to complete the examination, diagnosis, and treatment plan.\n\nI give my permission to {doctor} to perform {procedure} for the condition: {condition}. I understand that during treatment, it may be necessary to change or add procedures because of conditions found while working on teeth that were not discovered during examination, and I give my permission to make any or all changes and additions as necessary."
+      "sections": [],
+      "text": "My current dental condition ({condition}), the proposed treatment ({procedure}), its benefits, risks, and alternative treatment options have been clearly explained to me by Dr. {doctor}.\n\nI understand that if an unexpected clinical situation is discovered during the treatment, the treatment plan may need to be modified accordingly.\n\nI have had the opportunity to ask questions, and I am satisfied with the answers provided. I voluntarily consent to the proposed treatment."
     },
     "endodontic": {
       "label": "Endodontic Consent and Information Form",
@@ -262,26 +221,8 @@ export const consentTemplateSource: LocalConsentTemplateSource =
     "orthodontic": {
       "label": "Orthodontic Consent and Information Form",
       "short": "Orthodontic",
-      "sections": [
-        {
-          "heading": null,
-          "body": "I understand the nature of orthodontic treatment, expected treatment duration and the need for strict follow-up visits and oral hygiene during and after treatment."
-        },
-        {
-          "heading": "Risks and Responsibilities",
-          "items": [
-            "Treatment may require extraction of teeth depending on clinical findings.",
-            "Oral hygiene must be maintained to avoid gum problems and tooth decay during braces treatment.",
-            "Discomfort, appliance-related ulcers, delayed progress and occasional relapse may occur.",
-            "Retention appliances are necessary after active treatment to prevent relapse."
-          ]
-        },
-        {
-          "heading": "Consent",
-          "body": "I have had an opportunity to ask questions and I consent to proceed with orthodontic treatment as advised by {doctor}."
-        }
-      ],
-      "text": "I understand the nature of orthodontic treatment, expected duration, risks and follow-up requirements. I consent to proceed with {procedure} for {condition} as advised by {doctor}."
+      "sections": [],
+      "text": "I understand the nature of orthodontic treatment, expected treatment duration, available alternatives, possible complications, follow-up needs, and self-care requirements. I confirm that I have had the opportunity to ask questions and that I consent to proceed with treatment as advised by the doctor.\n\nI, the patient/guardian/assistant, understand the nature of dental braces treatment, methods involved, available alternative options, procedures, approximate timeline, expected benefits, possible challenges, follow-up actions, and the importance of self-care. The doctor has informed me about the need to attend appointments regularly and maintain oral hygiene during and after treatment.\n\nI understand that the matters described below should be taken into consideration, and that rare complications or difficulties may occasionally occur. I have had the opportunity to ask questions and clarify doubts.\n\n- I understand that, if required as part of treatment, teeth may need to be extracted.\n- If oral hygiene is not properly maintained during treatment, gum disease and tooth decay may occur. I have been advised to use specific toothpaste/mouthwash and proper orthodontic brushing technique.\n- Damaged or decayed teeth may become non-vital over time, either related or unrelated to orthodontic treatment. If cavities are not restored, they may worsen.\n- Teeth may develop pain/discomfort during treatment. If instructions are not followed, appliances may cause oral ulcers; medication/gel may be needed.\n- Growth pattern, patient cooperation, and appliance use can increase treatment duration. Missed appointments may prolong treatment time.\n- Rarely, patients may experience jaw-joint pain, accidental swallowing of appliance parts, tooth mobility, or material allergy.\n- Food trapped between braces and teeth can cause discoloration, surface damage, and decay. Dietary control is needed during treatment. Post-treatment whitening may be done with separate charges.\n- If braces are removed early, relapse may occur. To maintain results, removable or fixed retainers may need to be worn long-term as advised, with additional cost.\n- Monthly treatment payments are required. Lost/damaged brackets may incur additional charges.\n- With growth and aging, minor future position changes may occur, especially in front teeth; retreatment or surgery may be needed in selected cases.\n\nIn case of inadequate patient cooperation, the doctor has full authority to terminate treatment. The doctor/institution is not responsible for consequences arising from non-cooperation.\n\nI consent to use of photographs, X-rays, study models, and related records for research, teaching, and publication. If I discontinue treatment midway for personal reasons, I remain liable to pay the full treatment amount.\n\nI certify that the orthodontic treatment plan, methods, and possible outcomes have been explained to me in a clear manner and I provide my full informed consent."
     },
     "prosthodontic": {
       "label": "Prosthodontic Consent (Crown / Bridge / Denture)",
@@ -306,140 +247,77 @@ export const consentTemplateSource: LocalConsentTemplateSource =
         }
       ],
       "text": "I understand the prosthodontic treatment plan, alternatives, maintenance needs and possible adjustments over time. I consent to proceed with {procedure} for {condition} as advised by {doctor}."
+    },
+    "pulpectomy": {
+      "label": "Pulpectomy Treatment Consent",
+      "short": "Pulpectomy",
+      "sections": [],
+      "text": "I have been fully informed of the nature of the PULPECTOMY procedure to conserve the tooth, the procedure to be utilized, the risks and the benefits of the procedure, the selected Anaesthesia, alternative treatments available, the approximate treatment cost and the need for regular follow up and self-care have been explained.\n\nI have had an opportunity to ask any questions that I have in connection with the treatment and to discuss my concerns with the Doctor. The necessity of crown for a successful pulpectomy, adverse effects of the SELECTED ANAESTHETIC PROCEDURE and the complications that one can expect or may happen during or after pulpectomy procedure have been explained to me.\n\nI hereby consent to procedure of PULPECTOMY as presented to me during consultation and the treatment plan as described. I hereby certify that I have read and fully understand this consent."
+    },
+    "crown": {
+      "label": "Crown (Stainless Steel / Tooth Colored) Treatment Consent",
+      "short": "Crown",
+      "sections": [],
+      "text": "I have been fully informed of the nature of the placement of CROWN procedure to maintain and protect the tooth, the procedure to be utilized, the risks and the benefits of the procedure, the selected Anaesthesia, alternative treatments available, the approximate treatment cost and the need for regular follow up and self-care have been explained.\n\nI have had an opportunity to ask any questions that I have in connection with the treatment and to discuss my concerns with the Doctor. The adverse effects of the SELECTED ANAESTHETIC PROCEDURE and the complications that one can expect or may happen during or after crown procedure including crown decementation have been explained to me.\n\nI hereby consent to procedure of CROWN (STAINLESS STEEL / TOOTH COLORED) as presented to me during consultation and the treatment plan as described. I hereby certify that I have read and fully understand this consent."
+    },
+    "rpd_cd_crown_bridge": {
+      "label": "Consent For RPD/CD/Crown/Fixed Bridge Treatment",
+      "short": "RPD/CD/Crown/Bridge",
+      "sections": [],
+      "text": "I understand the nature of RPD (Removable Partial Denture), CD (Complete Denture), Crown, and Fixed Bridge treatment, including available alternatives, expected timeline, benefits, possible difficulties, follow-up requirements, and self-care responsibilities.\n\nI have had the opportunity to ask questions and clarify doubts. I understand that complications may occur in rare situations, and I consent to proceed with full awareness.\n\nI understands the nature of the RPD, CD, CROWN, and FIXED BRIDGE treatment, the methods involved, available alternative options, procedures, approximate timeline, benefits, potential challenges, follow-up actions, and the necessity for self-care. The doctor has informed me about the importance of attending treatment appointments accurately and maintaining oral hygiene during and after treatment.\n\nI understand that the matters described herein should be considered carefully, and that there may occasionally be rare complications or difficulties. I have had the opportunity to ask questions and seek clarification of doubts.\n\nTooth/teeth that were badly damaged and could not be maintained, or could have been saved by root canal/gum surgery, have been removed as per my request.\n\nUnderstanding the necessity of replacing missing teeth and the disadvantages of not doing so, I am proceeding with denture placement with full consent.\n\nI understand that after extraction, gum healing usually takes approximately 45 to 90 days, and denture placement is ideal after this period. The doctor has explained the side effects of placing dentures earlier than this period.\n\nIn cases where all teeth are removed, healing can take up to three months. During this period, gum-massage technique has been explained. I understand that sometimes, even after healing, bone may remain sharp and minor surgery may be needed if massage does not resolve it. I also understand dentures can become loose quickly if placed before complete healing, and in some cases a new denture set may be required.\n\nI have understood different types of artificial teeth, their advantages and disadvantages, and approximate cost. I have selected my preferred set based on my own choice.\n\nOver time, removable dental sets may become loose due to bone resorption. Newly fitted dentures may cause pain or sores and may require multiple adjustment visits. The doctor has explained that speaking/eating difficulties can occur initially and improve only with continuous use.\n\nThe doctor has explained denture-use instructions and care points, including six-monthly check-ups. I understand the set may change or wear over time.\n\nFor fixed teeth (bridge), I understand adjacent teeth may need trimming and the missing tooth is connected with crowns on neighboring teeth. If support teeth have decay/gum disease, root canal treatment may be needed first; otherwise sensitivity or pain may occur early.\n\nThe doctor has explained maintenance after bridge/root canal/crown treatment, including self-care (mouthwash, flossing, brushing) and periodic cleaning every six months. I understand that poor maintenance can cause food impaction, gum disease, loosening, and damage to neighboring/supporting teeth.\n\nI understand that biting excessively hard objects can crack or dislodge the crown/ceramic, and caps may loosen over time.\n\nI understand all above points and provide full consent for RPD, CD, CROWN, and FIXED BRIDGE treatment."
     }
   },
   "ml": {
     "general": {
       "title": "ജനറൽ ദന്തചികിത്സ സമ്മതപത്രം",
-      "sections": [
-        {
-          "heading": "1. പരിശോധനയും എക്‌സ്-റേയും",
-          "body": "പരിശോധന, രോഗനിർണയം, ചികിത്സാ പദ്ധതി എന്നിവ പൂർണ്ണമാക്കുന്നതിനായി ആദ്യ സന്ദർശനത്തിൽ എക്‌സ്-റേ ചിത്രങ്ങൾ ആവശ്യമായി വരാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു."
-        },
-        {
-          "heading": "2. മരുന്നുകൾ, ഔഷധങ്ങൾ, സെഡേഷൻ",
-          "body": "ആന്റിബയോട്ടിക്കുകൾ, വേദനാശമന മരുന്നുകൾ, മറ്റു മരുന്നുകൾ എന്നിവ ചുവപ്പ്, വീക്കം, വേദന, ചൊറിച്ചിൽ, ഛർദ്ദി, അത്യപൂർവമായി അനാഫിലാക്റ്റിക് ഷോക്ക് പോലുള്ള അലർജി പ്രതികരണങ്ങൾ ഉണ്ടാക്കാമെന്ന് എനിക്ക് അറിയിച്ചു, ഞാൻ അത് മനസ്സിലാക്കുന്നു. ഇത്തരത്തിലുള്ള മരുന്നുകൾ മയക്കം, ജാഗ്രതക്കുറവ്, ഏകോപനക്കുറവ് എന്നിവ ഉണ്ടാക്കാം; മദ്യമോ മറ്റു മരുന്നുകളോ ഉപയോഗിച്ചാൽ ഇത് കൂടാനിടയുണ്ട്. ചികിത്സയ്ക്കായി നൽകിയ അനസ്‌തേഷ്യയുടെയും മരുന്നുകളുടെയും സ്വാധീനം പൂർണ്ണമായി മാറുന്നതുവരെ കുറഞ്ഞത് 12 മണിക്കൂർ വാഹനമോടിക്കുകയോ അപകടസാധ്യതയുള്ള യന്ത്രങ്ങൾ പ്രവർത്തിപ്പിക്കുകയോ ചെയ്യില്ലെന്ന് ഞാൻ സമ്മതിക്കുന്നു. നിർദ്ദേശിച്ച രീതിയിൽ മരുന്നുകൾ കഴിക്കാത്ത പക്ഷം അണുബാധയും വേദനയും തുടരാനോ വർധിക്കാനോ, ചികിത്സയുടെ ഫലപ്രാപ്തി കുറയാനോ സാധ്യതയുണ്ടെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. ആന്റിബയോട്ടിക്കുകൾ വായ് ഗർഭനിരോധന മരുന്നുകളുടെ ഫലപ്രാപ്തിയും കുറയ്ക്കാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു."
-        },
-        {
-          "heading": "3. ചികിത്സാ പദ്ധതിയിലെ മാറ്റങ്ങൾ",
-          "body": "ചികിത്സയ്ക്കിടെ പരിശോധന സമയത്ത് കണ്ടെത്താനായില്ലാത്ത അവസ്ഥകൾ പല്ലിൽ പ്രവർത്തിക്കുന്നതിനിടെ കണ്ടെത്താനിടയുള്ളതിനാൽ, ആവശ്യമായാൽ ചികിത്സാ രീതികൾ മാറ്റുകയോ കൂട്ടിച്ചേർക്കുകയോ ചെയ്യേണ്ടി വരാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. സാധാരണ റസ്റ്റോറേറ്റീവ് ചികിത്സകൾക്ക് ശേഷം റൂട്ട് കനാൽ ചികിത്സ ആവശ്യമായി വരുന്നതുപോലുള്ള സാഹചര്യം ഉണ്ടായേക്കാം. ആവശ്യമായ എല്ലാ മാറ്റങ്ങളും കൂട്ടിച്ചേർക്കലുകളും നടത്താൻ ഞാൻ ദന്തഡോക്ടറിന് അനുമതി നൽകുന്നു."
-        },
-        {
-          "heading": "4. ടെംപറോമാൻഡിബുലർ ജോയിന്റ് (TMJ) സംബന്ധമായ പ്രശ്നങ്ങൾ",
-          "body": "സാധാരണ ദന്തചികിത്സയ്ക്കിടെ വായ് ഏറെ നേരം തുറന്ന നിലയിൽ വയ്ക്കുന്നതിനാൽ താഴ്‌വായി സന്ധിയിൽ (ചെവിക്കരികിലെ ജോയിന്റ്) ക്ലിക്ക് ശബ്ദം, പൂട്ടൽ, വേദന എന്നിവ പോലുള്ള TMJ ലക്ഷണങ്ങൾ ഉണ്ടാകാനോ വർധിക്കാനോ ഇടയുണ്ടെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. എങ്കിലും ഇത്തരത്തിലുള്ള ലക്ഷണങ്ങൾ പലപ്പോഴും താത്കാലികവുമാണ്, ഭൂരിഭാഗം രോഗികളും അത് സഹിച്ചുപോകാറുണ്ട്. ഇതിന് പ്രത്യേക ചികിത്സ ആവശ്യമുണ്ടെങ്കിൽ വിദഗ്ധന്റെ അടുത്തേക്ക് റഫർ ചെയ്യപ്പെടാമെന്നും അതിന്റെ ചെലവ് എന്റെ ഉത്തരവാദിത്വമാണെന്നും ഞാൻ മനസ്സിലാക്കുന്നു."
-        },
-        {
-          "heading": "5. ഫില്ലിംഗുകൾ",
-          "body": "പുതുതായി ഇടുന്ന ഫില്ലിംഗ് പൊട്ടിപ്പോകാതിരിക്കാൻ ആദ്യ 24 മണിക്കൂർ കഠിനമായി ചവയ്ക്കുന്നത് ഒഴിവാക്കി ശ്രദ്ധിക്കണമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. പുതിയ ഫില്ലിംഗിന് ശേഷം കുറച്ച് പല്ല് സംവേദനക്ഷമത അനുഭവപ്പെടുന്നത് സാധാരണമായ അനുബന്ധഫലമാണെന്നും അറിയുന്നു."
-        },
-        {
-          "heading": "6. പല്ല് നീക്കം ചെയ്യൽ",
-          "body": "പല്ല് നീക്കം ചെയ്യുന്നതിനുള്ള ബദൽ ചികിത്സകൾ (റൂട്ട് കനാൽ ചികിത്സ, ക്രൗൺ, പെരിയോഡോണ്ടൽ സർജറി മുതലായവ) എനിക്ക് വിശദീകരിച്ചിട്ടുണ്ട്. പാരഗ്രാഫ് 3-ൽ പറഞ്ഞ കാരണങ്ങളാൽ ആവശ്യമായ പല്ലുകളെയും മറ്റു ആവശ്യമായ പല്ലുകളെയും നീക്കാൻ ഞാൻ ഡെന്റിസ്റ്റിന് അനുമതി നൽകുന്നു. പല്ല് നീക്കം ചെയ്‌തതുകൊണ്ട് അണുബാധ മുഴുവനായി മാറണമെന്നില്ല; ചിലപ്പോൾ കൂടുതൽ ചികിത്സ ആവശ്യമാകാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു. പല്ല് നീക്കം ചെയ്യുന്നതുമായി ബന്ധപ്പെട്ട അപകടസാധ്യതകളിൽ വേദന, വീക്കം, അണുബാധ പടരൽ, ഡ്രൈ സോക്കറ്റ്, പല്ല്, അധരം, നാവ്, ചുറ്റുമുള്ള ത്വക്കുകൾ എന്നിവിടങ്ങളിൽ അനുഭൂതി കുറഞ്ഞുപോകൽ (പാരസ്‌തീഷ്യ) ദീർഘകാലം തുടരുക, അത്യപൂർവമായി താടി പൊട്ടൽ എന്നിവ ഉൾപ്പെടാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. ചികിത്സയ്ക്കിടെയോ ശേഷം പ്രശ്നങ്ങൾ ഉണ്ടായാൽ വിദഗ്ധന്റെ ചികിത്സയോ ആശുപത്രിവാസമോ ആവശ്യമായി വരാനിടയുണ്ട്; അതിന്റെ ചെലവും എന്റെ ഉത്തരവാദിത്വമായിരിക്കും."
-        },
-        {
-          "heading": "7. ക്രൗൺ, ബ്രിഡ്ജ്, വിനീയർ, ബോണ്ടിംഗ്",
-          "body": "സ്വാഭാവിക പല്ലുകളുടെ നിറത്തോട് കൃത്രിമ പല്ലുകളുടെ നിറം എല്ലായ്പ്പോഴും കൃത്യമായി ഒത്തുചേരണമെന്നില്ലെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. താത്കാലിക ക്രൗണുകൾ ഉപയോഗിക്കുന്നുണ്ടെങ്കിൽ അവ എളുപ്പത്തിൽ അഴിയാനിടയുള്ളതിനാൽ സ്ഥിര ക്രൗൺ ഘടിപ്പിക്കുന്നതുവരെ അവ സൂക്ഷിച്ചുനടക്കേണ്ടതുണ്ടെന്നും മനസ്സിലാക്കുന്നു. പുതിയ ക്രൗൺ, ബ്രിഡ്ജ്, ക്യാപ് എന്നിവയുടെ ആകൃതി, പൊരുത്തം, വലുപ്പം, സ്ഥാപനം, നിറം എന്നിവയിൽ അന്തിമ മാറ്റങ്ങൾ സിമെന്റേഷൻ മുമ്പ് മാത്രമേ ചെയ്യാൻ കഴിയൂ എന്നും എനിക്ക് വ്യക്തമാക്കി. വളരെ അപൂർവമായി കോസ്മറ്റിക് ചികിത്സകൾക്ക് ശേഷം ഭാവിയിൽ റൂട്ട് കനാൽ ചികിത്സ ആവശ്യമാകാനിടയുണ്ടെന്നും അത് മുമ്പ് കൃത്യമായി പ്രവചിക്കാനാകില്ലെന്നും ഞാൻ മനസ്സിലാക്കുന്നു. ഇത്തരത്തിലുള്ള ചികിത്സകൾ പല്ലിന്റെ ഉപരിതലത്തെ ബാധിക്കാനും ദൈനംദിന ശുചീകരണ രീതികൾ മാറ്റേണ്ടതായി വരാനും ഇടയുണ്ട്."
-        },
-        {
-          "heading": "8. പൂർണ്ണമോ ഭാഗികമോ ആയ ഡെഞ്ചറുകൾ",
-          "body": "പൂർണ്ണമോ ഭാഗികമോ ആയ ഡെഞ്ചറുകൾ പ്ലാസ്റ്റിക്, ലോഹം, പോഴ്‌സലിന്‍ തുടങ്ങിയ വസ്തുക്കളാൽ നിർമ്മിച്ച കൃത്രിമ ഉപകരണങ്ങളാണെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. ഇത്തരത്തിലുള്ള ഉപകരണങ്ങൾ ഉപയോഗിക്കുമ്പോൾ അയവ്, വേദന, മുറിവ്, പൊട്ടൽ എന്നിവ പോലുള്ള പ്രശ്നങ്ങൾ ഉണ്ടാകാമെന്ന് എനിക്ക് വിശദീകരിച്ചിട്ടുണ്ട്. പുതിയ ഡെഞ്ചറിന്റെ ആകൃതി, പൊരുത്തം, വലുപ്പം, സ്ഥാപനം, നിറം എന്നിവയിൽ മാറ്റങ്ങൾ വരുത്താനുള്ള അവസാന അവസരം \"ടീത്ത് ഇൻ വാക്സ്\" ട്രൈ-ഇൻ സന്ദർശനത്തിലാണെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. ഭൂരിഭാഗം ഡെഞ്ചറുകൾക്കും ഘടിപ്പിച്ചതിന് ശേഷം ഏകദേശം മൂന്ന് മുതൽ പന്ത്രണ്ട് മാസം വരെ കഴിഞ്ഞ് റീലൈനിംഗ് ആവശ്യമാകാമെന്നും അതിന്റെ ചെലവ് ആദ്യ ഡെഞ്ചർ ഫീസിൽ ഉൾപ്പെടുന്നതല്ലെന്നും ഞാൻ മനസ്സിലാക്കുന്നു."
-        },
-        {
-          "heading": "9. എൻഡോഡോണ്ടിക് ചികിത്സ (റൂട്ട് കനാൽ)",
-          "body": "റൂട്ട് കനാൽ ചികിത്സ എന്റെ പല്ല് നിർബന്ധമായും രക്ഷിക്കുമെന്നുറപ്പ് ഇല്ലെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു. ചികിത്സയ്ക്കിടെ ചില സങ്കീർണതകൾ ഉണ്ടാകാം; ചിലപ്പോൾ ചെറിയ ലോഹോപകരണങ്ങൾ പല്ലിനുള്ളിൽ സിമെന്റുചെയ്യപ്പെടുകയോ വേരിന് പുറത്തേക്ക് നീളുകയോ ചെയ്യാം, എന്നാൽ അതൊന്നുകൊണ്ട് മാത്രം ചികിത്സ പരാജയപ്പെടണമെന്നില്ല. ചില സാഹചര്യങ്ങളിൽ റൂട്ട് കനാൽ ചികിത്സയ്ക്കു ശേഷം അധിക ശസ്ത്രക്രിയകൾ (ഉദാ: ആപ്പിക്കോഎക്ടമി) ആവശ്യമായി വരാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു."
-        },
-        {
-          "heading": "10. പെരിയോഡോണ്ടൽ ചികിത്സ",
-          "body": "എനിക്ക് മോണ അണുബാധയും അല്ലെങ്കിൽ അസ്ഥിനാശവും ഉണ്ടാക്കുന്ന ഗൗരവമുള്ള അവസ്ഥയുണ്ടെന്നും അത് പല്ലുകൾ നഷ്ടപ്പെടാൻ കാരണമാകാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു. ശസ്ത്രക്രിയയില്ലാത്ത ക്ലീനിംഗ്, മോണ ശസ്ത്രക്രിയ, പല്ല് നീക്കം ചെയ്യൽ തുടങ്ങിയ ബദൽ ചികിത്സാ പദ്ധതികളും എനിക്ക് വിശദീകരിച്ചിട്ടുണ്ട്. ചികിത്സയുടെ വിജയം ഭാഗികമായി ഞാൻ ദിവസേന ശരിയായി ബ്രഷ് ചെയ്യുകയും ഫ്ലോസ് ചെയ്യുകയും നിർദ്ദേശിച്ച ക്ലീനിംഗുകൾ സ്വീകരിക്കുകയും ആരോഗ്യകരമായ ആഹാരരീതി പാലിക്കുകയും പുകയില ഒഴിവാക്കുകയും മറ്റ് നിർദേശങ്ങൾ പിന്തുടരുകയും ചെയ്യുന്നതിൽ ആശ്രയിച്ചിരിക്കുന്നുവെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു."
-        }
-      ],
-      "text": "പരിശോധന, രോഗനിർണയം, ചികിത്സാ പദ്ധതി എന്നിവ പൂർണ്ണമാക്കുന്നതിനായി ആദ്യ സന്ദർശനത്തിൽ എക്‌സ്-റേ ചിത്രങ്ങൾ ആവശ്യമായി വരാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\n{condition} എന്ന അവസ്ഥയ്ക്ക് {procedure} എന്ന ചികിത്സ {doctor} നിർദേശിച്ചതായി എനിക്ക് വിശദീകരിച്ചിട്ടുണ്ട്. ചികിത്സയ്ക്കിടെ മുമ്പ് കണ്ടെത്താനാകാത്ത അവസ്ഥകൾ കണ്ടെത്തുകയാണെങ്കിൽ ആവശ്യമായ മാറ്റങ്ങളും കൂട്ടിച്ചേർക്കലുകളും നടത്താൻ ഞാൻ സമ്മതിക്കുന്നു."
+      "sections": [],
+      "text": "എന്റെ ദന്താരോഗ്യവുമായി ബന്ധപ്പെട്ട നിലവിലെ അവസ്ഥ ({condition}), നിർദ്ദേശിച്ച ചികിത്സ ({procedure}), ഗുണഫലങ്ങൾ, അപകടസാധ്യതകൾ, ബദൽ ചികിത്സാമാർഗങ്ങൾ എന്നിവയെക്കുറിച്ച് ഡോക്ടർ {doctor} വ്യക്തമായി വിശദീകരിച്ചു.\n\nചികിത്സയ്ക്കിടെ പ്രതീക്ഷിക്കാത്ത ക്ലിനിക്കൽ സാഹചര്യം കണ്ടെത്തുകയാണെങ്കിൽ ചികിത്സാ പദ്ധതി ആവശ്യാനുസരണം മാറ്റേണ്ടതായി വരാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\nഎനിക്ക് സംശയങ്ങൾ ചോദിക്കാനുള്ള അവസരം ലഭിച്ചു. ലഭിച്ച മറുപടികളിൽ ഞാൻ തൃപ്തനാണ്/തൃപ്തയാണ്. നിർദ്ദേശിച്ച ചികിത്സയ്ക്ക് ഞാൻ സ്വമേധയാ സമ്മതിക്കുന്നു."
     },
     "endodontic": {
       "title": "റൂട്ട് കനാൽ ചികിത്സ സമ്മതപത്രം",
-      "sections": [
-        "എന്നോട് റൂട്ട് കനാൽ/നേര് ചികിത്സ ചെയ്യേണ്ടതാണെന്ന് ദന്ത രോഗ വിദഗ്ധൻ വിശദീകരിച്ചിട്ടുണ്ട്.",
-        "റൂട്ട് കനാൽ ചികിത്സ എന്നത് സാധാരണ രീതിയിൽ അടച്ച് സംരക്ഷിക്കാൻ സാധിക്കാത്തതോ, അല്ലെങ്കിൽ നീക്കം ചെയ്യേണ്ടതായി വരാനിടയുള്ളതോ ആയ പല്ലിനെ സംരക്ഷിക്കാനായി നടത്തുന്ന ചികിത്സയാണ്.",
-        "ഈ ചികിത്സയ്ക്ക് നല്ല വിജയശതമാനം ഉണ്ടെങ്കിലും, മറ്റേതു ദന്തചികിത്സകളെപ്പോലെ തന്നെ ഫലത്തെക്കുറിച്ച് ഉറപ്പ് നൽകാൻ സാധിക്കില്ലെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "റൂട്ട് കനാൽ ചികിത്സ ഇപ്പോൾ നിലവിലുള്ളതോ ഉണ്ടാകാൻ സാധ്യതയുള്ളതോ ആയ ഒരു പ്രശ്നം പരിഹരിക്കുന്നതിനാണ്; ഭാവിയിൽ സമാനമായ ദന്തപ്രശ്നങ്ങൾ വീണ്ടും ഉണ്ടാകാതിരിക്കാൻ ഇത് പൂർണ്ണ ഉറപ്പ് നൽകുന്നില്ല.",
-        "ചില സാഹചര്യങ്ങളിൽ വീണ്ടും ചികിത്സ ആവശ്യമായേക്കാം; ആവശ്യമായാൽ ശസ്ത്രക്രിയ ചെയ്യുകയോ, പല്ല് തന്നെ നീക്കം ചെയ്യേണ്ടി വരുകയോ, താഴെ പറയുന്നതിനു പുറമേ മറ്റ് പാർശ്വഫലങ്ങൾ ഉണ്ടാകുകയോ ചെയ്യാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ചികിത്സ നടപടിയുമായി ബന്ധപ്പെട്ടും, അനസ്‌തേഷ്യ മൂലമോ ഉണ്ടാകാവുന്ന അപൂർവ അപകടസാധ്യതകളെക്കുറിച്ചും എന്നോട് വിശദീകരിച്ചിട്ടുണ്ട്.",
-        "റൂട്ട് കനാൽ ചികിത്സയ്ക്ക് ഉപയോഗിക്കുന്ന മരുന്നുകളോ ഫില്ലിംഗ് പദാർത്ഥങ്ങളോ ശരീരത്തിൽ പാർശ്വഫലങ്ങൾ ഉണ്ടാക്കാം.",
-        "ചികിത്സ സമയത്ത് പല്ലിനുള്ളിൽ ഉപയോഗിക്കുന്ന ചില ഉപകരണങ്ങളോ വസ്തുക്കളോ ഒടിഞ്ഞ് പോകുകയോ അബദ്ധത്തിൽ വിഴുങ്ങിപ്പോകുകയോ ചെയ്യാം.",
-        "വായ് തുറക്കുന്നതിൽ ബുദ്ധിമുട്ട് ഉണ്ടെങ്കിൽ അതിനായി കൂടുതൽ ചികിത്സ ആവശ്യമായി വരാം.",
-        "റൂട്ട് കനാൽ ചെയ്ത പല്ലിൽ പൊട്ടൽ, പല്ലിന്റെ ഭാഗങ്ങൾക്ക് ഇളക്കം, വേരിനുള്ളിൽ തുള (പെർഫറേഷൻ), അല്ലെങ്കിൽ കനാലിനെ തടസ്സപ്പെടുത്തുന്ന വസ്തുക്കൾ ഉണ്ടാകൽ പോലുള്ള ബുദ്ധിമുട്ടുകൾ ഉണ്ടാകാം.",
-        "പല്ലിന്റെ വേരിന്റെ അടിഭാഗത്ത് ഉള്ള അണുബാധ ഭേദമാകാതിരിക്കുകയോ, പെുപ്പ് രൂപപ്പെടുകയോ ചെയ്താൽ മരുന്ന് കഴിക്കേണ്ടി വരാം; ആവശ്യമായാൽ ശസ്ത്രക്രിയയോ പല്ല് നീക്കം ചെയ്യലോ വേണ്ടിവരും.",
-        "പല്ലുകളുടെ സമീപമുള്ള ഞരമ്പുകൾക്ക് ക്ഷതം സംഭവിക്കാമെന്നും, അതിനാൽ താടി, ചുണ്ട്, കവിൾ, മോണ, നാവ് എന്നിവിടങ്ങളിൽ വേദന, മരവിപ്പ്, കടിച്ചിൽ, അല്ലെങ്കിൽ മറ്റ് അസ്വസ്ഥതകൾ ഉണ്ടാകാമെന്നും, അത് ആഴ്ചകളോളം, മാസങ്ങളോളം, അപൂർവമായി സ്ഥിരമായും തുടരാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "റൂട്ട് കനാൽ ചികിത്സയ്ക്ക് ശേഷം ഒരു മാസത്തിനകം പല്ലിന് ക്യാപ്/ക്രൗൺ ചികിത്സയോ പ്രത്യേക ഫില്ലിങ്ങുകളോ ചെയ്യേണ്ടത് നിർബന്ധമാണെന്ന് എനിക്ക് അറിയിച്ചിട്ടുണ്ട്.",
-        "അത് ചെയ്തില്ലെങ്കിൽ പല്ല് പൊട്ടിപ്പോകാനും, ചികിത്സ ഫലപ്രദമാകാതിരിക്കാനും സാധ്യതയുണ്ടെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ചികിത്സയുമായി ബന്ധപ്പെട്ട ചോദ്യങ്ങൾ ചോദിക്കാനും, എന്റെ ആശങ്കകൾ ഡോക്ടറുമായി ചർച്ച ചെയ്യാനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്.",
-        "തിരഞ്ഞെടുക്കപ്പെട്ട അനസ്‌തേഷ്യ രീതിയുടെ പാർശ്വഫലങ്ങളും, റൂട്ട് കനാൽ ചികിത്സയ്ക്കിടെയോ ചികിത്സയ്ക്ക് ശേഷമോ ഉണ്ടാകാവുന്ന കോംപ്ലിക്കേഷനുകളും എന്നോട് വിശദീകരിച്ചിട്ടുണ്ട്.",
-        "കൺസൾട്ടേഷനിൽ എനിക്ക് അവതരിപ്പിച്ച ചികിത്സാരീതി, ചികിത്സാ പദ്ധതി എന്നിവ മനസ്സിലാക്കി ഞാൻ ഈ ചികിത്സയ്ക്ക് സമ്മതം നൽകുന്നു.",
-        "ഈ സമ്മതപത്രം ഞാൻ വായിക്കുകയും പൂർണ്ണമായി മനസ്സിലാക്കുകയും ചെയ്തതായി ഇതുവഴി സാക്ഷ്യപ്പെടുത്തുന്നു."
-      ]
+      "sections": [],
+      "text": "എന്നോട് റൂട്ട് കനാൽ/ വേര് ചികിത്സ ചെയ്യേണ്ടതാണെന്ന് ദന്ത രോഗ വിദഗ്ധൻ വിശദീകരിച്ചിട്ടുണ്ട്. റൂട്ട് കനാൽ ചികിത്സ എന്നത്, സാധാരണ രീതിയിൽ അടച്ചു സംരക്ഷിക്കാൻ സാധിക്കാത്ത/ എടുക്കേണ്ട പല്ലിനെ സംരക്ഷിക്കാൻ നടത്തുന്ന ചികിത്സയാണ്. ഈ ചികിത്സയ്ക്ക് നല്ല വിജയശതമാനം ഉണ്ടായാലും, മറ്റേതു ദന്ത ചികിത്സകളെപ്പോലെ തന്നെ ഫലത്തെക്കുറിച്ച് ഉറപ്പുകൾ ഒന്നും നൽകാൻ സാധിക്കുകയില്ല. കൂടാതെ റൂട്ട് കനാൽ ചികിത്സ ഇപ്പോൾ ഉള്ള/ അല്ലെങ്കിൽ ഉണ്ടാകാനിടയുള്ള ഒരു പ്രശ്നത്തെ പരിഹരിക്കുന്നതിനാണ്, ഭാവിയിൽ ഈ പല്ലിന് പ്രശ്നങ്ങൾ ഉണ്ടാകുന്നതിനെ പ്രതിരോധിക്കാൻ സാധിക്കുകയില്ല. ചില സമയങ്ങളിൽ വീണ്ടും ചികിത്സ ചെയ്യുകയോ, ആവശ്യമെങ്കിൽ സർജറി ചെയ്യുകയോ പല്ല് തന്നെ നീക്കം ചെയ്യേണ്ടതായി വരാം എന്നിവയും, താഴെ പറഞ്ഞവ കൂടാതെയുള്ള മറ്റു പാർശ്വഫലങ്ങളും ഉണ്ടാകാനിടയുണ്ടെന്ന് ഞാൻ മനസിലാക്കുന്നു.\n\nചികിത്സ നടപടിയുമായി ബന്ധപ്പെട്ടും, അനസ്തേഷ്യ മൂലമോ ഉണ്ടാകാവുന്ന അപൂർവ അപകടസാധ്യതകളെക്കുറിച്ചും എന്നോട് വിശദീകരിച്ചിട്ടുണ്ട്.\n- റൂട്ട് കനാൽ ചികിത്സയ്ക്ക് ഉപയോഗിക്കുന്ന മരുന്നുകളോ ഫില്ലിംഗ് പദാർത്ഥങ്ങളോ ശരീരത്തിൽ പാർശ്വഫലങ്ങൾ ഉണ്ടാക്കാം.\n- ചികിത്സ സമയത്ത് പല്ലിനുള്ളിൽ ഉപയോഗിക്കുന്ന ചില ഉപകരണങ്ങളോ വസ്തുക്കളോ ഒടിഞ്ഞ് പോകുകയോ അബദ്ധത്തിൽ വിഴുങ്ങിപ്പോകുകയോ ചെയ്യാം.\n- വായ് തുറക്കുന്നതിൽ ബുദ്ധിമുട്ട് ഉണ്ടെങ്കിൽ അതിനായി കൂടുതൽ ചികിത്സ ആവശ്യമായി വരാം.\n- റൂട്ട് കനാൽ ചെയ്ത പല്ലിൽ പൊട്ടൽ, പല്ലിന്റെ ഭാഗങ്ങൾക്ക് ഇളക്കം, വേരിനുള്ളിൽ തുള (പെർഫറേഷൻ), അല്ലെങ്കിൽ കനാലിനെ തടസ്സപ്പെടുത്തുന്ന വസ്തുക്കൾ ഉണ്ടാകൽ പോലുള്ള ബുദ്ധിമുട്ടുകൾ ഉണ്ടാകാം.\n- പല്ലിന്റെ വേരിന്റെ അടിഭാഗത്ത് ഉള്ള അണുബാധ ഭേദമാകാതിരിക്കുകയോ, പെുപ്പ് രൂപപ്പെടുകയോ ചെയ്താൽ മരുന്ന് കഴിക്കേണ്ടി വരാം; ആവശ്യമായാൽ ശസ്ത്രക്രിയയോ പല്ല് നീക്കം ചെയ്യലോ വേണ്ടിവരും.\n- പല്ലുകളുടെ സമീപമുള്ള ഞരമ്പുകൾക്ക് ക്ഷതം സംഭവിക്കാമെന്നും, അതിനാൽ താടി, ചുണ്ട്, കവിൾ, മോണ, നാവ് എന്നിവിടങ്ങളിൽ വേദന, മരവിപ്പ്, കടിച്ചിൽ, അല്ലെങ്കിൽ മറ്റ് അസ്വസ്ഥതകൾ ഉണ്ടാകാമെന്നും, അത് ആഴ്ചകളോളം, മാസങ്ങളോളം, അപൂർവമായി സ്ഥിരമായും തുടരാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു.\n- റൂട്ട് കനാൽ ചികിത്സയ്ക്ക് ശേഷം ഒരു മാസത്തിനകം പല്ലിന് ക്യാപ്/ക്രൗൺ ചികിത്സയോ പ്രത്യേക ഫില്ലിങ്ങുകളോ ചെയ്യേണ്ടത് നിർബന്ധമാണെന്ന് എനിക്ക് അറിയിച്ചിട്ടുണ്ട്. അത് ചെയ്തില്ലെങ്കിൽ പല്ല് പൊട്ടിപ്പോകാനും, ചികിത്സ ഫലപ്രദമാകാതിരിക്കാനും സാധ്യതയുണ്ടെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\nചികിത്സയുമായി ബന്ധപ്പെട്ട ചോദ്യങ്ങൾ ചോദിക്കാനും, എന്റെ ആശങ്കകൾ ഡോക്ടറുമായി ചർച്ച ചെയ്യാനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്. തിരഞ്ഞെടുക്കപ്പെട്ട അനസ്തേഷ്യ രീതിയുടെ പാർശ്വഫലങ്ങളും, റൂട്ട് കനാൽ ചികിത്സയ്ക്കിടെയോ ചികിത്സയ്ക്ക് ശേഷമോ ഉണ്ടാകാവുന്ന കോംപ്ലിക്കേഷനുകളും എന്നോട് വിശദീകരിച്ചിട്ടുണ്ട്.\n\nകൺസൾട്ടേഷനിൽ എനിക്ക് അവതരിപ്പിച്ച ചികിത്സാരീതി, ചികിത്സാ പദ്ധതി എന്നിവ മനസ്സിലാക്കി ഞാൻ ഈ ചികിത്സയ്ക്ക് സമ്മതം നൽകുന്നു. ഈ സമ്മതപത്രം ഞാൻ വായിക്കുകയും പൂർണ്ണമായി മനസ്സിലാക്കുകയും ചെയ്തതായി ഇതുവഴി സാക്ഷ്യപ്പെടുത്തുന്നു."
     },
     "oral_surgery": {
       "title": "ഓറൽ സർജറി / പല്ല് നീക്കം ചെയ്യൽ സമ്മതപത്രം",
-      "sections": [
-        "നിർദ്ദേശിച്ച ശസ്ത്രക്രിയയുടെ സ്വഭാവം, അനസ്‌തീഷ്യ ഓപ്ഷനുകൾ, ബദൽ മാർഗങ്ങൾ എന്നിവ ഡോക്ടർ വിശദീകരിച്ചു.",
-        "വേദന, വീക്കം, രക്തസ്രാവം, ഡ്രൈ സോക്കറ്റ്, വായ് തുറക്കുന്നതിലെ ബുദ്ധിമുട്ട്, അപൂർവമായി നാഡീസംബന്ധമായ മന്ദത എന്നിവ സാധ്യതയുള്ള അപകടങ്ങളാണെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ചില അപൂർവ സാഹചര്യങ്ങളിൽ കൂടുതൽ ചികിത്സയോ വിദഗ്ധ റഫറലോ ആവശ്യമാകാമെന്ന് അറിയാം. നിർദ്ദേശിച്ച {procedure} ചികിത്സയ്ക്ക് ഞാൻ സമ്മതിക്കുന്നു."
-      ]
+      "sections": [],
+      "text": "നിർദ്ദേശിച്ച ശസ്ത്രക്രിയയുടെ സ്വഭാവം, അനസ്‌തീഷ്യ ഓപ്ഷനുകൾ, ബദൽ മാർഗങ്ങൾ എന്നിവ ഡോക്ടർ വിശദീകരിച്ചു.\n\nവേദന, വീക്കം, രക്തസ്രാവം, ഡ്രൈ സോക്കറ്റ്, വായ് തുറക്കുന്നതിലെ ബുദ്ധിമുട്ട്, അപൂർവമായി നാഡീസംബന്ധമായ മന്ദത എന്നിവ സാധ്യതയുള്ള അപകടങ്ങളാണെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\nചില അപൂർവ സാഹചര്യങ്ങളിൽ കൂടുതൽ ചികിത്സയോ വിദഗ്ധ റഫറലോ ആവശ്യമാകാമെന്ന് അറിയാം. നിർദ്ദേശിച്ച {procedure} ചികിത്സയ്ക്ക് ഞാൻ സമ്മതിക്കുന്നു."
     },
     "implants": {
       "title": "ഡെന്റൽ ഇംപ്ലാന്റ് ചികിത്സ",
-      "sections": [
-        "വയസ്സ് ........................... [ സ്ത്രീ / പുരുഷൻ ], [ എന്ന ഞാൻ / എന്ന രോഗിയുടെ ബൈസ്റ്റാൻഡർ ], എന്റെ നഷ്ടപ്പെട്ടതോ കേടായതോ ആയ പല്ല് മാറ്റിസ്ഥാപിക്കുന്നതിനുള്ള ഡെന്റൽ ഇംപ്ലാന്റ് ശസ്ത്രക്രിയയും, പ്രോസ്തെറ്റിക് പ്ലേസ്മെന്റ് പ്രക്രിയയും ചെയ്യുന്നതിനുള്ള ശസ്ത്രക്രിയയുടെ സ്വഭാവം, ഉദ്ദേശിക്കുന്ന ചികിത്സാരീതി, അതിന്റെ നടപടിക്രമം, അപകടസാധ്യതകളും നേട്ടങ്ങളും, ചികിത്സയുടെ സമയക്രമം, തിരഞ്ഞെടുത്ത അനസ്തേഷ്യയും, ലഭ്യമായ ബദൽ ചികിത്സകളും, തുടർനടപടികളുടെയും, സ്വയംപരിചരണത്തിന്റെ ആവശ്യകതയെക്കുറിച്ചും എന്നെ പൂർണ്ണമായി അറിയിച്ചിട്ടുണ്ട്.",
-        "ചികിത്സയെ സംബന്ധിച്ച സംശയങ്ങൾ ചോദിക്കാനും, എന്റെ ആശങ്കകൾ ഡോക്ടറുമായി ചർച്ച ചെയ്യാനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്. തിരഞ്ഞെടുത്ത അനസ്തേഷ്യ മൂലം ഉണ്ടാകാവുന്ന കോംപ്ലിക്കേഷൻസും പാർശ്വഫലങ്ങളും, ഡെന്റൽ ഇംപ്ലാന്റ് ശസ്ത്രക്രിയയും, പ്രോസ്തെറ്റിക് പ്ലേസ്മെന്റ് പ്രക്രിയയും, അതിന്റെ സർജിക്കൽ കോംപ്ലിക്കേഷൻസും, ഏകദേശ ചിലവും എന്നോട് വിവരിച്ചിട്ടുണ്ട്.",
-        "കൺസൾട്ടേഷനിൽ എനിക്ക് അവതരിപ്പിച്ച ഡെന്റൽ ഇംപ്ലാന്റ് ശസ്ത്രക്രിയയും, പ്രോസ്തെറ്റിക് പ്ലേസ്മെന്റ് പ്രക്രിയയും, അതിന്റെ സമയക്രമം ഉൾപ്പെടെ എനിക്ക് വിവരിച്ചു തന്ന പ്രകാരം, ഞാൻ ഇതിനാൽ സമ്മതിക്കുന്നു."
-      ]
+      "sections": [],
+      "text": "എന്റെ നഷ്ടപ്പെട്ടതോ കേടായതോ ആയ പല്ല് മാറ്റിസ്ഥാപിക്കുന്നതിനുള്ള ഡെന്റൽ ഇംപ്ലാന്റ് ശസ്ത്രക്രിയയും, പ്രോസ്തെറ്റിക് പ്ലേസ്മെന്റ് പ്രക്രിയയും ചെയ്യുന്നതിനുള്ള ശസ്ത്രക്രിയയുടെ സ്വഭാവം, ഉദ്ദേശിക്കുന്ന ചികിത്സാരീതി, അതിന്റെ നടപടിക്രമം, അപകടസാധ്യതകളും നേട്ടങ്ങളും, ചികിത്സയുടെ സമയക്രമം, തിരഞ്ഞെടുത്ത അനസ്തേഷ്യയും, ലഭ്യമായ ബദൽ ചികിത്സകളും, തുടർനടപടികളുടെയും, സ്വയംപരിചരണത്തിന്റെ ആവശ്യകതയെക്കുറിച്ചും എന്നെ പൂർണ്ണമായി അറിയിച്ചിട്ടുണ്ട്.\n\nചികിത്സയെ സംബന്ധിച്ച സംശയങ്ങൾ ചോദിക്കാനും, എന്റെ ആശങ്കകൾ ഡോക്ടറുമായി ചർച്ച ചെയ്യാനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്. തിരഞ്ഞെടുത്ത അനസ്തേഷ്യ മൂലം ഉണ്ടാകാവുന്ന കോംപ്ലിക്കേഷൻസും പാർശ്വഫലങ്ങളും, ഡെന്റൽ ഇംപ്ലാന്റ് ശസ്ത്രക്രിയയും, പ്രോസ്തെറ്റിക് പ്ലേസ്മെന്റ് പ്രക്രിയയും, അതിന്റെ സർജിക്കൽ കോംപ്ലിക്കേഷൻസും, ഏകദേശ ചിലവും എന്നോട് വിവരിച്ചിട്ടുണ്ട്.\n\nകൺസൾട്ടേഷനിൽ എനിക്ക് അവതരിപ്പിച്ച ഡെന്റൽ ഇംപ്ലാന്റ് ശസ്ത്രക്രിയയും, പ്രോസ്തെറ്റിക് പ്ലേസ്മെന്റ് പ്രക്രിയയും, അതിന്റെ സമയക്രമം ഉൾപ്പെടെ എനിക്ക് വിവരിച്ചു തന്ന പ്രകാരം, ഞാൻ ഇതിനാൽ സമ്മതിക്കുന്നു."
     },
     "periodontal": {
       "title": "പെരിയോഡോണ്ടൽ ശസ്ത്രക്രിയ സമ്മതപത്രം",
-      "sections": [
-        "ഗം/പെരിയോഡോണ്ടൽ രോഗാവസ്ഥയുടെ ഗുരുത്വവും ചികിത്സയുടെ ആവശ്യകതയും എനിക്ക് വിശദീകരിച്ചു.",
-        "ചികിത്സയ്ക്കുശേഷം വേദന, വീക്കം, സെൻസിറ്റിവിറ്റി, പല്ലുകൾക്കിടയിലെ ഇടവേള മാറ്റങ്ങൾ, ചിലപ്പോള്‍ ദീർഘകാല അസ്വസ്ഥതകൾ ഉണ്ടാകാം എന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ചികിത്സയുടെ വിജയത്തിൽ സ്വയംപരിപാലനം, പുകവലി/മദ്യം ഒഴിവാക്കൽ, സ്ഥിരമായ ഫോളോ-അപ്പ് എന്നിവ നിർണായകമാണെന്ന് എനിക്ക് അറിയാം."
-      ]
+      "sections": [],
+      "text": "ഗം/പെരിയോഡോണ്ടൽ രോഗാവസ്ഥയുടെ ഗുരുത്വവും ചികിത്സയുടെ ആവശ്യകതയും എനിക്ക് വിശദീകരിച്ചു.\n\nചികിത്സയ്ക്കുശേഷം വേദന, വീക്കം, സെൻസിറ്റിവിറ്റി, പല്ലുകൾക്കിടയിലെ ഇടവേള മാറ്റങ്ങൾ, ചിലപ്പോള്‍ ദീർഘകാല അസ്വസ്ഥതകൾ ഉണ്ടാകാം എന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\nചികിത്സയുടെ വിജയത്തിൽ സ്വയംപരിപാലനം, പുകവലി/മദ്യം ഒഴിവാക്കൽ, സ്ഥിരമായ ഫോളോ-അപ്പ് എന്നിവ നിർണായകമാണെന്ന് എനിക്ക് അറിയാം."
     },
     "pediatric": {
       "title": "കുട്ടികളുടെ ദന്തചികിത്സ സമ്മതപത്രം",
-      "sections": [
-        "ഞാൻ കുട്ടിയുടെ രക്ഷിതാവ്/നിയമപരമായ സംരക്ഷകനാണ്. നിർദ്ദേശിച്ച ചികിത്സയുടെ സ്വഭാവം, അപകടസാധ്യതകൾ, അനസ്‌തീഷ്യയും പെരുമാറ്റ നിയന്ത്രണ മാർഗങ്ങളും എനിക്ക് വിശദീകരിച്ചു.",
-        "ചികിത്സയ്ക്കിടെ അല്ലെങ്കിൽ ശേഷമോ ചില അപൂർവ മെഡിക്കൽ/ശസ്ത്രക്രിയാ പ്രശ്നങ്ങൾ ഉണ്ടായേക്കാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "എന്റെ കുട്ടിയുടെ ദന്താരോഗ്യം സംരക്ഷിക്കാൻ നിർദ്ദേശിച്ച {procedure} ചികിത്സയ്ക്ക് ഞാൻ സമ്മതം നൽകുന്നു."
-      ]
+      "sections": [],
+      "text": "ഞാൻ കുട്ടിയുടെ രക്ഷിതാവ്/നിയമപരമായ സംരക്ഷകനാണ്. നിർദ്ദേശിച്ച ചികിത്സയുടെ സ്വഭാവം, അപകടസാധ്യതകൾ, അനസ്‌തീഷ്യയും പെരുമാറ്റ നിയന്ത്രണ മാർഗങ്ങളും എനിക്ക് വിശദീകരിച്ചു.\n\nചികിത്സയ്ക്കിടെ അല്ലെങ്കിൽ ശേഷമോ ചില അപൂർവ മെഡിക്കൽ/ശസ്ത്രക്രിയാ പ്രശ്നങ്ങൾ ഉണ്ടായേക്കാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\nഎന്റെ കുട്ടിയുടെ ദന്താരോഗ്യം സംരക്ഷിക്കാൻ നിർദ്ദേശിച്ച {procedure} ചികിത്സയ്ക്ക് ഞാൻ സമ്മതം നൽകുന്നു."
     },
     "orthodontic": {
       "title": "ദന്തക്രമീകരണ ചികിത്സ സമ്മതപത്രം",
       "sections": [
-        "ഞാൻ / എന്റെ രോഗിയുടെ രക്ഷിതാവ് / സഹായിയായി, പല്ല് ക്രമീകരണ ചികിത്സയുടെ സ്വഭാവം, രീതി, ലഭ്യമായ ബദൽ മാർഗങ്ങൾ, നടപടിക്രമങ്ങൾ, ഏകദേശ സമയം, നേട്ടങ്ങൾ, വരാനിടയുള്ള ബുദ്ധിമുട്ടുകൾ, തുടർനടപടികൾ, സ്വയംപരിചരണത്തിന്റെ ആവശ്യകത എന്നിവ മനസ്സിലാക്കുന്നു.",
-        "ചികിത്സയുടെ അപ്പോയിന്റ്മെന്റുകൾ കൃത്യമായി പാലിക്കേണ്ടതും, ചികിത്സയ്ക്കിടയിലും ശേഷവും വായ് ശുചിത്വം പാലിക്കേണ്ടതിന്റെ പ്രാധാന്യവും ഡോക്ടർ {doctor} വിശദീകരിച്ചിട്ടുണ്ട്.",
-        "താഴെപ്പറയുന്ന കാര്യങ്ങൾ ശ്രദ്ധിക്കണമെന്നും, അപൂർവമായി ചില ബുദ്ധിമുട്ടുകൾ ഉണ്ടാകാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു. ചികിത്സയുമായി ബന്ധപ്പെട്ട ചോദ്യങ്ങൾ ചോദിക്കാനും സംശയദൂരീകരണം നേടാനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്.",
-        "ചികിത്സയുടെ ഭാഗമായി ആവശ്യമായ സാഹചര്യങ്ങളിൽ പല്ല് നീക്കം ചെയ്യേണ്ടിവരാമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ചികിത്സാകാലയളവിൽ ദന്തശുചിത്വം കൃത്യമായി പാലിക്കാത്ത പക്ഷം മോണരോഗവും ദന്തക്ഷയവും ഉണ്ടാകാൻ സാധ്യതയുണ്ട്.",
-        "പല്ല് ദ്വാരം തടയുന്നതിനും ദന്തക്ഷയം കുറയ്ക്കുന്നതിനുമായി പ്രത്യേക പേസ്റ്റുകളും മൗത്ത് വാഷും ഉപയോഗിക്കണമെന്ന് നിർദ്ദേശം ലഭിച്ചിട്ടുണ്ട്.",
-        "ശരിയായ രീതിയിൽ ഓർത്തോ ടൂത്ത്‌ബ്രഷ് ഉപയോഗിച്ച് പല്ലുതേക്കേണ്ട വിധം എനിക്ക് പഠിപ്പിച്ചിട്ടുണ്ട്.",
-        "മുമ്പേ ക്ഷതം സംഭവിച്ച അല്ലെങ്കിൽ ക്ഷയമുള്ള പല്ലുകൾ സമയക്രമത്തിൽ നിർജീവമാകാൻ സാധ്യതയുണ്ട്; ഇത് ചികിത്സ മൂലമോ മറ്റു കാരണങ്ങളാലോ സംഭവിക്കാം.",
-        "ക്ഷയം/കാവിറ്റി അടച്ചുപൂട്ടാതെ വിട്ടാൽ അത് കൂടുതൽ വലുതാകാമെന്ന് എനിക്ക് അറിയിച്ചിട്ടുണ്ട്.",
-        "ചികിത്സയുടെ ഭാഗമായി പല്ലുകൾക്ക് വേദനയോ അസ്വസ്ഥതയോ ഉണ്ടായേക്കാം.",
-        "ഡോക്ടറുടെ നിർദ്ദേശങ്ങൾ കൃത്യമായി പാലിക്കാത്ത പക്ഷം അപ്ലയൻസുകൾ മൂലം വായ്ക്കുള്ളിൽ മുറിവുകൾ ഉണ്ടാകാം; അത്തരം സാഹചര്യത്തിൽ ഉപയോഗിക്കേണ്ട മരുന്ന്/ജെൽ സംബന്ധിച്ച് നിർദ്ദേശം ലഭിച്ചിട്ടുണ്ട്.",
-        "ഓരോ വ്യക്തിയുടെയും വളർച്ചാനിരക്ക്, ചികിത്സയോടുള്ള സഹകരണം, അപ്ലയൻസുകളുടെ ഉപയോഗരീതി തുടങ്ങിയവ ചികിത്സാദൈർഘ്യം വർദ്ധിപ്പിക്കാം.",
-        "ഡോക്ടർ നിർദ്ദേശിച്ച ദിവസങ്ങളിൽ ചികിത്സ തുടരാതിരുന്നാൽ ആകെ ചികിത്സാകാലം കൂടാനിടയുണ്ടെന്ന് എനിക്ക് അറിയിച്ചിട്ടുണ്ട്.",
-        "അപൂർവമായി ചിലർക്കു ചുണ്ട്, കവിൾ, താടി-സന്ധി എന്നിവിടങ്ങളിൽ വേദന, അപ്ലയൻസിന്റെ ഭാഗങ്ങൾ വിഴുങ്ങിപ്പോകൽ, അലർജി, പല്ലുകളുടെ ഇളക്കം തുടങ്ങിയ ബുദ്ധിമുട്ടുകൾ ഉണ്ടാകാം.",
-        "ഭക്ഷണാവശിഷ്ടങ്ങൾ പല്ലുകളും ബ്രാക്കറ്റുകളും ഇടയിൽ കുടുങ്ങിയാൽ പല്ലിന്റെ നിറംമാറ്റം, ഉപരിതല തകരാർ, ദന്തക്ഷയം എന്നിവ സംഭവിക്കാം.",
-        "ചികിത്സയ്ക്കിടെ ഭക്ഷണക്രമത്തിൽ നിയന്ത്രണം വേണമെന്നും, ചികിത്സയ്ക്ക് ശേഷം ആവശ്യമെങ്കിൽ ടൂത്ത് വൈറ്റനിംഗ് പോലുള്ള അധിക നടപടികൾക്ക് പ്രത്യേക ചെലവ് ഉണ്ടായേക്കാമെന്നും എനിക്ക് അറിയിച്ചിട്ടുണ്ട്.",
-        "ചികിത്സ പൂർത്തിയാകുന്നതിനു മുമ്പ് ബ്രേസ്സ് നീക്കിയാൽ പല്ലുകൾ പഴയ നിലയിലേക്ക് മടങ്ങാനുള്ള (റിലാപ്സ്) സാധ്യതയുണ്ടെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ചികിത്സ കഴിഞ്ഞ ശേഷവും പല്ലുകളുടെ സ്ഥാനം നിലനിർത്താൻ റിമൂവബിൾ അല്ലെങ്കിൽ ഫിക്സ്ഡ് റിട്ടെയ്‌നർ ഡോക്ടർ നിർദ്ദേശിക്കുന്ന കാലയളവിൽ ധരിക്കണം; അതിന് അധിക ചെലവ് ഉണ്ടായേക്കാം.",
-        "റിട്ടെയ്‌നർ ശരിയായി ഉപയോഗിക്കാത്ത പക്ഷം റിലാപ്സ് വേഗത്തിൽ ഉണ്ടാകാമെന്ന് എനിക്ക് വ്യക്തമാക്കിയിട്ടുണ്ട്.",
-        "ചികിത്സാ കാലയളവിൽ മാസാന്തരമായി നിശ്ചിത തുക നൽകേണ്ടതും, ബ്രാക്കറ്റ് നഷ്ടപ്പെട്ടാൽ പുനഃസ്ഥാപനത്തിന് അധികചെലവ് ഉണ്ടായേക്കാമെന്നും എനിക്ക് അറിയിച്ചിട്ടുണ്ട്.",
-        "വയസ്സാകുന്നതും താടി/എല്ല് വളർച്ചയുമായി ബന്ധപ്പെട്ട മാറ്റങ്ങളും കാരണം, പ്രത്യേകിച്ച് മുന്നിലെ പല്ലുകളുടെ നിരയിൽ വീണ്ടും ചെറിയ തെറ്റിച്ചേരൽ സംഭവിക്കാം; അത് ശരിയാക്കാൻ ഭാവിയിൽ വീണ്ടും ഫിക്സ്ഡ് ചികിത്സയോ ചിലപ്പോൾ ശസ്ത്രക്രിയയോ ആവശ്യമാകാം.",
-        "രോഗിയുടെ പൂർണ്ണ സഹകരണം ലഭ്യമല്ലാത്ത സാഹചര്യത്തിൽ ചികിത്സ അവസാനിപ്പിക്കാൻ ഡോക്ടർക്ക് പൂർണ്ണ അധികാരമുണ്ടെന്ന് ഞാൻ അംഗീകരിക്കുന്നു.",
-        "രോഗിയുടെ അസഹകരണത്തെ തുടർന്ന് ഉണ്ടാകുന്ന പ്രശ്നങ്ങൾക്ക് ഡോക്ടർക്കും സ്ഥാപനത്തിനും ഉത്തരവാദിത്തമില്ലെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ഫോട്ടോകൾ, എക്സ്-റേകൾ, സ്റ്റഡി മോഡലുകൾ, ചികിത്സയുമായി ബന്ധപ്പെട്ട മറ്റ് വിവരങ്ങൾ ഗവേഷണം, പഠനം, പ്രസിദ്ധീകരണം എന്നിവയ്ക്കായി ഉപയോഗിക്കാൻ ഞാൻ സമ്മതം നൽകുന്നു.",
-        "എന്റെ വ്യക്തിപരമായ കാരണങ്ങളാൽ ചികിത്സ മധ്യേ നിർത്തുകയാണെങ്കിൽ മുഴുവൻ ചികിത്സച്ചെലവും അടയ്ക്കാനുള്ള ബാധ്യത എന്റേതാണെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
-        "ദന്തക്രമീകരണ ചികിത്സാവിധികളും അതിന്റെ അനന്തരഫലങ്ങളും എനിക്ക് സംശയാതീതമായി വിശദീകരിച്ചിട്ടുണ്ടെന്നും, നിർദ്ദേശിച്ച രീതിയിൽ ചികിത്സ തുടരാൻ ഞാൻ പൂർണ്ണ സമ്മതം നൽകുന്നതായും ഇതുവഴി സാക്ഷ്യപ്പെടുത്തുന്നു."
-      ]
+        {
+          "items": [
+            "ചികിത്സയുടെ ഭാഗമായി പല്ലുകൾ ആവശ്യമെങ്കിൽ എടുത്തേക്കേണ്ടതായി വരാം എന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.",
+            "ചികിത്സാകാലയളവിൽ ദന്തശുചിത്വം കൃത്യമായി പാലിച്ചില്ലെങ്കിൽ മോണരോഗവും ദന്തക്ഷയവും ഉണ്ടാകാൻ സാധ്യതയുണ്ട്. പ്രത്യേക പേസ്റ്റുകളും മൗത്ത് വാഷുകളും ഉപയോഗിക്കേണ്ടതിനെക്കുറിച്ചും, ഓർത്തോ ടൂത്ത് ബ്രഷ് ശരിയായി ഉപയോഗിക്കുന്ന രീതിയും ഡോക്ടർ പഠിപ്പിച്ചിട്ടുണ്ട്.",
+            "ക്ഷതം/ക്ഷയം സംഭവിച്ച പല്ലുകൾ കാലക്രമേണ നിർജീവമാകാൻ സാധ്യതയുണ്ട്. ഇത് ചികിത്സ മൂലമോ അല്ലാതെയോ സംഭവിക്കാം. ക്ഷയം അടച്ചില്ലെങ്കിൽ അത് വലുതാകാം എന്ന് അറിയിച്ചിട്ടുണ്ട്.",
+            "ചികിത്സയുടെ ഭാഗമായി പല്ലുകൾക്ക് വേദന/അസ്വസ്ഥത ഉണ്ടാകാം. ഡോക്ടറുടെ നിർദേശങ്ങൾ കൃത്യമായി പാലിക്കാത്ത പക്ഷം അപ്ലയൻസുകൾ മൂലം വായ്ക്കുള്ളിൽ മുറിവുകൾ ഉണ്ടാകാം. അത്തരം സാഹചര്യത്തിൽ മരുന്ന്/ജെൽ ഉപയോഗിക്കണമെന്ന് നിർദേശിച്ചിട്ടുണ്ട്.",
+            "ഓരോ വ്യക്തിയുടെയും വളർച്ചാനിരക്ക്, ചികിത്സയോടുള്ള സഹകരണം, അപ്ലയൻസുകളുടെ ഉപയോഗരീതി എന്നിവ ചികിത്സാദൈർഘ്യം കൂടാൻ കാരണമാകാം. നിർദേശിച്ച ദിവസങ്ങളിൽ ചികിത്സ തുടരാത്ത പക്ഷം കാലാവധി കൂടും.",
+            "അപൂർവമായി ചിലർക്കു താടി-സന്ധി വേദന, അപ്ലയൻസ് ഭാഗങ്ങൾ വിഴുങ്ങിപ്പോവുക, പല്ലുകൾക്ക് ഇളക്കം, ചികിത്സാ മെറ്റീരിയലുകളോട് അലർജി എന്നിവ ഉണ്ടാകാം.",
+            "ഭക്ഷണം പല്ലുകളും ബ്രാക്കറ്റുകളും ഇടയിൽ കുടുങ്ങിയാൽ നിറംമാറ്റം, ഉപരിതല തകരാർ, ദന്തക്ഷയം എന്നിവ ഉണ്ടാകാം. ചികിത്സാകാലത്ത് ഭക്ഷണക്രമത്തിൽ ശ്രദ്ധ വേണം. ചികിത്സയ്ക്ക് ശേഷം ആവശ്യമെങ്കിൽ Tooth Whitening ചെയ്യാം; അതിന് പ്രത്യേക ഫീസ് ഉണ്ടായിരിക്കും.",
+            "ചികിത്സ പൂർത്തിയാകുന്നതിന് മുമ്പ് ബ്രേസുകൾ നീക്കിയാൽ റിലാപ്സ് (പഴയ അവസ്ഥയിലേക്കുള്ള മാറ്റം) ഉണ്ടാകാം. ചികിത്സയ്ക്ക് ശേഷം പല്ലുകളുടെ സ്ഥാനം നിലനിർത്താൻ removable അല്ലെങ്കിൽ fixed retainer ഡോക്ടറുടെ നിർദേശപ്രകാരം ദീർഘകാലം ധരിക്കണം; അതിന് അധിക ചെലവ് ഉണ്ടായേക്കാം. ശരിയായി ധരിക്കാത്ത പക്ഷം റിലാപ്സ് വേഗത്തിൽ ഉണ്ടാകാം.",
+            "എല്ലാ മാസവും നിശ്ചിത തുക അടയ്ക്കണം. ബ്രാക്കറ്റുകൾ നഷ്ടപ്പെട്ടാൽ വീണ്ടും ഒട്ടിക്കാൻ അധിക തുക അടയ്ക്കണം.",
+            "പ്രായവളർച്ചയും താടി/എല്ല് വളർച്ചാമാറ്റങ്ങളും മൂലം, പ്രത്യേകിച്ച് മുൻനിര പല്ലുകളിൽ, പിന്നീടും ചെറിയ സ്ഥാനംമാറ്റങ്ങൾ ഉണ്ടാകാം. അത് ശരിയാക്കാൻ വീണ്ടും fixed orthodontic treatment അല്ലെങ്കിൽ ചിലപ്പോൾ ശസ്ത്രക്രിയ ആവശ്യമായി വരാം."
+          ],
+          "footer": "രോഗിയുടെ പൂർണ്ണ സഹകരണം ഇല്ലാത്ത സാഹചര്യത്തിൽ ചികിത്സ അവസാനിപ്പിക്കാൻ ഡോക്ടർക്ക് പൂർണ്ണ അധികാരമുണ്ട്. അതിനാൽ ഉണ്ടാകുന്ന പ്രശ്നങ്ങൾക്ക് ഡോക്ടർ/സ്ഥാപനം ഉത്തരവാദികളല്ല.\n\nഎന്റെ ഫോട്ടോഗ്രാഫുകൾ, എക്സ്-റേകൾ, സ്റ്റഡി മോഡലുകൾ, മറ്റ് വിവരങ്ങൾ എന്നിവ ഗവേഷണം, പഠനം, പ്രസിദ്ധീകരണം എന്നിവയ്ക്കായി ഉപയോഗിക്കുന്നതിന് ഞാൻ സമ്മതം നൽകുന്നു. വ്യക്തിപരമായ കാരണങ്ങളാൽ ചികിത്സ പാതിവഴിയിൽ നിർത്തുകയാണെങ്കിൽ മുഴുവൻ തുകയും അടയ്ക്കേണ്ട ബാധ്യത എനിക്ക് ഉണ്ടെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\nദന്തക്രമീകരണ ചികിത്സാവിധികളും അതിന്റെ അനന്തരഫലങ്ങളും എനിക്ക് വ്യക്തമായി വിശദീകരിച്ചിട്ടുണ്ടെന്ന് ഞാൻ സാക്ഷ്യപ്പെടുത്തുന്നു. മുകളിൽ പറഞ്ഞതെല്ലാം മനസ്സിലാക്കി, നിർദേശിച്ച രീതിയിൽ ഓർത്തോഡോന്റിക് ചികിത്സ തുടരാൻ ഞാൻ പൂർണ്ണ സമ്മതം നൽകുന്നു."
+        }
+      ],
+      "text": "ഞാൻ / എന്റെ രോഗിയുടെ രക്ഷിതാവ്/സഹായി, പല്ല് തെറ്റുന്ന ചികിത്സയുടെ സ്വഭാവം, രീതി, ലഭ്യമായ ബദൽ മാർഗങ്ങൾ, നടപടിക്രമങ്ങൾ, ഏകദേശ സമയം, നേട്ടങ്ങൾ, വരാൻ സാധ്യതയുള്ള ബുദ്ധിമുട്ടുകൾ, തുടർനടപടികൾ, സ്വയം പരിചരണത്തിന്റെ ആവശ്യകത എന്നിവ മനസ്സിലാക്കുന്നു. ചികിത്സയുടെ അപ്പോയിന്റ്മെന്റുകൾ കൃത്യമായി ശ്രദ്ധിക്കൽ, ചികിത്സയ്ക്കിടെയും ശേഷവും വായുടെ ശുചിത്വം പാലിക്കേണ്ടതിന്റെ പ്രാധാന്യം എന്നിവയെപ്പറ്റി എനിക്ക് ഡോക്ടർ പറഞ്ഞു തന്നിട്ടുണ്ട്.\n\nതാഴെ വിവരിച്ചിട്ടുള്ള കാര്യങ്ങൾ ശ്രദ്ധിക്കണം എന്നും, അപൂർവമായി ബുദ്ധിമുട്ടുകൾ ഉണ്ടാകാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു. ചികിത്സയുമായി ബന്ധപ്പെട്ട ചോദ്യങ്ങൾ ചോദിക്കാനും, സംശയദൂരീകരണത്തിനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്."
     },
     "prosthodontic": {
       "title": "ക്രൗൺ / ബ്രിഡ്ജ് / ഡെഞ്ചർ സമ്മതപത്രം",
@@ -448,6 +326,21 @@ export const consentTemplateSource: LocalConsentTemplateSource =
         "പുതിയ പ്രോസ്തീസിസ് ഉപയോഗത്തിന്റെ തുടക്കത്തിൽ സംസാരിക്കലിലും ഭക്ഷണം കഴിക്കലിലും അസൗകര്യം ഉണ്ടാകാം. ഫിറ്റ് മെച്ചപ്പെടുത്താൻ അധിക സന്ദർശനങ്ങൾ ആവശ്യമായി വരാം.",
         "കാലക്രമേണ റിപയർ, റീലൈനിംഗ്, റീസിമെന്റേഷൻ, പുനഃക്രമീകരണം എന്നിവ ആവശ്യമായി വരാം. നിർദ്ദേശിച്ച ശുചിത്വവും ഫോളോ-അപ്പും പാലിക്കുമെന്ന് ഞാൻ ഉറപ്പുനൽകുന്നു."
       ]
+    },
+    "pulpectomy": {
+      "title": "പൾപെക്ടമി ചികിത്സാ സമ്മതപത്രം",
+      "sections": [],
+      "text": "എന്റെ കുട്ടിയുടെ രക്ഷിതാവ്/സംരക്ഷകൻ ആയ എന്നോട് പല്ല് സംരക്ഷിക്കുന്നതിനുള്ള പൾപെക്ടമി ചികിത്സയുടെ സ്വഭാവം, ഉപയോഗിക്കുന്ന ചികിത്സാരീതി, അതിന്റെ നടപടിക്രമം, അപകടസാധ്യതകളും നേട്ടങ്ങളും, തിരഞ്ഞെടുത്ത അനസ്തേഷ്യയും, ലഭ്യമായ ബദൽ ചികിത്സകളും, ഏകദേശ ചെലവും, തുടർനടപടികളുടെയും സ്വയംപരിചരണത്തിന്റെയും ആവശ്യകതയെക്കുറിച്ചും എന്നെ പൂർണ്ണമായി അറിയിച്ചിട്ടുണ്ട്.\n\nചികിത്സയുമായി ബന്ധപ്പെട്ട് ചോദ്യങ്ങൾ ചോദിക്കാനും, എന്റെ ആശങ്കകൾ ഡോക്ടറുമായി ചർച്ച ചെയ്യാനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്. പൾപെക്ടമിക്ക് ശേഷം ക്രൗൺ വെക്കേണ്ട ആവശ്യകതയെപ്പറ്റിയും, തിരഞ്ഞെടുത്ത അനസ്തേഷ്യ മൂലം ഉണ്ടാകാവുന്ന കോംപ്ലിക്കേഷൻസും പാർശ്വഫലങ്ങളും, പൾപെക്ടമി ചികിത്സയുടെ കോംപ്ലിക്കേഷൻസും എന്നോട് വിവരിച്ചിട്ടുണ്ട്.\n\nകൺസൾട്ടേഷനിൽ എനിക്ക് അവതരിപ്പിച്ച പൾപെക്ടമി ചികിത്സാരീതിക്കും എനിക്ക് വിവരിച്ച ചികിത്സാപദ്ധതി പ്രകാരം ഞാൻ ഇതിനാൽ സമ്മതിക്കുന്നു. ഈ സമ്മതപത്രം ഞാൻ വായിക്കുകയും പൂർണ്ണമായി മനസ്സിലാക്കുകയും ചെയ്തുവെന്ന് ഞാൻ ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു."
+    },
+    "crown": {
+      "title": "ക്രൗൺ (സ്റ്റീൽ/ പല്ലിന്റെ നിറം) ചികിത്സാ സമ്മതപത്രം",
+      "sections": [],
+      "text": "ഞാൻ / എന്റെ രോഗിയുടെ രക്ഷിതാവ് / സഹായിയായി, പല്ല് സംരക്ഷിക്കുന്നതിനുള്ള ക്രൗൺ ചികിത്സയുടെ സ്വഭാവം, ഉപയോഗിക്കുന്ന ചികിത്സാരീതി അതിന്റെ നടപടിക്രമം അപകടസാധ്യതകളും നേട്ടങ്ങളും, തിരഞ്ഞെടുത്ത അനസ്തേഷ്യയും, ലഭ്യമായ ബദൽ ചികിത്സകളും, ഏകദേശ ചിലവും, തുടർനടപടികളുടെയും, സ്വയം പരിചരണത്തിന്റ ആവശ്യകതയെക്കുറിച്ചും എന്നെ പൂർണ്ണമായി അറിയിച്ചിട്ടുണ്ട്.\n\nചികിത്സയുമായി ബന്ധപ്പെട്ട് ചോദ്യങ്ങൾ ചോദിക്കാനും, എന്റെ ആശങ്കകൾ ഡോക്ടറുമായി ചർച്ച ചെയ്യാനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്. തിരഞ്ഞെടുത്ത അനസ്തേഷ്യ മൂലം ഉണ്ടാകാവുന്ന കോംപ്ലിക്കേഷൻസും പാർശ്വഫലങ്ങളും, ക്രൗൺ നടപടിക്രമത്തിനിടയിലോ അതിനുശേഷമോ ഒരാൾക്ക് പ്രതീക്ഷിക്കാവുന്നതോ സംഭവിക്കാവുന്നതോ ആയ സങ്കീർണ്ണതകളും ക്രൗൺ ഡീസിമെന്റേഷൻ ഉൾപ്പെടെ എനിക്ക് വിശദീകരിച്ചു തന്നു.\n\nകൺസൾട്ടേഷനിൽ എനിക്ക് അവതരിപ്പിച്ച ചികിത്സാരീതിക്കും, എനിക്ക് വിവരിച്ചു തന്ന പ്രകാരം ഞാൻ ഇതിനാൽ സമ്മതിക്കുന്നു. ഈ സമ്മതപത്രം ഞാൻ വായിക്കുകയും പൂർണ്ണമായി മനസ്സിലാക്കുകയും ചെയ്തിട്ടുണ്ടെന്ന് ഞാൻ ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു."
+    },
+    "rpd_cd_crown_bridge": {
+      "title": "ഊരിയെടുക്കാവുന്ന വെപ്പ് പല്ല് (ഭാഗികമായ/ മുഴുവൻ പല്ല് സെറ്റ് ), ക്യാപ്, ബ്രിഡ്ജ് ചികിത്സ സമ്മതപത്രം",
+      "sections": [],
+      "text": "ഞാൻ / എന്റെ രോഗിയുടെ രക്ഷിതാവ് / സഹായിയായി, ഊരിയെടുക്കാവുന്ന വെപ്പ് പല്ല് (ഭാഗികമായ/ മുഴുവൻ പല്ല് സെറ്റ് ), ക്യാപ്, ബ്രിഡ്ജ് ഇടുന്ന ചികിത്സയുടെ സ്വഭാവം, രീതി, ലഭ്യമായ ബദൽ മാർഗങ്ങൾ, നടപടിക്രമങ്ങൾ, ഏകദേശ സമയം, നേട്ടങ്ങൾ, വരാൻ സാധ്യതയുള്ള ബുദ്ധിമുട്ടുകൾ, തുടർനടപടികൾ, സ്വയം പരിചരണത്തിന്റെ ആവശ്യകത എന്നിവ മനസ്സിലാക്കുന്നു. ചികിത്സയുടെ അപ്പോയിന്റ്മെന്റുകൾ കൃത്യമായി ശ്രദ്ധിക്കൽ, ചികിത്സയ്ക്കിടെയും ശേഷവും വായുടെ ശുചിത്വം പാലിക്കേണ്ടതിന്റെ പ്രാധാന്യം എന്നിവയെപ്പറ്റി ഡോക്ടർ അറിയിച്ചു.\n\nഇതിൽ വിവരിച്ചിട്ടുള്ള കാര്യങ്ങൾ ശ്രദ്ധിക്കണം എന്നും പ്രതിപാദിച്ചിട്ടുള്ളതോ, അപൂർവമായി വരാൻ ഇടയുള്ള ബുദ്ധിമുട്ടുകളോ ഉണ്ടാകാമെന്നും ഞാൻ മനസ്സിലാക്കുന്നു. ചികിത്സയുമായി ബന്ധപ്പെട്ട ചോദ്യങ്ങൾ ചോദിക്കാനും, സംശയദൂരീകരണത്തിനും എനിക്ക് അവസരം ലഭിച്ചിട്ടുണ്ട്.\n\nനിലനിർത്താൻ കഴിയാത്ത വിധം മോശമായ പല്ല് / പല്ലുകൾ, അല്ലെങ്കിൽ റൂട്ട് കനാൽ അല്ലെങ്കിൽ മോണ ശസ്ത്രക്രിയ ചെയ്തു നിലനിർത്താമായിരുന്ന പല്ല്/പല്ലുകൾ എന്റെ ആവശ്യപ്രകാരം എടുത്തു മാറ്റിയതാണ്.\n\nപല്ല് നഷ്ടപ്പെട്ട ഭാഗത്ത് പുതിയ പല്ല് വെക്കേണ്ടതിന്റെ ആവശ്യകതയും വെക്കാതെ ഇരുന്നാൽ ഉള്ള ദോഷവശങ്ങളും മനസ്സിലാക്കി പൂർണ സമ്മതത്തോടെയാണ് ഞാൻ പല്ല് സെറ്റ് വെക്കുന്നത്.\n\nപല്ല് എടുത്തതിന് ശേഷം നല്ല രീതിയിൽ മോണ ഉറക്കാനും ഉണങ്ങാനും ഏകദേശം 45 - 90 ദിവസം എടുക്കും എന്നും, ആ കാലയളവിനു ശേഷം പല്ല് സെറ്റ് വെക്കുന്നതാണ് ഉത്തമം എന്നും, ആ കാലയളവ് കഴിയുന്നതിനു മുമ്പ് സെറ്റ് വെച്ചാൽ ഉണ്ടാകാവുന്ന പാർശ്വഫലങ്ങളെ പറ്റി ഡോക്ടർ വിശദീകരിച്ചിട്ടുണ്ട്.\n\nമുഴുവൻ പല്ലുകൾ എടുത്ത സാഹചര്യത്തിൽ മോണ ഉണങ്ങുവാൻ 3 മാസം എടുക്കാം എന്ന് പറഞ്ഞു തന്നിട്ടുണ്ട്. ആ കാലയളവിൽ മോണ മസ്സാജ് ചെയ്യേണ്ട രീതി പറഞ്ഞു തന്നിട്ടുണ്ട്. ചില അവസരങ്ങളിൽ മോണ ഉറക്കുന്നതിന് ശേഷം പോലും എല്ലുകൾ കൂർത്തു നിൽക്കാം എന്നും, അത് മസ്സാജ് ചെയ്തതിലൂടെ ശരിയാകുന്നില്ലെങ്കിൽ ചെറിയ ഒരു ശസ്ത്രക്രിയ നടത്തി ശരിയാക്കണം എന്നും ഞാൻ മനസ്സിലാക്കുന്നു. മോണ ഉറക്കുന്നതിനു മുമ്പ് സെറ്റ് വെച്ചാൽ പെട്ടെന്ന് തന്നെ അയവ് വരാം എന്നും അങ്ങനെ സംഭവിച്ചാൽ ചിലപ്പോൾ പുതിയ സെറ്റ് ഉണ്ടാക്കേണ്ടതായി വരാം എന്നും ഡോക്ടർ പറഞ്ഞു തന്നിട്ടുണ്ട്.\n\nകൃത്രിമ പല്ലുകളുടെ വകഭേദങ്ങളും അവയുടെ ഗുണദോഷ വശങ്ങളും ഏകദേശ ചിലവും ഞാൻ മനസ്സിലാക്കി എന്റെ സ്വന്തം ഇഷ്ടപ്രകാരം ഉള്ള സെറ്റ് പല്ലാണ് ഞാൻ തിരഞ്ഞെടുത്തിരിക്കുന്നത്.\n\nഊരി മാറ്റി വെക്കുന്ന പല്ല് സെറ്റുകൾക്ക് കാലക്രമേണ എല്ലിന് തേയ്മാനം വരുന്നതിനനുസരിച്ച് അയവ് ഉണ്ടാകാം എന്നും, ആദ്യമായി/ പുതുതായി വെച്ച സെറ്റ് പല്ല് മോണയിൽ വേദനയോ മുറിവോ ഉണ്ടാക്കാം എന്നും, അത് ഡോക്ടറെ പലവട്ടം കണ്ടു ശരിയാക്കേണ്ടതായി വരാം എന്നും ഡോക്ടർ പറഞ്ഞു തന്നിട്ടുണ്ട്. സംസാരിക്കാനും ഭക്ഷണം കഴിക്കാനും തുടക്കത്തിൽ ബുദ്ധിമുട്ട് ഉണ്ടാകാം എന്നും, തുടർച്ചയായ ഉപയോഗത്തിലൂടെ മാത്രമേ സൗകര്യമായി ഉപയോഗിക്കാനും ബുദ്ധിമുട്ടുകൾ പരിഹരിക്കാനും സാധിക്കൂ എന്നും ഡോക്ടർ വിശദീകരിച്ചിട്ടുണ്ട്.\n\nപല്ല് സെറ്റ് ഉപയോഗിക്കേണ്ട രീതിും ശ്രദ്ധിക്കേണ്ട കാര്യങ്ങളും ഡോക്ടർ പറഞ്ഞു തന്നിട്ടുണ്ട്. 6 മാസത്തിൽ ഒരിക്കൽ ഡോക്ടറെ കണ്ടു ചെക്കപ്പ് ചെയ്യേണ്ടതിന്റെ ആവശ്യകതയും പറഞ്ഞു തന്നിട്ടുണ്ട്. കാലക്രമേണ സെറ്റിൽ മാറ്റവും തേയ്മാനവും ഉണ്ടാകുമെന്ന് ഞാൻ മനസ്സിലാക്കുന്നു.\n\nഉറപ്പിച്ച് വെക്കുന്ന പല്ലുകൾ (ബ്രിഡ്ജ്) വെക്കുന്നതിനായി തൊട്ടടുത്തുള്ള രണ്ടോ അതിൽ അധികമോ ആയ പല്ലുകൾ കട്ട് ചെയ്ത് ചെറുതാക്കണം എന്നും, നഷ്ടപ്പെട്ട പല്ല് അടുത്തുള്ള പല്ലുകളുടെ ക്യാപ്പിൽ ചേർത്താണ് വെക്കുന്നത് എന്നും ഞാൻ മനസ്സിലാക്കുന്നു. സപ്പോർട്ടിനായി എടുക്കുന്ന പല്ലുകൾക്ക് ഏതെങ്കിലും വിധത്തിലുള്ള കേടുകളോ മോണരോഗമോ ഉണ്ടെങ്കിൽ ആ പല്ലുകൾ റൂട്ട് കനാൽ ട്രീറ്റ്മെന്റ് എടുത്ത ശേഷം ചെയ്യുന്നതാണ് ഉത്തമം എന്നും, അല്ലാത്ത പക്ഷം പെട്ടെന്ന് തന്നെ പുളിപ്പോ വേദനയോ അനുഭവപ്പെടാം എന്നും ഞാൻ മനസ്സിലാക്കുന്നു.\n\nബ്രിഡ്ജ് / റൂട്ട് കനാൽ ചികിത്സയ്ക്ക് ശേഷം ഇട്ട ക്യാപ് ഉള്ള പല്ലുകൾ വൃത്തിയായി സൂക്ഷിക്കേണ്ടതിന്റെ ആവശ്യകതയും, സ്വയം പരിചരണം (മൗത്ത് വാഷ്, ഫ്ലോസിംഗ്, ബ്രഷിംഗ്), 6 മാസം കൂടുമ്പോൾ ഉള്ള ക്ലീനിംഗ് തുടങ്ങിയ കാര്യങ്ങൾ ഡോക്ടർ പറഞ്ഞു തന്നിട്ടുണ്ട്. അല്ലാത്ത പക്ഷം പല്ലുകൾക്കിടയിൽ ഭക്ഷണം കുടുങ്ങാനും, മോണരോഗം വരാനും, പല്ലുകൾക്ക് ഇളക്കമോ, അടുത്തുള്ള പല്ലുകൾക്ക് കേടോ, ക്യാപ് ഇട്ട പല്ലിനു തന്നെ കേടോ വരാം എന്നും ഞാൻ മനസ്സിലാക്കുന്നു.\n\nഒരു പരിധിയിൽ കൂടുതലായി കട്ടി ഉള്ള വസ്തുക്കൾ കടിച്ചാൽ ക്യാപ് പൊട്ടാനും, ഊരി പോകാനും, സെറാമിക് അടർന്നു പോകാനും സാധ്യത ഉണ്ട്. കാലക്രമേണ ക്യാപ് ലൂസ് ആയി ഇളകി വരാം എന്നും ഞാൻ മനസ്സിലാക്കുന്നു.\n\nമുകളിൽ പറഞ്ഞ കാര്യങ്ങൾ മനസ്സിലാക്കി പൂർണ ബോധ്യത്തോടെയാണ് ഊരിയെടുക്കാവുന്ന വെപ്പ് പല്ല് (ഭാഗികമായ/ മുഴുവൻ പല്ല് സെറ്റ്), ക്യാപ്, ബ്രിഡ്ജ് ചികിത്സയ്ക്ക് ഞാൻ സമ്മതം നൽകുന്നത്."
     }
   }
 };

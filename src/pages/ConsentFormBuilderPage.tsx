@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -354,6 +354,11 @@ const ConsentFormBuilderPage: React.FC = () => {
     return templates.find((item) => item.consent_type_id === consentTypeId && item.language === 'en') || null;
   }, [templates, consentTypeId, language]);
 
+  const consentSummaryHeading = useMemo(() => {
+    if (!consentTypeId || !selectedTemplate) return 'Consent Summary';
+    return selectedTemplate.consent_type_label || 'Consent Summary';
+  }, [consentTypeId, selectedTemplate]);
+
   useEffect(() => {
     if (!selectedTemplate) return;
     if (!summaryEdited) {
@@ -447,7 +452,10 @@ const ConsentFormBuilderPage: React.FC = () => {
   const signatoryNameLabel = minorMode
     ? (guardianRelationship.trim().toLowerCase() === 'parent' ? 'Parent Name' : 'Guardian Name')
     : 'Patient Name';
-  const signatoryDate = visitDate || issueDate || new Date().toISOString().slice(0, 10);
+  const rawSignatoryDate = visitDate || issueDate || new Date().toISOString().slice(0, 10);
+  const signatoryDate = rawSignatoryDate.split('-').length === 3 
+    ? `${rawSignatoryDate.split('-')[2]}-${rawSignatoryDate.split('-')[1]}-${rawSignatoryDate.split('-')[0]}`
+    : rawSignatoryDate;
 
   const addRow = () => {
     setRows((prev) => [...prev, { id: crypto.randomUUID(), toothNumber: '', condition: '', procedure: '' }]);
@@ -549,7 +557,7 @@ const ConsentFormBuilderPage: React.FC = () => {
       width: 100%;
       box-sizing: border-box;
       background: #ffffff;
-      padding: 24px 28px 20px;
+      padding: 24px 28px 4px;
     }
     .print-table { width: 100%; border-collapse: collapse; }
     .print-thead { display: table-row-group; }
@@ -557,15 +565,14 @@ const ConsentFormBuilderPage: React.FC = () => {
     .print-tfoot { display: table-row-group; }
     .print-page-top-spacer { height: 10mm; }
     .print-footer-content {
-      border-top: 1px solid #e5e7eb;
-      padding: 8px 0 12px 34px;
+      padding: 8px 0 32px 34px;
       background: #ffffff;
     }
     .print-repeat-inner {
       display: grid;
       grid-template-columns: 1fr 150px;
       gap: 16px;
-      align-items: end;
+      align-items: start;
     }
     .print-repeat-sign-label,
     .print-repeat-date-label {
@@ -575,32 +582,36 @@ const ConsentFormBuilderPage: React.FC = () => {
       margin-bottom: 4px;
     }
     .print-repeat-sign-image {
-      max-height: 44px;
-      max-width: 100%;
+      height: 44px;
+      width: 200px;
       object-fit: contain;
+      object-position: left;
       display: block;
       border-bottom: 1px solid #9ca3af;
       margin-bottom: 4px;
     }
     .print-repeat-sign-line {
-      height: 30px;
+      height: 44px;
+      width: 200px;
       border-bottom: 1px solid #9ca3af;
       margin-bottom: 4px;
     }
     .print-repeat-name {
       font-size: 12px;
       color: #374151;
+      margin-top: 4px;
     }
     .print-repeat-date-value {
+      height: 44px;
+      display: flex;
+      align-items: flex-end;
       font-size: 12px;
       color: #111827;
-      border-bottom: 1px solid #9ca3af;
-      padding-bottom: 4px;
+      margin-bottom: 4px;
     }
     .sig-block-inflow {
-      margin-top: 20px;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 12px;
+      margin-top: 8px;
+      padding-top: 4px;
       page-break-inside: avoid;
       break-inside: avoid;
     }
@@ -684,8 +695,8 @@ const ConsentFormBuilderPage: React.FC = () => {
               ` : ''}
 
               <section style="margin-bottom:18px;">
-                <h3 style="font-weight:600;font-size:14px;margin:0 0 6px;">Consent Summary</h3>
-                <p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">${escapeHtml(renderedSummaryText || '-')}</p>
+                <h3 style="font-weight:600;font-size:14px;margin:0 0 12px;">${escapeHtml(consentSummaryHeading)}</h3>
+                ${renderedSummaryText && renderedSummaryText.trim() ? `<p style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">${escapeHtml(renderedSummaryText)}</p>` : ''}
               </section>
 
               <section style="font-size:13px;line-height:1.6;display:flex;flex-direction:column;gap:12px;">
@@ -734,10 +745,14 @@ const ConsentFormBuilderPage: React.FC = () => {
 
     const previewRoot = previewRootRef.current;
     if (previewRoot) {
-      return generatePdfBlobFromElementWithRepeatedFooter(previewRoot, '.print-footer-content', {
-        topMarginMm: 12,
-        footerGapMm: 5,
-      });
+      try {
+        return await generatePdfBlobFromElementWithRepeatedFooter(previewRoot, '.print-footer-content', {
+          topMarginMm: 12,
+          footerGapMm: 5,
+        });
+      } catch (error) {
+        console.warn('Primary consent PDF generation failed; falling back to HTML renderer.', error);
+      }
     }
 
     return generatePdfBlobFromHtml(buildConsentHtml(), filename);
@@ -1138,7 +1153,7 @@ const ConsentFormBuilderPage: React.FC = () => {
                     {anesthesiaTags.map((tag) => (
                       <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full text-xs">
                         {tag}
-                        <button type="button" onClick={() => removeAnesthesiaTag(tag)}>×</button>
+                        <button type="button" onClick={() => removeAnesthesiaTag(tag)}>Ã—</button>
                       </span>
                     ))}
                   </div>
@@ -1191,12 +1206,13 @@ const ConsentFormBuilderPage: React.FC = () => {
             </aside>
 
             <main className={`consent-preview-panel overflow-y-auto overscroll-contain min-h-0 bg-gray-100 p-4 sm:p-6 ${mobilePanel === 'builder' ? 'hidden lg:block' : ''}`}>
-              <div ref={previewRootRef} className="consent-print-root max-w-[900px] mx-auto">
-                <table className="print-table w-full border-collapse">
-                  <tbody className="print-tbody">
-                    <tr>
-                      <td>
-                        <article className={`consent-print-page bg-white rounded-xl shadow border border-gray-200 p-6 sm:p-8 ${language === 'ml' ? 'consent-ml-text' : ''}`}>
+              <div className="max-w-[900px] mx-auto bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+                <div ref={previewRootRef} className="consent-print-root">
+                  <table className="print-table w-full border-collapse">
+                    <tbody className="print-tbody">
+                      <tr>
+                        <td>
+                          <article className={`consent-print-page pt-6 px-6 pb-2 sm:pt-8 sm:px-8 sm:pb-2 ${language === 'ml' ? 'consent-ml-text' : ''}`}>
                           <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-3 mb-4">
                             <div>
                               <h2 className="text-lg sm:text-xl font-bold text-gray-900">{clinicDisplayName}</h2>
@@ -1272,8 +1288,10 @@ const ConsentFormBuilderPage: React.FC = () => {
                           )}
 
                           <section className="mb-5">
-                            <h3 className="font-semibold text-sm mb-1">Consent Summary</h3>
-                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{renderedSummaryText || '-'}</p>
+                            <h3 className="font-semibold text-sm mb-3">{consentSummaryHeading}</h3>
+                            {renderedSummaryText && renderedSummaryText.trim() && (
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed">{renderedSummaryText}</p>
+                            )}
                           </section>
 
                           <section className="space-y-4 text-sm leading-relaxed">
@@ -1296,7 +1314,7 @@ const ConsentFormBuilderPage: React.FC = () => {
                             ))}
                           </section>
 
-                          <section className="sig-block-inflow mt-6 border-t border-gray-200 pt-4">
+                          <section className="sig-block-inflow mt-2 pt-1">
                             <p className="text-sm whitespace-pre-wrap">{declarationText}</p>
                           </section>
                         </article>
@@ -1306,27 +1324,28 @@ const ConsentFormBuilderPage: React.FC = () => {
                   <tfoot className="print-tfoot">
                     <tr>
                       <td>
-                            <div className={`print-footer-content bg-white border-t border-gray-200 pl-10 pr-6 sm:pl-12 sm:pr-8 py-3 ${language === 'ml' ? 'consent-ml-text' : ''}`}>
-                          <div className="print-repeat-inner grid grid-cols-[1fr_150px] gap-4 items-end">
+                        <div className={`print-footer-content pl-10 pr-6 sm:pl-12 sm:pr-8 py-3 pb-12 sm:pb-16 ${language === 'ml' ? 'consent-ml-text' : ''}`}>
+                          <div className="print-repeat-inner grid grid-cols-[1fr_150px] gap-4 items-start">
                             <div>
                               <p className="print-repeat-sign-label text-xs font-semibold text-gray-500 mb-1">{signatoryLabel}</p>
                               {signatureDataUrl ? (
-                                <img src={signatureDataUrl} alt="Signature" className="print-repeat-sign-image max-h-11 max-w-full object-contain border-b border-gray-400 mb-1" />
+                                <img src={signatureDataUrl} alt="Signature" className="print-repeat-sign-image h-11 w-56 object-contain object-left border-b border-gray-400 mb-1" />
                               ) : (
-                                <div className="print-repeat-sign-line h-8 border-b border-gray-400 mb-1" />
+                                <div className="print-repeat-sign-line h-11 w-56 border-b border-gray-400 mb-1" />
                               )}
-                              <p className="print-repeat-name text-xs text-gray-700">{signatoryNameLabel}: {signatoryName}</p>
+                              <p className="print-repeat-name text-xs text-gray-700 mt-1">{signatoryNameLabel}: {signatoryName}</p>
                             </div>
                             <div>
                               <p className="print-repeat-date-label text-xs font-semibold text-gray-500 mb-1">Date</p>
-                              <p className="print-repeat-date-value text-xs text-gray-900 border-b border-gray-400 pb-1">{signatoryDate}</p>
+                              <p className="print-repeat-date-value text-xs text-gray-900 h-11 flex items-end mb-1">{signatoryDate}</p>
                             </div>
                           </div>
                         </div>
                       </td>
                     </tr>
                   </tfoot>
-                </table>
+                  </table>
+                </div>
               </div>
             </main>
           </div>
