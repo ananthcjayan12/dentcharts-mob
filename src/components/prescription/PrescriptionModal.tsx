@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { medicineService, MedicineTemplate, PrescriptionDraft, PrescriptionMedicine } from '../../api/services/medicine';
 import Button from '../common/Button';
 import toast from 'react-hot-toast';
@@ -7,6 +7,17 @@ import { useClinic } from '../../contexts/ClinicContext';
 interface DoctorOption {
     id: string;
     name: string;
+}
+
+interface MedicalHistory {
+    nrmh?: boolean;
+    diabetic?: boolean;
+    cardiac_history?: boolean;
+    allergies?: boolean;
+    family_heart_disease?: boolean;
+    blood_pressure?: string;
+    covid_vaccinated?: boolean;
+    other?: string;
 }
 
 interface PrescriptionModalProps {
@@ -18,6 +29,7 @@ interface PrescriptionModalProps {
     defaultDoctorId?: string;
     onSubmit: (data: PrescriptionDraft) => void;
     isSubmitting?: boolean;
+    medicalHistory?: MedicalHistory | null;
 }
 
 const DOSAGE_CONDITIONS = [
@@ -45,6 +57,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
     defaultDoctorId,
     onSubmit,
     isSubmitting = false,
+    medicalHistory,
 }) => {
     const { clinicId } = useClinic();
     const [medications, setMedications] = useState<PrescriptionMedicine[]>([]);
@@ -64,6 +77,17 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
 
         return doctorOptions[0]?.id || '';
     }, [defaultDoctorId, doctorOptions]);
+
+    const medicalConditionChips = useMemo(() => {
+        if (!medicalHistory) return [];
+        const chips = [];
+        if (medicalHistory.diabetic) chips.push('Diabetic');
+        if (medicalHistory.cardiac_history) chips.push('Cardiac History');
+        if (medicalHistory.allergies) chips.push('Allergies');
+        if (medicalHistory.family_heart_disease) chips.push('Family Heart Disease');
+        if (medicalHistory.nrmh) chips.push('NRMH');
+        return chips;
+    }, [medicalHistory]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -201,6 +225,46 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                     </button>
                 </div>
 
+                {/* Medical History Strip */}
+                <div className="flex flex-wrap items-center gap-1.5 bg-white px-4 py-1.5 border-b border-gray-100 text-xs">
+                    <div className="flex items-center gap-1 text-gray-500 font-bold uppercase tracking-wider">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Medical History:
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {medicalConditionChips.length > 0 ? (
+                            medicalConditionChips.map(chip => (
+                                <span key={chip} className="rounded-full bg-red-50 px-2 py-0.5 font-bold text-red-600 border border-red-100">
+                                    {chip}
+                                </span>
+                            ))
+                        ) : (
+                            <span className="text-gray-400 font-medium">No significant conditions</span>
+                        )}
+
+                        <span className="text-white">|</span>
+
+                        <div className="flex items-center gap-1">
+                            <span className="text-gray-500 font-semibold">BP:</span>
+                            <span className={`font-bold ${medicalHistory?.blood_pressure === 'High' ? 'text-red-600' : 'text-gray-700'}`}>
+                                {medicalHistory?.blood_pressure || 'Normal'}
+                            </span>
+                        </div>
+
+                        <span className="text-white">|</span>
+
+                        <div className="flex items-center gap-1">
+                            <span className="text-gray-500 font-semibold">Other:</span>
+                            <span className="text-gray-700 font-medium italic">
+                                {medicalHistory?.other || (medicalHistory?.covid_vaccinated ? 'Covid Vac: Yes' : 'Covid Vac: No')}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
                 <div
                     className="flex-1 min-h-0 overflow-y-auto space-y-5 p-4 pb-6 touch-pan-y"
                     style={{ WebkitOverflowScrolling: 'touch' }}
@@ -259,7 +323,7 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                                             >
                                                 <div className="font-medium text-gray-900">{med.medicine_name}</div>
                                                 <div className="text-xs text-gray-500">
-                                                    {med.dosage_form} {med.strength && `• ${med.strength}`} • {med.category}
+                                                    {med.dosage_form} {med.strength && `â€¢ ${med.strength}`} â€¢ {med.category}
                                                 </div>
                                             </button>
                                         ))

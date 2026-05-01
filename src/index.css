@@ -1,5 +1,13 @@
-/* Import Poppins font from Google Fonts */
+﻿/* Import Poppins font from Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'NotoSansMalayalamLight';
+  src: url('./assets/fonts/NotoSansMalayalam-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -139,4 +147,94 @@
   .fab {
     @apply fixed bottom-20 right-4 w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 active:scale-90 transition-all duration-200;
   }
+  .consent-ml-text {
+    font-family: 'NotoSansMalayalamLight', 'Noto Sans Malayalam', sans-serif;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .consent-print-root,
+  .consent-print-root * {
+    visibility: visible !important;
+  }
+
+  .consent-print-root {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+  }
+
+  .print-table {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .print-tbody {
+    display: table-row-group !important;
+  }
+
+  .print-thead {
+    display: table-header-group !important;
+  }
+
+  .print-tfoot {
+    display: table-footer-group !important;
+  }
+
+  .print-page-top-spacer {
+    height: 10mm !important;
+  }
+
+  .print-footer-content {
+    border-top: 1px solid #e5e7eb !important;
+    padding-top: 8px !important;
+    padding-bottom: 10px !important;
+    padding-left: 34px !important;
+  }
+
+  .sig-block-inflow {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .consent-print-page {
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+}
+
+.consent-save-force-print .print-table {
+  display: table !important;
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+
+.consent-save-force-print .print-thead {
+  display: table-header-group !important;
+}
+
+.consent-save-force-print .print-tbody {
+  display: table-row-group !important;
+}
+
+.consent-save-force-print .print-tfoot {
+  display: table-footer-group !important;
+}
+
+.consent-save-force-print .print-page-top-spacer {
+  height: 10mm !important;
+}
+
+.consent-save-force-print .print-footer-content {
+  padding-left: 34px !important;
 }

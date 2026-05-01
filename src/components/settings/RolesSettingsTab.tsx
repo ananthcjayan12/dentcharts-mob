@@ -23,6 +23,7 @@ const PAGE_OPTIONS: PageOption[] = [
   { key: PATIENT_SCOPE_ALL_KEY, label: 'All Patients' },
   { key: PATIENT_SCOPE_USER_KEY, label: 'User Patients' },
   { key: 'prescriptions', label: 'Prescriptions' },
+  { key: 'consent_forms', label: 'Consent Forms' },
   { key: 'invoice', label: 'Invoice' },
   { key: 'financial_dashboard', label: 'Financial Dashboard' },
   { key: 'whatsapp-manager', label: 'WhatsApp Manager' },

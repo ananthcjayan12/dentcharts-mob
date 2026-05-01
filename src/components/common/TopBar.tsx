@@ -30,6 +30,7 @@ const TopBar: React.FC<TopBarProps> = ({
   const isClinicAdmin = Boolean(user?.permissions?.is_clinic_admin);
   const canAccessFinancials = allowedPages.includes('financial_dashboard');
   const canAccessWhatsApp = allowedPages.includes('whatsapp-manager');
+  const canAccessConsentForms = allowedPages.includes('consent_forms');
   const canAccessSettings = isClinicAdmin && allowedPages.includes('settings');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -154,6 +155,17 @@ const TopBar: React.FC<TopBarProps> = ({
                 <div>
                   <p className="text-sm font-semibold text-gray-900">WhatsApp Manager</p>
                   <p className="text-[10px] font-medium text-gray-500">Settings, logs, conversations</p>
+                </div>
+              </div>
+            )}
+            {canAccessConsentForms && (
+              <div onClick={() => { navigate('/consent-forms'); setIsMenuOpen(false); }} className="px-4 py-3 hover:bg-gray-50/50 cursor-pointer flex items-center gap-3 border-b border-gray-100/50 transition-colors">
+                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Consent Forms</p>
+                  <p className="text-[10px] font-medium text-gray-500">Build, print, and share</p>
                 </div>
               </div>
             )}

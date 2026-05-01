@@ -13,6 +13,8 @@ import NewPatientPage from './pages/NewPatientPage';
 import InvoicesPage from './pages/InvoicesPage';
 import SettingsPage from './pages/SettingsPage';
 import WhatsAppManagerPage from './pages/WhatsAppManagerPage';
+import ConsentFormBuilderPage from './pages/ConsentFormBuilderPage';
+import ConsentReviewPage from './pages/ConsentReviewPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryProvider } from './api/queryClient';
 import { ClinicProvider } from './contexts/ClinicContext';
@@ -36,6 +38,7 @@ const AppRoutes = () => {
         <Route path="/public/clinic/:clinicId" element={<PublicClinicPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/consent-review/:token" element={<ConsentReviewPage />} />
         <Route path="/home" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} />
         <Route path="/dashboard" element={<PageAccessGuard pageKey="home"><HomePage /></PageAccessGuard>} /> {/* Alias for home */}
         <Route path="/financial-dashboard" element={<PageAccessGuard pageKey="financial_dashboard"><FinancialDashboardPage /></PageAccessGuard>} />
@@ -46,6 +49,7 @@ const AppRoutes = () => {
         <Route path="/appointments/new" element={<PageAccessGuard pageKey="appointments"><NewAppointmentPage /></PageAccessGuard>} />
         <Route path="/patients" element={<PageAccessGuard pageKey="patients"><PatientsPage /></PageAccessGuard>} />
         <Route path="/patients/new" element={<PageAccessGuard pageKey="patients"><NewPatientPage /></PageAccessGuard>} />
+        <Route path="/consent-forms" element={<PageAccessGuard pageKey="consent_forms"><ConsentFormBuilderPage /></PageAccessGuard>} />
         <Route path="/invoice" element={<PageAccessGuard pageKey="invoice"><Navigate to="/invoices?create=1" replace /></PageAccessGuard>} />
         <Route path="/invoices" element={<PageAccessGuard pageKey="invoice"><InvoicesPage /></PageAccessGuard>} />
         <Route path="/settings/*" element={<PageAccessGuard pageKey="settings" requireAdmin><SettingsPage /></PageAccessGuard>} />

@@ -33,6 +33,7 @@ import {
   clinicProfileService,
   prescriptionService
 } from '../api/services';
+import { consentFormService } from '../api/services/consentForm';
 import toast from 'react-hot-toast';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import ImageViewerModal from '../components/common/ImageViewerModal';
@@ -130,6 +131,16 @@ const dedupeFilesById = (files: any[]): any[] => {
   }, []);
 };
 
+const CONSENT_SAVED_MESSAGE = 'mob_clinic:consent-saved';
+
+const resolveInitialSection = (search: string): 'medical' | 'payments' | 'dental-chart' | 'consent' => {
+  const section = new URLSearchParams(search).get('section');
+  if (section === 'payments' || section === 'dental-chart' || section === 'consent') {
+    return section;
+  }
+  return 'medical';
+};
+
 const fetchPatientContextFiles = async (patientId: string, appointmentId?: string | null): Promise<any[]> => {
   if (!patientId) {
     return [];
@@ -187,11 +198,13 @@ const PrescriptionPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'home' | 'appointments' | 'new-appointment' | 'profile'>('home');
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart'>('medical');
+  const [currentSection, setCurrentSection] = useState<'medical' | 'payments' | 'dental-chart' | 'consent'>(() => resolveInitialSection(location.search));
   const [dentalChartData, setDentalChartData] = useState<Record<number, ToothData>>({});
   const [showFileUploadModal, setShowFileUploadModal] = useState(false);
   const [patientFiles, setPatientFiles] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [consentRecords, setConsentRecords] = useState<any[]>([]);
+  const [isLoadingConsentRecords, setIsLoadingConsentRecords] = useState(false);
   const [selectedFileCategory, setSelectedFileCategory] = useState<string>('all');
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [viewerImages, setViewerImages] = useState<Array<{ url: string; caption?: string }>>([]);
@@ -300,6 +313,42 @@ const PrescriptionPage: React.FC = () => {
   const [sendingInvoiceWhatsApp, setSendingInvoiceWhatsApp] = useState<Set<string>>(new Set());
   const [appointmentDoctor, setAppointmentDoctor] = useState<{ id: string; name: string } | null>(null);
   const [prescriptionOverrides, setPrescriptionOverrides] = useState<Record<string, any>>({});
+
+  const refreshPatientFiles = React.useCallback(async () => {
+    if (!patientId) {
+      setPatientFiles([]);
+      return;
+    }
+
+    setIsLoadingFiles(true);
+    try {
+      const files = await fetchPatientContextFiles(patientId, appointmentId);
+      setPatientFiles(files);
+    } catch (error) {
+      console.error('Error fetching patient files:', error);
+      toast.error('Failed to load patient files');
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  }, [patientId, appointmentId]);
+
+  const refreshPatientConsents = React.useCallback(async () => {
+    if (!patientId) {
+      setConsentRecords([]);
+      return;
+    }
+
+    setIsLoadingConsentRecords(true);
+    try {
+      const records = await consentFormService.listPatientConsents(patientId, clinicId || undefined);
+      setConsentRecords(records || []);
+    } catch (error) {
+      console.error('Error fetching patient consent records:', error);
+      toast.error('Failed to load consent forms');
+    } finally {
+      setIsLoadingConsentRecords(false);
+    }
+  }, [patientId, clinicId]);
 
   const prescriptionDoctorOptions = React.useMemo(() => {
     const options = new Map<string, string>();
@@ -414,9 +463,13 @@ const PrescriptionPage: React.FC = () => {
 
   // Fetch patient files when component mounts or patientId changes
   React.useEffect(() => {
+    setCurrentSection(resolveInitialSection(location.search));
+  }, [location.search]);
+
+  React.useEffect(() => {
     let isMounted = true;
 
-    const fetchPatientFiles = async () => {
+    const loadFiles = async () => {
       if (!patientId) {
         setPatientFiles([]);
         return;
@@ -440,12 +493,39 @@ const PrescriptionPage: React.FC = () => {
       }
     };
 
-    fetchPatientFiles();
+    loadFiles();
 
     return () => {
       isMounted = false;
     };
   }, [patientId, appointmentId]);
+
+  React.useEffect(() => {
+    refreshPatientConsents();
+  }, [refreshPatientConsents]);
+
+  React.useEffect(() => {
+    const handleConsentSaved = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const payload = event.data;
+      if (!payload || payload.type !== CONSENT_SAVED_MESSAGE) {
+        return;
+      }
+
+      if (payload.patientId && patientId && payload.patientId !== patientId) {
+        return;
+      }
+
+      refreshPatientFiles();
+      refreshPatientConsents();
+    };
+
+    window.addEventListener('message', handleConsentSaved);
+    return () => window.removeEventListener('message', handleConsentSaved);
+  }, [patientId, refreshPatientFiles, refreshPatientConsents]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -520,6 +600,35 @@ const PrescriptionPage: React.FC = () => {
     const categories = new Set(patientFiles.map((file: any) => file.file_category).filter(Boolean));
     return Array.from(categories);
   }, [patientFiles]);
+
+  const consentEntries = React.useMemo(() => {
+    return [...consentRecords]
+      .sort((left: any, right: any) => {
+        const leftTime = new Date(left.signed_on || left.creation || 0).getTime();
+        const rightTime = new Date(right.signed_on || right.creation || 0).getTime();
+        return rightTime - leftTime;
+      })
+      .map((record: any) => ({ record }));
+  }, [consentRecords]);
+
+  const consentFullPageUrl = React.useMemo(() => {
+    const returnParams = new URLSearchParams(location.search);
+    returnParams.set('section', 'consent');
+    if (appointmentId) {
+      returnParams.set('appointmentId', String(appointmentId));
+    }
+
+    const params = new URLSearchParams();
+    if (patientId) {
+      params.set('patientId', patientId);
+    }
+    if (appointmentId) {
+      params.set('appointmentId', String(appointmentId));
+    }
+    params.set('returnTo', `${location.pathname}?${returnParams.toString()}`);
+    const query = params.toString();
+    return query ? `/consent-forms?${query}` : '/consent-forms';
+  }, [appointmentId, location.pathname, location.search, patientId]);
 
   const handleTabChange = (tab: 'home' | 'appointments' | 'new-appointment' | 'profile') => {
     setActiveTab(tab);
@@ -875,6 +984,20 @@ const PrescriptionPage: React.FC = () => {
     } catch (error: any) {
       console.error('Delete file error:', error);
       toast.error(error?.message || 'Failed to delete file');
+    }
+  };
+
+  const handleDeleteConsent = async (consentSessionId: string) => {
+    if (!window.confirm('Are you sure you want to delete this consent form?')) return;
+
+    try {
+      await consentFormService.deletePatientConsent(consentSessionId, clinicId || undefined);
+      toast.success('Consent form deleted');
+      refreshPatientConsents();
+      refreshPatientFiles();
+    } catch (error: any) {
+      console.error('Delete consent error:', error);
+      toast.error(error?.message || 'Failed to delete consent form');
     }
   };
 
@@ -1542,10 +1665,10 @@ const PrescriptionPage: React.FC = () => {
                   <div className="lg:col-span-2 space-y-4 lg:space-y-6">
 
                     {/* Mobile Section Tabs - Pill Style */}
-                    <div className="flex bg-gray-100 rounded-full p-1 lg:hidden">
+                    <div className="grid grid-cols-4 bg-gray-100 rounded-full p-1 gap-1 lg:hidden">
                       <button
                         onClick={() => setCurrentSection('medical')}
-                        className={`flex-1 py-2 text-sm font-medium transition-all rounded-full ${currentSection === 'medical' || currentSection === 'dental-chart'
+                        className={`py-2 text-xs font-medium transition-all rounded-full ${currentSection === 'medical'
                           ? 'bg-white text-gray-900 shadow-sm'
                           : 'text-gray-500'
                           }`}
@@ -1553,8 +1676,26 @@ const PrescriptionPage: React.FC = () => {
                         Medical History
                       </button>
                       <button
+                        onClick={() => setCurrentSection('dental-chart')}
+                        className={`py-2 text-xs font-medium transition-all rounded-full ${currentSection === 'dental-chart'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500'
+                          }`}
+                      >
+                        Dental Chart
+                      </button>
+                      <button
+                        onClick={() => setCurrentSection('consent')}
+                        className={`py-2 text-xs font-medium transition-all rounded-full ${currentSection === 'consent'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500'
+                          }`}
+                      >
+                        Consent
+                      </button>
+                      <button
                         onClick={() => setCurrentSection('payments')}
-                        className={`flex-1 py-2 text-sm font-medium transition-all rounded-full ${currentSection === 'payments'
+                        className={`py-2 text-xs font-medium transition-all rounded-full ${currentSection === 'payments'
                           ? 'bg-white text-gray-900 shadow-sm'
                           : 'text-gray-500'
                           }`}
@@ -1582,6 +1723,15 @@ const PrescriptionPage: React.FC = () => {
                           }`}
                       >
                         Dental Chart
+                      </button>
+                      <button
+                        onClick={() => setCurrentSection('consent')}
+                        className={`flex-1 py-3 px-6 text-sm font-bold font-lato transition-colors ${currentSection === 'consent'
+                          ? 'bg-primary-600 text-white rounded-lg shadow-sm'
+                          : 'text-gray-600 hover:text-gray-800'
+                          }`}
+                      >
+                        Consent Forms
                       </button>
                       <button
                         onClick={() => setCurrentSection('payments')}
@@ -2370,6 +2520,150 @@ const PrescriptionPage: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Consent Content */}
+                    {currentSection === 'consent' && (
+                      <div className="space-y-4 lg:space-y-6">
+                        {!patientId ? (
+                          <Card className="p-6">
+                            <p className="text-gray-600 text-sm">
+                              Select a patient to create or review consent forms.
+                            </p>
+                          </Card>
+                        ) : (
+                          <>
+                            <Card className="p-4 lg:p-5">
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-start">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => navigate(consentFullPageUrl)}
+                                    className="bg-primary-600 hover:bg-primary-700"
+                                    leftIcon={
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                      </svg>
+                                    }
+                                  >
+                                    Create Consent Form
+                                  </Button>
+                                </div>
+                                <p className="text-sm text-gray-500">
+                                  Generate a consent form by selecting the consent type, language, and diagnosis.
+                                </p>
+                              </div>
+                            </Card>
+
+                            <Card className="p-4 lg:p-6">
+                              <div className="flex items-center justify-between gap-3 mb-4">
+                                <div>
+                                  <h3 className="text-base lg:text-lg font-bold text-gray-800">Existing Consent Forms</h3>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    Saved consent PDFs with clinical context for this patient.
+                                  </p>
+                                </div>
+                                <Button size="sm" variant="outline" onClick={() => {
+                                  refreshPatientFiles();
+                                  refreshPatientConsents();
+                                }}>
+                                  Refresh
+                                </Button>
+                              </div>
+
+                              {isLoadingFiles || isLoadingConsentRecords ? (
+                                <div className="text-sm text-gray-500">Loading consent forms...</div>
+                              ) : consentEntries.length > 0 ? (
+                                <div className="space-y-3">
+                                  {consentEntries.map(({ record }: any) => {
+                                    const previewUrl = record?.consent_file_id
+                                      ? `${API_BASE_URL}/api/method/mob_clinic.mob_clinic.api.file_upload.download_file?file_id=${encodeURIComponent(record.consent_file_id)}`
+                                      : '';
+                                    const consentDate = record.signed_on || record.creation;
+                                    const payload = record.payload || {};
+
+                                    return (
+                                      <div key={record.name} className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-4">
+                                        <div>
+                                          {previewUrl ? (
+                                            <a
+                                              href={previewUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="block rounded-lg overflow-hidden border border-gray-200 bg-gray-50 hover:border-primary-300 transition-colors p-4"
+                                              title="Open saved consent PDF"
+                                            >
+                                              <div className="h-44 flex flex-col items-center justify-center text-center">
+                                                <div className="w-14 h-16 rounded-lg border border-red-100 bg-red-50 text-red-600 flex items-center justify-center text-xl font-bold">
+                                                  PDF
+                                                </div>
+                                                <p className="text-xs text-gray-600 mt-3">Open consent PDF</p>
+                                              </div>
+                                            </a>
+                                          ) : (
+                                            <div className="h-52 rounded-lg border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500 flex items-center justify-center text-center px-4">
+                                              Consent PDF is not available for this record.
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div className="min-w-0 flex flex-col justify-between gap-4">
+                                          <div className="space-y-3">
+                                            <div>
+                                              <p className="text-sm font-semibold text-gray-900">{record.consent_type_label || 'Consent Form'}</p>
+                                              <p className="text-xs text-gray-500 mt-1">
+                                                {consentDate ? new Date(consentDate).toLocaleString() : '-'}
+                                              </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Chief Complaint</p>
+                                                <p className="text-gray-800 mt-1 whitespace-pre-wrap">{payload.chief_complaint || '-'}</p>
+                                              </div>
+                                              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Diagnosis & Treatment Plan</p>
+                                                <p className="text-gray-800 mt-1 whitespace-pre-wrap">
+                                                  {payload.diagnosis || payload.treatment_plan
+                                                    ? [payload.diagnosis, payload.treatment_plan].filter(Boolean).join('\n')
+                                                    : '-'}
+                                                </p>
+                                              </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                              <span>Status: {record.status}</span>
+                                              <span>Language: {String(record.language || '').toUpperCase() || '-'}</span>
+                                              <span>Signer: {record.signed_by || '-'}</span>
+                                              <span>Role: {record.signer_role || '-'}</span>
+                                              {record?.consent_file_id ? <span className="truncate">File ID: {record.consent_file_id}</span> : null}
+                                            </div>
+                                          </div>
+
+                                          {record?.name ? (
+                                            <div className="flex justify-end">
+                                              <button
+                                                onClick={() => handleDeleteConsent(record.name)}
+                                                className="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50"
+                                              >
+                                                Delete
+                                              </button>
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                                  No consent forms saved yet. The form will appear here only after you use the Save button in the consent builder.
+                                </div>
+                              )}
+                            </Card>
+                          </>
+                        )}
+                      </div>
+                    )}
+
                     {/* Dental Chart Content */}
                     {currentSection === 'dental-chart' && (
                       <div>
@@ -2378,6 +2672,9 @@ const PrescriptionPage: React.FC = () => {
                           data={dentalChartData}
                           onChange={setDentalChartData}
                           readOnly={false}
+                          onCreateConsentForm={() => {
+                            setCurrentSection('consent');
+                          }}
                         />
                       </div>
                     )}
@@ -2527,6 +2824,7 @@ const PrescriptionPage: React.FC = () => {
               defaultDoctorId={defaultPrescriptionDoctorId}
               onSubmit={handleNewPrescriptionSubmit}
               isSubmitting={isCreating}
+              medicalHistory={medicalHistory}
             />
 
             {/* Create Invoice Modal */}

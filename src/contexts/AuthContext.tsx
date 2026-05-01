@@ -10,6 +10,7 @@ const DEFAULT_ALLOWED_PAGES: PagePermissionKey[] = [
   'appointments',
   'patients',
   'prescriptions',
+  'consent_forms',
   'invoice',
   'financial_dashboard',
   'whatsapp-manager',

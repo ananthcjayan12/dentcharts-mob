@@ -15,6 +15,7 @@ export { patientSummaryService } from './patientSummary';
 export { orthodonticService } from './orthodontic';
 export { clinicProfileService } from './clinicProfile';
 export { dataExportService } from './dataExport';
+export { consentFormService } from './consentForm';
 
 // Re-export types for convenience
 export * from '../types';
