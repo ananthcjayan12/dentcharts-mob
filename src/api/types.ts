@@ -535,6 +535,143 @@ export interface ConsultantPayoutReport {
   rows: ConsultantPayoutRow[];
 }
 
+export type ExpenseFilterMode = 'specific_month' | 'financial_year';
+
+export interface ExpenseSheetParams {
+  filter_mode: ExpenseFilterMode;
+  clinic?: string;
+  month?: number;
+  year?: number;
+  fiscal_year?: string;
+}
+
+export interface ExpenseSheetRow {
+  row_key: string;
+  row_type: 'manual' | 'system';
+  expense_rule_id?: string | null;
+  expense_name: string;
+  expense_category: string;
+  is_system_generated: boolean;
+  amount: number | null;
+  payment_date?: string | null;
+  can_edit_amount: boolean;
+  can_edit_rule: boolean;
+  can_delete: boolean;
+  is_read_only: boolean;
+  is_blank?: boolean;
+  effective_from_month?: string | null;
+  effective_to_month?: string | null;
+}
+
+export interface ExpenseSheetSummary {
+  total_amount: number;
+  manual_amount: number;
+  system_amount: number;
+  row_count: number;
+  blank_manual_rows: number;
+  editable_row_count: number;
+  read_only_row_count: number;
+}
+
+export interface ExpenseSheetFilters {
+  filter_mode: ExpenseFilterMode;
+  selected_month?: string | null;
+  selected_year?: number | null;
+  selected_month_number?: number | null;
+  selected_fiscal_year?: string | null;
+  available_fiscal_years: Array<{
+    name: string;
+    label: string;
+    year_start_date: string;
+    year_end_date: string;
+  }>;
+}
+
+export interface ExpenseSheetResponse {
+  summary: ExpenseSheetSummary;
+  totals: {
+    total_amount: number;
+    manual_amount: number;
+    system_amount: number;
+  };
+  rows: ExpenseSheetRow[];
+  filters: ExpenseSheetFilters;
+  default_selected_row_key?: string | null;
+}
+
+export interface ExpenseBreakdownContributor {
+  label: string;
+  amount: number | null;
+  payment_date?: string | null;
+  source?: string;
+  is_blank?: boolean;
+  date?: string;
+  invoice_id?: string;
+  patient?: string;
+  patient_name?: string;
+  procedure_name?: string;
+  commission_source?: string;
+  consultant_type?: string;
+}
+
+export interface ExpenseBreakdownGroup {
+  group_key: string;
+  group_label: string;
+  total_amount: number;
+  contributors: ExpenseBreakdownContributor[];
+}
+
+export interface ExpenseBreakdownResponse {
+  row_key: string;
+  expense_name: string;
+  expense_category: string;
+  breakdown_mode: ExpenseFilterMode;
+  summary: {
+    total_amount: number;
+    month_count: number;
+  };
+  groups: ExpenseBreakdownGroup[];
+}
+
+export interface ExpenseItemSuggestion {
+  id: string;
+  name: string;
+}
+
+export interface CreateExpenseRequest extends ExpenseSheetParams {
+  clinic?: string;
+  expense_name: string;
+  expense_category: 'Recurring Fixed' | 'Recurring Variable' | 'One-Time';
+  amount: number;
+  payment_date?: string;
+  apply_backfill?: 0 | 1;
+  backfill_start_month?: string;
+  backfill_end_month?: string;
+}
+
+export interface SaveExpenseChange {
+  row_key: string;
+  amount: number;
+  payment_date?: string;
+  expense_name?: string;
+}
+
+export interface UpdateExpenseRuleRequest {
+  rule_id: string;
+  clinic?: string;
+  effective_month: string;
+  expense_category: 'Recurring Fixed' | 'Recurring Variable';
+  amount?: number | null;
+  expense_name?: string;
+}
+
+export interface DeleteExpenseRequest {
+  rule_id: string;
+  clinic?: string;
+  effective_month?: string;
+  delete_mode?: 'forward' | 'all';
+}
+
 // File upload related types
 export interface FileCategory {
   name: string;

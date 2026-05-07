@@ -133,6 +133,8 @@ export const queryKeys = {
     stats: (params?: any) => ['dashboard', 'stats', params],
     collection: (params?: any) => ['dashboard', 'collection', params],
     consultantPayouts: (params?: any) => ['dashboard', 'consultantPayouts', params],
+    expenseSheet: (params?: any) => ['dashboard', 'expenseSheet', params],
+    expenseBreakdown: (params?: any) => ['dashboard', 'expenseBreakdown', params],
     orthodontic: (params?: any) => ['dashboard', 'orthodontic', params],
     orthodonticConsultants: (params?: any) => ['dashboard', 'orthodonticConsultants', params],
   },
@@ -179,6 +181,13 @@ export const mutationKeys = {
     addLedgerEntry: (caseId: string) => ['orthodontic', 'addLedgerEntry', caseId],
     createPayout: (caseId: string) => ['orthodontic', 'createPayout', caseId],
     reversePayout: (payoutId: string) => ['orthodontic', 'reversePayout', payoutId],
+  },
+
+  expenseSheet: {
+    create: () => ['expenseSheet', 'create'],
+    save: () => ['expenseSheet', 'save'],
+    updateRule: (ruleId: string) => ['expenseSheet', 'updateRule', ruleId],
+    delete: (ruleId: string) => ['expenseSheet', 'delete', ruleId],
   },
 
   files: {
@@ -238,6 +247,11 @@ export const invalidateQueriesHelper = {
   // Invalidate dashboard stats
   invalidateDashboard: () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() });
+  },
+
+  invalidateExpenseSheet: () => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard', 'expenseSheet'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard', 'expenseBreakdown'] });
   },
 
   // Invalidate everything (use sparingly)
