@@ -433,7 +433,14 @@ const FinancialDashboardPage: React.FC = () => {
                             <Typography variant="body2" className="text-gray-500 font-medium">
                                 Clinic-wide financial overview & perfomance tracking.
                             </Typography>
-                            <div className="mt-3">
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => navigate('/financial-dashboard/expenses')}
+                                >
+                                    Open Expense Sheet
+                                </Button>
                                 <Button
                                     size="sm"
                                     variant="outline"
