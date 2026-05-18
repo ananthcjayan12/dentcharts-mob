@@ -29,7 +29,7 @@ import { Appointment } from '../types';
 import toast from 'react-hot-toast';
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import { generatePrescriptionHTML, PrescriptionPrintData } from '../utils/prescriptionTemplates';
-import { generatePdfBlobFromHtml } from '../utils/printUtils';
+import { generateLegacyPdfBlobFromHtml } from '../utils/printUtils';
 import FileUploadModal from '../components/appointments/FileUploadModal';
 import { whatsappService } from '../api/services/whatsapp';
 
@@ -105,7 +105,7 @@ const AppointmentsPage: React.FC = () => {
       const invoiceSettings = (profile?.invoice_settings || {}) as any;
       const templateId = invoiceSettings.template_id || 'standard';
       const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId);
-      const invoiceBlob = await generatePdfBlobFromHtml(invoiceHTML, `${invoiceId}.pdf`);
+      const invoiceBlob = await generateLegacyPdfBlobFromHtml(invoiceHTML, `${invoiceId}.pdf`);
       const pdfBase64 = await blobToBase64(invoiceBlob);
 
       const response = await whatsappService.sendInvoice(invoiceId, {
@@ -190,7 +190,7 @@ const AppointmentsPage: React.FC = () => {
       };
 
       const prescriptionHTML = generatePrescriptionHTML(printData);
-      const prescriptionBlob = await generatePdfBlobFromHtml(prescriptionHTML, `${prescriptionId}.pdf`);
+      const prescriptionBlob = await generateLegacyPdfBlobFromHtml(prescriptionHTML, `${prescriptionId}.pdf`);
       const pdfBase64 = await blobToBase64(prescriptionBlob);
 
       const response = await whatsappService.sendPrescription(prescriptionId, {

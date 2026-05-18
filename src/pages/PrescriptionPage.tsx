@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 // Icons removed as they are unused (replaced by SVGs)
 import { generateInvoiceHTML } from '../utils/invoiceTemplates';
 import { PrescriptionPrintData, downloadPrescriptionPDF, generatePrescriptionHTML } from '../utils/prescriptionTemplates';
-import { generatePdfBlobFromHtml, printHTML } from '../utils/printUtils';
+import { generateLegacyPdfBlobFromHtml, printHTML } from '../utils/printUtils';
 import PrescriptionModal from '../components/prescription/PrescriptionModal';
 import { PrescriptionDraft } from '../api/services/medicine';
 import { useClinic } from '../contexts/ClinicContext';
@@ -1254,7 +1254,7 @@ const PrescriptionPage: React.FC = () => {
       const invoiceSettings = (profile?.invoice_settings || {}) as any;
       const templateId = invoiceSettings.template_id || 'modern';
       const invoiceHTML = generateInvoiceHTML(fullInvoice, profile, templateId, user?.name);
-      const invoiceBlob = await generatePdfBlobFromHtml(invoiceHTML, `${invoiceId}.pdf`);
+      const invoiceBlob = await generateLegacyPdfBlobFromHtml(invoiceHTML, `${invoiceId}.pdf`);
       const pdfBase64 = await blobToBase64(invoiceBlob);
       const response = await whatsappService.sendInvoice(invoiceId, {
         pdfBase64,
@@ -2105,7 +2105,7 @@ const PrescriptionPage: React.FC = () => {
                                                 return;
                                               }
                                               const prescriptionHTML = generatePrescriptionHTML(data);
-                                              const prescriptionBlob = await generatePdfBlobFromHtml(
+                                              const prescriptionBlob = await generateLegacyPdfBlobFromHtml(
                                                 prescriptionHTML,
                                                 `${recordId}.pdf`
                                               );
