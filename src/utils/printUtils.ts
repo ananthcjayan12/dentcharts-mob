@@ -52,6 +52,25 @@ export const generatePdfBlobFromHtml = async (
     }
 };
 
+export const generateLegacyPdfBlobFromHtml = async (
+    htmlContent: string,
+    filename: string,
+) => {
+    const element = document.createElement('div');
+    element.innerHTML = htmlContent;
+
+    return html2pdf()
+        .set({
+            margin: 0,
+            filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(element)
+        .outputPdf('blob');
+};
+
 export const generatePdfBlobFromElement = async (
     sourceElement: HTMLElement,
     filename: string,

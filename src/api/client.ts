@@ -511,6 +511,16 @@ export const API_ENDPOINTS = {
     GET_CONSULTANT_PAYOUTS: '/api/method/mob_clinic.mob_clinic.api.dashboard.get_consultant_payout_report',
   },
 
+  EXPENSES: {
+    SHEET: '/api/method/mob_clinic.mob_clinic.api.expense_sheet.get_expense_sheet',
+    BREAKDOWN: '/api/method/mob_clinic.mob_clinic.api.expense_sheet.get_expense_breakdown',
+    CREATE: '/api/method/mob_clinic.mob_clinic.api.expense_sheet.create_expense',
+    SAVE: '/api/method/mob_clinic.mob_clinic.api.expense_sheet.save_expense_changes',
+    UPDATE_RULE: '/api/method/mob_clinic.mob_clinic.api.expense_sheet.update_expense_rule',
+    DELETE: '/api/method/mob_clinic.mob_clinic.api.expense_sheet.delete_expense',
+    SEARCH: '/api/method/mob_clinic.mob_clinic.api.expense_sheet.search_expense_items',
+  },
+
   // Data Export
   DATA_EXPORT: {
     CONFIG: '/api/method/mob_clinic.mob_clinic.api.data_export.get_data_export_config',
