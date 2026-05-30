@@ -264,7 +264,6 @@ const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
                         </div>
                     </div>
                 </div>
-
                 <div
                     className="flex-1 min-h-0 overflow-y-auto space-y-5 p-4 pb-6 touch-pan-y"
                     style={{ WebkitOverflowScrolling: 'touch' }}
