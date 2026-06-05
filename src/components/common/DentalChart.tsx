@@ -583,20 +583,12 @@ const DentalChart: React.FC<DentalChartProps> = ({ patientId, data = {}, readOnl
     return conditionOptions.find((option) => option.value === type)?.label || type;
   };
 
-  const handleChartTypeChange = async (nextChartType: 'adult' | 'pediatric' | 'mixed') => {
+  const handleChartTypeChange = (nextChartType: 'adult' | 'pediatric' | 'mixed') => {
     if (nextChartType === chartType) {
       return;
     }
 
-    const previousChartType = chartType;
     setChartType(nextChartType);
-
-    try {
-      await actions.saveDentalChart(nextChartType, teethData);
-    } catch (error) {
-      setChartType(previousChartType);
-      console.error('Failed to update chart type:', error);
-    }
   };
 
   const currentProcedureOptions = (() => {

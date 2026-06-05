@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dentalChartService, ConditionInput, ProcedureInput } from '../api/services/dentalChart';
-import { ToothData } from '../components/common/DentalChart';
 import toast from 'react-hot-toast';
 import { queryKeys } from '../api/queryClient';
 
@@ -11,31 +10,6 @@ export const useDentalChart = (patientId: string | undefined, options = {}) => {
     queryFn: () => dentalChartService.getDentalChart(patientId!),
     enabled: !!patientId,
     ...options,
-  });
-};
-
-// Save entire dental chart
-export const useSaveDentalChart = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: {
-      patient_id: string;
-      chart_type: 'adult' | 'pediatric' | 'mixed';
-      teeth_data: Record<number, ToothData>;
-    }) => dentalChartService.saveDentalChart(data),
-    onSuccess: (data, variables) => {
-      toast.success('Dental chart saved successfully');
-      queryClient.invalidateQueries({ 
-        queryKey: queryKeys.dentalChart.byPatient(variables.patient_id) 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: queryKeys.dentalChart.summary(variables.patient_id) 
-      });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to save dental chart');
-    },
   });
 };
 
@@ -316,7 +290,6 @@ export const useDentalChartActions = (patientId: string) => {
   const addProcedure = useAddProcedure();
   const updateProcedure = useUpdateProcedure();
   const removeProcedure = useRemoveProcedure();
-  const saveDentalChart = useSaveDentalChart();
   const exportChart = useExportDentalChart();
 
   return {
@@ -342,12 +315,6 @@ export const useDentalChartActions = (patientId: string) => {
     removeProcedure: (procedure_name: string, reason?: string) =>
       removeProcedure.mutateAsync({ patient_id: patientId, procedure_name, reason }),
 
-    // Chart actions
-    saveDentalChart: (
-      chart_type: 'adult' | 'pediatric' | 'mixed',
-      teeth_data: Record<number, ToothData>
-    ) =>
-      saveDentalChart.mutateAsync({ patient_id: patientId, chart_type, teeth_data }),
     exportChart: (format: 'json' | 'pdf' = 'json') =>
       exportChart.mutateAsync({ patientId, format }),
 
@@ -359,7 +326,6 @@ export const useDentalChartActions = (patientId: string) => {
       addProcedure.isPending ||
       updateProcedure.isPending ||
       removeProcedure.isPending ||
-      saveDentalChart.isPending ||
       exportChart.isPending,
   };
 };
