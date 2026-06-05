@@ -435,7 +435,6 @@ export const API_ENDPOINTS = {
   // Dental Chart Management
   DENTAL_CHART: {
     GET: '/api/method/mob_clinic.mob_clinic.api.dental_chart.get_dental_chart',
-    SAVE: '/api/method/mob_clinic.mob_clinic.api.dental_chart.save_dental_chart',
     ADD_CONDITION: '/api/method/mob_clinic.mob_clinic.api.dental_chart.add_condition',
     UPDATE_CONDITION: '/api/method/mob_clinic.mob_clinic.api.dental_chart.update_condition',
     REMOVE_CONDITION: '/api/method/mob_clinic.mob_clinic.api.dental_chart.remove_condition',

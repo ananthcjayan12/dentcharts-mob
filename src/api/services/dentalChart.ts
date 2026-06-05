@@ -1,5 +1,5 @@
 import { apiClient, API_ENDPOINTS } from '../client';
-import { ToothData, ToothCondition, ToothProcedure, ProcedureTimelineEntry } from '../../components/common/DentalChart';
+import { ToothCondition, ProcedureTimelineEntry } from '../../components/common/DentalChart';
 
 export interface DentalChartResponse {
   patient_id: string;
@@ -65,29 +65,6 @@ class DentalChartService {
     const response = await apiClient.get<DentalChartResponse>(
       API_ENDPOINTS.DENTAL_CHART.GET,
       { params: { patient_id: patientId } }
-    );
-    return response.data;
-  }
-
-  // Save entire dental chart
-  async saveDentalChart(data: {
-    patient_id: string;
-    chart_type: 'adult' | 'pediatric' | 'mixed';
-    teeth_data: Record<number, ToothData>;
-  }) {
-    // Convert teeth_data keys to strings for API
-    const teethForApi: Record<string, any> = {};
-    Object.entries(data.teeth_data).forEach(([key, value]) => {
-      teethForApi[key] = value;
-    });
-
-    const response = await apiClient.post<DentalChartResponse>(
-      API_ENDPOINTS.DENTAL_CHART.SAVE,
-      {
-        patient_id: data.patient_id,
-        chart_type: data.chart_type,
-        teeth_data: teethForApi,
-      }
     );
     return response.data;
   }
